@@ -1,0 +1,301 @@
+{
+  "content": {
+    "engagementPanelSectionListRenderer": {
+      "content": {
+        "sectionListRenderer": {
+          "contents": [
+            {
+              "itemSectionRenderer": {
+                "header": {
+                  "macroMarkersPanelItemViewModel": {
+                    "item": {
+                      "timelineChapterViewModel": {
+                        "title": "Chapter 1: Intro",
+                        "index": 0
+                      }
+                    },
+                    "index": 0,
+                    "panelId": "PAmodern_transcript_view",
+                    "onTap": {
+                      "innertubeCommand": {
+                        "commandMetadata": {
+                          "webCommandMetadata": {
+                            "url": "/watch?v=Tn6-PIqc4UM",
+                            "webPageType": "WEB_PAGE_TYPE_WATCH"
+                          }
+                        },
+                        "watchEndpoint": {
+                          "videoId": "Tn6-PIqc4UM",
+                          "continuePlayback": true,
+                          "startTimeSeconds": 0
+                        }
+                      }
+                    }
+                  }
+                },
+                "contents": [
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:00",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "react a javascript library for building user interfaces developed at facebook and released in 2013 it's safe to say react has been the most influential ui",
+                                "timestamp": "0:00",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 154,
+                                "timestampA11yLabel": "0 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 1,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=Tn6-PIqc4UM&t=0s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "Tn6-PIqc4UM",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 0
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:08",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "library of recent memory we use it to build components that represent logical reusable parts of the ui the beauty of react is that",
+                                "timestamp": "0:08",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 130,
+                                "timestampA11yLabel": "8 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 2,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=Tn6-PIqc4UM&t=8s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "Tn6-PIqc4UM",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 8
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:17",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "a component has been brought down to its theoretical minimum it's just",
+                                "timestamp": "0:17",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 70,
+                                "timestampA11yLabel": "17 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 3,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=Tn6-PIqc4UM&t=17s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "Tn6-PIqc4UM",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 17
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:24",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "from this function is your html or ui which is written in a special sy",
+                                "timestamp": "0:24",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 70,
+                                "timestampA11yLabel": "24 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 4,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=Tn6-PIqc4UM&t=24s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "Tn6-PIqc4UM",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 24
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "itemSectionRenderer": {
+                "header": {
+                  "macroMarkersPanelItemViewModel": {
+                    "item": {
+                      "timelineChapterViewModel": {
+                        "title": "Chapter 2: Why Use React",
+                        "index": 0
+                      }
+                    },
+                    "index": 10,
+                    "panelId": "PAmodern_transcript_view",
+                    "onTap": {
+                      "innertubeCommand": {
+                        "commandMetadata": {
+                          "webCommandMetadata": {
+                            "url": "/watch?v=Tn6-PIqc4UM&t=70s",
+                            "webPageType": "WEB_PAGE_TYPE_WATCH"
+                          }
+                        },
+                        "watchEndpoint": {
+                          "videoId": "Tn6-PIqc4UM",
+                          "continuePlayback": true,
+                          "startTimeSeconds": 70
+                        }
+                      }
+                    }
+                  }
+                },
+                "contents": [
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "1:14",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "react itself doesn't care about routing state management animation or",
+                                "timestamp": "1:14",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 69,
+                                "timestampA11yLabel": "1 minute, 14 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 11,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=Tn6-PIqc4UM&t=74s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "Tn6-PIqc4UM",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 74
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "1:21",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "community no matter what you're trying to do there's very likely a goo",
+                                "timestamp": "1:21",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 70,
+                                "timestampA11yLabel": "1 minute, 21 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 12,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=Tn6-PIqc4UM&t=81s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "Tn6-PIqc4UM",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 81
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "targetId": "PAmodern_transcript_view"
+        }
+      }
+    }
+  }
+}

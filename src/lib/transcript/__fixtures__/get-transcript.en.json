@@ -1,0 +1,269 @@
+{
+  "actions": [
+    {
+      "updateEngagementPanelAction": {
+        "content": {
+          "transcriptRenderer": {
+            "content": {
+              "transcriptSearchPanelRenderer": {
+                "body": {
+                  "transcriptSegmentListRenderer": {
+                    "initialSegments": [
+                      {
+                        "transcriptSectionHeaderRenderer": {
+                          "startMs": "0",
+                          "endMs": "10000",
+                          "accessibility": {
+                            "accessibilityData": {
+                              "label": "Intro"
+                            }
+                          },
+                          "enableTappableTranscriptHeader": true,
+                          "sectionHeader": {
+                            "sectionHeaderViewModel": {
+                              "headline": {
+                                "content": "Intro"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "transcriptSegmentRenderer": {
+                          "startMs": "240",
+                          "endMs": "2720",
+                          "snippet": {
+                            "runs": [
+                              {
+                                "text": "react a javascript library for building"
+                              }
+                            ]
+                          },
+                          "startTimeText": {
+                            "simpleText": "0:00"
+                          },
+                          "accessibility": {
+                            "accessibilityData": {
+                              "label": "0 seconds react a javascript library for building"
+                            }
+                          },
+                          "targetId": "Tn6-PIqc4UM.CgNhc3ISAmVuGgA%3D.240.2720"
+                        }
+                      },
+                      {
+                        "transcriptSegmentRenderer": {
+                          "startMs": "2720",
+                          "endMs": "4799",
+                          "snippet": {
+                            "runs": [
+                              {
+                                "text": "user interfaces developed at facebook"
+                              }
+                            ]
+                          },
+                          "startTimeText": {
+                            "simpleText": "0:02"
+                          },
+                          "accessibility": {
+                            "accessibilityData": {
+                              "label": "2 seconds user interfaces developed at facebook"
+                            }
+                          },
+                          "targetId": "Tn6-PIqc4UM.CgNhc3ISAmVuGgA%3D.2720.4799"
+                        }
+                      },
+                      {
+                        "transcriptSegmentRenderer": {
+                          "startMs": "4799",
+                          "endMs": "6799",
+                          "snippet": {
+                            "runs": [
+                              {
+                                "text": "and released in 2013 it's safe to say"
+                              }
+                            ]
+                          },
+                          "startTimeText": {
+                            "simpleText": "0:04"
+                          },
+                          "accessibility": {
+                            "accessibilityData": {
+                              "label": "4 seconds and released in 2013 it's safe to say"
+                            }
+                          },
+                          "targetId": "Tn6-PIqc4UM.CgNhc3ISAmVuGgA%3D.4799.6799"
+                        }
+                      },
+                      {
+                        "transcriptSegmentRenderer": {
+                          "startMs": "6799",
+                          "endMs": "8639",
+                          "snippet": {
+                            "runs": [
+                              {
+                                "text": "react has been the most influential ui"
+                              }
+                            ]
+                          },
+                          "startTimeText": {
+                            "simpleText": "0:06"
+                          },
+                          "accessibility": {
+                            "accessibilityData": {
+                              "label": "6 seconds react has been the most influential ui"
+                            }
+                          },
+                          "targetId": "Tn6-PIqc4UM.CgNhc3ISAmVuGgA%3D.6799.8639"
+                        }
+                      },
+                      {
+                        "transcriptSegmentRenderer": {
+                          "startMs": "8639",
+                          "endMs": "10800",
+                          "snippet": {
+                            "runs": [
+                              {
+                                "text": "library of recent memory we use it to"
+                              }
+                            ]
+                          },
+                          "startTimeText": {
+                            "simpleText": "0:08"
+                          },
+                          "accessibility": {
+                            "accessibilityData": {
+                              "label": "8 seconds library of recent memory we use it to"
+                            }
+                          },
+                          "targetId": "Tn6-PIqc4UM.CgNhc3ISAmVuGgA%3D.8639.10800"
+                        }
+                      },
+                      {
+                        "transcriptSegmentRenderer": {
+                          "startMs": "10800",
+                          "endMs": "12799",
+                          "snippet": {
+                            "runs": [
+                              {
+                                "text": "build components that represent logical"
+                              }
+                            ]
+                          },
+                          "startTimeText": {
+                            "simpleText": "0:10"
+                          },
+                          "accessibility": {
+                            "accessibilityData": {
+                              "label": "10 seconds build components that represent logical"
+                            }
+                          },
+                          "targetId": "Tn6-PIqc4UM.CgNhc3ISAmVuGgA%3D.10800.12799"
+                        }
+                      },
+                      {
+                        "transcriptSegmentRenderer": {
+                          "startMs": "12799",
+                          "endMs": "15120",
+                          "snippet": {
+                            "runs": [
+                              {
+                                "text": "reusable parts of the ui the beauty of"
+                              }
+                            ]
+                          },
+                          "startTimeText": {
+                            "simpleText": "0:12"
+                          },
+                          "accessibility": {
+                            "accessibilityData": {
+                              "label": "12 seconds reusable parts of the ui the beauty of"
+                            }
+                          },
+                          "targetId": "Tn6-PIqc4UM.CgNhc3ISAmVuGgA%3D.12799.15120"
+                        }
+                      },
+                      {
+                        "transcriptSegmentRenderer": {
+                          "startMs": "15120",
+                          "endMs": "17119",
+                          "snippet": {
+                            "runs": [
+                              {
+                                "text": "react is that the simplicity of building"
+                              }
+                            ]
+                          },
+                          "startTimeText": {
+                            "simpleText": "0:15"
+                          },
+                          "accessibility": {
+                            "accessibilityData": {
+                              "label": "15 seconds react is that the simplicity of building"
+                            }
+                          },
+                          "targetId": "Tn6-PIqc4UM.CgNhc3ISAmVuGgA%3D.15120.17119"
+                        }
+                      },
+                      {
+                        "transcriptSegmentRenderer": {
+                          "startMs": "17119",
+                          "endMs": "18880",
+                          "snippet": {
+                            "runs": [
+                              {
+                                "text": "a component has been brought down to its"
+                              }
+                            ]
+                          },
+                          "startTimeText": {
+                            "simpleText": "0:17"
+                          },
+                          "accessibility": {
+                            "accessibilityData": {
+                              "label": "17 seconds a component has been brought down to its"
+                            }
+                          },
+                          "targetId": "Tn6-PIqc4UM.CgNhc3ISAmVuGgA%3D.17119.18880"
+                        }
+                      }
+                    ],
+                    "noResultLabel": {
+                      "runs": [
+                        {
+                          "text": "No results found"
+                        }
+                      ]
+                    },
+                    "retryLabel": {
+                      "runs": [
+                        {
+                          "text": "TAP TO RETRY"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "footer": {
+                  "transcriptFooterRenderer": {
+                    "languageMenu": {
+                      "sortFilterSubMenuRenderer": {
+                        "subMenuItems": [
+                          {
+                            "title": "English (auto-generated)",
+                            "selected": true
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                "targetId": "engagement-panel-searchable-transcript-search-panel"
+              }
+            }
+          }
+        },
+        "targetId": "engagement-panel-searchable-transcript"
+      }
+    }
+  ]
+}
