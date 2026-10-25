@@ -53,9 +53,10 @@ source entirely.
 A panel injected at the top of the right-hand sidebar on
 `youtube.com/watch` pages (above "Up next"). It is a collapsible card with
 a header bar: extension icon, three segmented tabs (Summary, Transcript,
-Chat), a settings button, and a collapse toggle. Default collapsed state
-on first install: open on the Summary tab. Collapsed state and last-used
-tab persist across videos.
+Chat), a copy-video-URL button, a settings button, and a collapse toggle,
+matching v1's layout. Collapsed by default on first install (as v1 was);
+clicking a tab opens it on that tab. Collapsed state and last-used tab
+persist across videos.
 
 The panel follows YouTube's theme (light or dark), detected from
 YouTube's own CSS variables / `html[dark]` attribute, and re-detected when
