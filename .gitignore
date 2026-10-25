@@ -38,3 +38,7 @@ next-env.d.ts
 # Plasmo
 /.plasmo
 /build
+.output
+.wxt
+.superpowers/
+node_modules
