@@ -9,6 +9,7 @@
       "!.superpowers",
       "!docs",
       "!**/*.md",
+      "!pnpm-lock.yaml",
       "!src/components/ui",
       "!src/components/ai-elements"
     ]
