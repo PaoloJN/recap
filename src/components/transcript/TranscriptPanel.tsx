@@ -106,7 +106,7 @@ function TranscriptView({
   const [query, setQuery] = useState("")
   const [following, setFollowing] = useState(initialFollow)
   const inputRef = useRef<HTMLInputElement>(null)
-  const { selectTab, searchFocusToken } = usePanelNav()
+  const { selectTab, open, view, searchFocusPending, consumeSearchFocus } = usePanelNav()
   const { setQuote, requestFocus } = useChatDraft()
   const toast = useToast()
   const seek = useSeek()
@@ -123,14 +123,15 @@ function TranscriptView({
   const search = useTranscriptSearch(rows, query)
   const matchLabel = search.matches.length ? `${search.index + 1}/${search.matches.length}` : "0/0"
 
-  // Focus the search input on each new request, once this tab is visible.
-  const handledFocusToken = useRef(searchFocusToken)
+  // Focus the search input on a pending request (possibly made before this view mounted), once
+  // the tab is visible.
+  const visible = active && open && view === "main"
   useEffect(() => {
-    if (!active || handledFocusToken.current === searchFocusToken) return
-    handledFocusToken.current = searchFocusToken
+    if (!visible || !searchFocusPending) return
+    consumeSearchFocus()
     inputRef.current?.focus()
     inputRef.current?.select()
-  }, [active, searchFocusToken])
+  }, [visible, searchFocusPending, consumeSearchFocus])
 
   const copy = useCallback(
     (text: string, done: string) => {

@@ -25,6 +25,7 @@ export interface SummaryState {
   stored: StoredSummary | undefined
   feedback: "up" | "down" | undefined
   setFeedback(f: "up" | "down"): void
+  /** Without `force`, a no-op when a summary is stored or a request is already running. */
   generate(opts?: { force?: boolean }): void
   stop(): void
 }
@@ -149,7 +150,8 @@ export function useSummary(
   const generate = useCallback(
     (opts?: { force?: boolean }) => {
       if (!ctx || !selection) return
-      if (!opts?.force && stored) return
+      // Without force, a stored summary or a request already in flight is left alone.
+      if (!opts?.force && (stored || abortRef.current)) return
       run(style)
     },
     [ctx, selection, stored, style, run],

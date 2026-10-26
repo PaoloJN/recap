@@ -14,9 +14,13 @@ export interface PanelNav {
   goBack(): void
   optionsOpen: boolean
   setOptionsOpen(v: boolean): void
-  /** Bumped by `requestSearchFocus`; the transcript search input focuses when it changes. */
-  searchFocusToken: number
+  /**
+   * Set by `requestSearchFocus`; the transcript search input focuses and calls
+   * `consumeSearchFocus` once it is mounted and visible (also called on video change).
+   */
+  searchFocusPending: boolean
   requestSearchFocus(): void
+  consumeSearchFocus(): void
 }
 
 const NavigationContext = createContext<PanelNav | null>(null)
@@ -39,7 +43,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   )
   const goBack = useCallback(() => setNav((cur) => ({ view: cur.back, back: "main" })), [])
   const [optionsOpen, setOptionsOpen] = useState(false)
-  const [searchFocusToken, setSearchFocusToken] = useState(0)
+  const [searchFocusPending, setSearchFocusPending] = useState(false)
 
   const open = panelState?.open ?? false
   const tab = panelState?.tab ?? "summary"
@@ -55,7 +59,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     },
     [setPanelState, setView],
   )
-  const requestSearchFocus = useCallback(() => setSearchFocusToken((t) => t + 1), [])
+  const requestSearchFocus = useCallback(() => setSearchFocusPending(true), [])
+  const consumeSearchFocus = useCallback(() => setSearchFocusPending(false), [])
 
   const value = useMemo<PanelNav>(
     () => ({
@@ -68,8 +73,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       goBack,
       optionsOpen,
       setOptionsOpen,
-      searchFocusToken,
+      searchFocusPending,
       requestSearchFocus,
+      consumeSearchFocus,
     }),
     [
       open,
@@ -80,8 +86,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setView,
       goBack,
       optionsOpen,
-      searchFocusToken,
+      searchFocusPending,
       requestSearchFocus,
+      consumeSearchFocus,
     ],
   )
 

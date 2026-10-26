@@ -5,12 +5,15 @@ export type CollapsedIcon = "key" | "captions" | "warning" | "check" | "spinner"
 
 export function collapsedStatus(input: {
   hasKey: boolean
+  /** The watch page itself failed to load (no metadata, no transcript). */
+  pageError: boolean
   transcript: TranscriptStatus["state"]
   summary: SummaryStatus
   style: SummaryStyle
   momentCount: number
 }): { text: string; icon: CollapsedIcon } {
   if (!input.hasKey) return { text: "Add a key to get started", icon: "key" }
+  if (input.pageError) return { text: "Couldn't load this video", icon: "warning" }
   if (input.transcript === "unavailable") {
     return { text: "No captions on this video", icon: "captions" }
   }

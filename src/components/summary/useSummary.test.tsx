@@ -84,6 +84,17 @@ describe("useSummary", () => {
     expect(state.text).toBe("")
   })
 
+  it("generate without force does not restart a running request", async () => {
+    await mount()
+    vi.mocked(readTextFromUIStream).mockReturnValue(new Promise<string>(() => {}))
+    await act(async () => state.generate())
+    expect(state.status).toBe("streaming")
+    await act(async () => state.generate())
+    expect(openStream).toHaveBeenCalledTimes(1)
+    await act(async () => state.generate({ force: true }))
+    expect(openStream).toHaveBeenCalledTimes(2)
+  })
+
   it("stores and shows a normal completion", async () => {
     await mount()
     vi.mocked(readTextFromUIStream).mockResolvedValue("Summary")

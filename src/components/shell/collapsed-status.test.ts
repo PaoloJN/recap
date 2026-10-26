@@ -3,6 +3,7 @@ import { collapsedStatus } from "./collapsed-status"
 
 const base = {
   hasKey: true,
+  pageError: false,
   transcript: "ready",
   summary: "idle",
   style: "detailed",
@@ -24,6 +25,13 @@ describe("collapsedStatus", () => {
       text: "Add a key to get started",
       icon: "key",
     })
+  })
+  it("page error comes right after no key", () => {
+    expect(collapsedStatus({ ...base, pageError: true, transcript: "error" })).toEqual({
+      text: "Couldn't load this video",
+      icon: "warning",
+    })
+    expect(collapsedStatus({ ...base, hasKey: false, pageError: true }).icon).toBe("key")
   })
   it("no captions", () => {
     expect(collapsedStatus({ ...base, transcript: "unavailable" })).toEqual({

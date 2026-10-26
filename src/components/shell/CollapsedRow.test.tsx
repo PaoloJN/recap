@@ -28,6 +28,7 @@ describe("CollapsedRow", () => {
     const onExpand = vi.fn()
     const status = collapsedStatus({
       hasKey: true,
+      pageError: false,
       transcript: "unavailable",
       summary: "idle",
       style: "detailed",

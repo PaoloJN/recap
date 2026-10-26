@@ -148,7 +148,17 @@ function Body({ tab, hasKey, video }: BodyProps) {
 
 export function Panel() {
   const nav = usePanelNav()
-  const { open, setOpen, tab, view, setView, goBack, selectTab, requestSearchFocus } = nav
+  const {
+    open,
+    setOpen,
+    tab,
+    view,
+    setView,
+    goBack,
+    selectTab,
+    requestSearchFocus,
+    consumeSearchFocus,
+  } = nav
   const [storedSettings] = useSettings()
   const [apiKeys] = useStorageItem(apiKeysItem)
   const youtubeTheme = useTheme()
@@ -162,10 +172,11 @@ export function Panel() {
   }, [])
   const video = useVideo(open)
   const { hasMessages, reset: resetChatDraft, requestFocus } = useChatDraft()
-  // A draft, quote or "current moment" belongs to the video it was written for.
+  // A draft, quote, "current moment" or pending focus request belongs to the video it was made for.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the video id changes
   useEffect(() => {
     resetChatDraft()
+    consumeSearchFocus()
   }, [video.videoId])
 
   const settings = storedSettings ?? DEFAULT_SETTINGS
@@ -175,20 +186,37 @@ export function Panel() {
   const hasKey = Boolean(apiKeys?.[provider])
   const summary = useSummary(video.context, selection, settings, open && hasKey)
 
-  const transcriptReady = video.transcript.state === "ready"
+  // ⌥S on a collapsed card or a still-loading video: the transcript (and so the context) only
+  // arrives after the card opens, so the request waits here, tied to the video it was made for.
+  const [pendingSummarize, setPendingSummarize] = useState<string | null>(null)
+  const contextVideoId = video.context?.metadata.videoId ?? null
+  const { status: summaryStatus, generate: generateSummary } = summary
+  useEffect(() => {
+    if (pendingSummarize === null) return
+    if (pendingSummarize !== video.videoId) {
+      setPendingSummarize(null)
+      return
+    }
+    if (!hasKey || contextVideoId !== pendingSummarize || summaryStatus === "streaming") return
+    setPendingSummarize(null)
+    generateSummary({ force: false })
+  }, [pendingSummarize, video.videoId, hasKey, contextVideoId, summaryStatus, generateSummary])
+
   const openTab = (t: PanelTab) => {
     setOpen(true)
     setView("main")
     selectTab(t)
   }
-  useShortcuts({
+  // The card host stays in the DOM after leaving /watch; shortcuts only act on a video page.
+  useShortcuts(video.videoId !== null, {
     "focus-chat": () => {
       openTab("chat")
-      requestFocus()
+      if (hasKey) requestFocus()
     },
     summarize: () => {
       openTab("summary")
-      if (hasKey && transcriptReady) summary.generate({ force: false })
+      // Never restart a running summary; `generate` also ignores a request already in flight.
+      if (hasKey && summary.status !== "streaming") setPendingSummarize(video.videoId)
     },
     "search-transcript": () => {
       openTab("transcript")
@@ -243,6 +271,7 @@ export function Panel() {
 
   const status = collapsedStatus({
     hasKey,
+    pageError: video.pageError !== null,
     transcript: video.transcript.state,
     summary: summary.status,
     style: summary.style,

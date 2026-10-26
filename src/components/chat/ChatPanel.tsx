@@ -51,6 +51,7 @@ export function ChatPanel({ video }: { video: VideoState }) {
       context={context}
       title={video.page?.metadata.title}
       initialMessages={history.initialMessages}
+      hasStored={history.initialMessages !== undefined}
       save={history.save}
       clear={history.clear}
     />
@@ -61,14 +62,16 @@ interface ChatViewProps {
   context: VideoContext
   title: string | undefined
   initialMessages: UIMessage[] | undefined
+  /** Whether storage holds a thread for this video; going false means it was cleared elsewhere. */
+  hasStored: boolean
   save(messages: UIMessage[], title?: string): Promise<void>
   clear(): Promise<void>
 }
 
-function ChatView({ context, title, initialMessages, save, clear }: ChatViewProps) {
+function ChatView({ context, title, initialMessages, hasStored, save, clear }: ChatViewProps) {
   const [stored] = useSettings()
   const settings = stored ?? DEFAULT_SETTINGS
-  const { tab } = usePanelNav()
+  const { tab, open, view } = usePanelNav()
   const toast = useToast()
   const summary = useSummaryContext()
   const {
@@ -78,7 +81,8 @@ function ChatView({ context, title, initialMessages, save, clear }: ChatViewProp
     setQuote,
     attachTime,
     setAttachTime,
-    focusToken,
+    focusPending,
+    consumeFocus,
     setHasMessages,
     newChatToken,
   } = useChatDraft()
@@ -147,17 +151,30 @@ function ChatView({ context, title, initialMessages, save, clear }: ChatViewProp
     if (el && pinnedRef.current) el.scrollTop = el.scrollHeight
   }, [messages, status])
 
-  // Focus the textarea (cursor at the end) on each focus request, once the Chat tab is visible.
+  // Focus the textarea (cursor at the end) on a pending focus request, possibly made before this
+  // view mounted, once the Chat tab is visible.
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const handledFocus = useRef(focusToken)
+  const visible = tab === "chat" && open && view === "main"
   useEffect(() => {
-    if (tab !== "chat" || handledFocus.current === focusToken) return
-    handledFocus.current = focusToken
+    if (!visible || !focusPending) return
+    consumeFocus()
     const el = textareaRef.current
     if (!el) return
     el.focus()
     el.setSelectionRange(el.value.length, el.value.length)
-  }, [tab, focusToken])
+  }, [visible, focusPending, consumeFocus])
+
+  // Leaving mid-reply (another video, or the card unmounting) stops the background stream.
+  const busyRef = useRef(busy)
+  busyRef.current = busy
+  const stopRef = useRef(stop)
+  stopRef.current = stop
+  useEffect(
+    () => () => {
+      if (busyRef.current) void stopRef.current()
+    },
+    [],
+  )
 
   const send = useCallback(
     (text: string, sendQuote: ChatQuote | null) => {
@@ -222,6 +239,25 @@ function ChatView({ context, title, initialMessages, save, clear }: ChatViewProp
       () => toast("Couldn't copy"),
     )
   }
+
+  // The stored thread was removed elsewhere (Settings › Clear chat history): drop the open one
+  // too, so it is neither shown nor re-saved by a later reply or feedback.
+  const hadStored = useRef(hasStored)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs only when the stored entry goes away
+  useEffect(() => {
+    const had = hadStored.current
+    hadStored.current = hasStored
+    if (!had || hasStored || clearingRef.current) return
+    clearError()
+    if (busy) {
+      clearingRef.current = true
+      void stop().finally(() => {
+        clearingRef.current = false
+        setMessages([])
+      })
+    }
+    setMessages([])
+  }, [hasStored])
 
   // New chat (tab-row button): drop the thread and its stored copy.
   const handledNewChat = useRef(newChatToken)

@@ -12,16 +12,20 @@ export interface ChatDraft {
   setQuote(q: ChatQuote | null): void
   attachTime: boolean
   setAttachTime(v: boolean): void
-  /** Bumped by `requestFocus`; the composer focuses when it changes. */
-  focusToken: number
+  /**
+   * Set by `requestFocus`; the composer focuses and calls `consumeFocus` once it is mounted and
+   * visible, so a request made before the chat view exists is not lost. Cleared by `reset`.
+   */
+  focusPending: boolean
   requestFocus(): void
+  consumeFocus(): void
   /** Whether the open chat thread has messages; drives the tab row's "New" button. */
   hasMessages: boolean
   setHasMessages(v: boolean): void
   /** Bumped by `requestNewChat`; the chat panel clears its thread when it changes. */
   newChatToken: number
   requestNewChat(): void
-  /** Clears draft, quote and attachTime (on video change). */
+  /** Clears draft, quote, attachTime and a pending focus request (on video change). */
   reset(): void
 }
 
@@ -31,8 +35,9 @@ export function ChatDraftProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState("")
   const [quote, setQuote] = useState<ChatQuote | null>(null)
   const [attachTime, setAttachTime] = useState(false)
-  const [focusToken, setFocusToken] = useState(0)
-  const requestFocus = useCallback(() => setFocusToken((t) => t + 1), [])
+  const [focusPending, setFocusPending] = useState(false)
+  const requestFocus = useCallback(() => setFocusPending(true), [])
+  const consumeFocus = useCallback(() => setFocusPending(false), [])
   const [hasMessages, setHasMessages] = useState(false)
   const [newChatToken, setNewChatToken] = useState(0)
   const requestNewChat = useCallback(() => setNewChatToken((t) => t + 1), [])
@@ -40,6 +45,7 @@ export function ChatDraftProvider({ children }: { children: ReactNode }) {
     setDraft("")
     setQuote(null)
     setAttachTime(false)
+    setFocusPending(false)
   }, [])
 
   const value = useMemo<ChatDraft>(
@@ -50,8 +56,9 @@ export function ChatDraftProvider({ children }: { children: ReactNode }) {
       setQuote,
       attachTime,
       setAttachTime,
-      focusToken,
+      focusPending,
       requestFocus,
+      consumeFocus,
       hasMessages,
       setHasMessages,
       newChatToken,
@@ -62,8 +69,9 @@ export function ChatDraftProvider({ children }: { children: ReactNode }) {
       draft,
       quote,
       attachTime,
-      focusToken,
+      focusPending,
       requestFocus,
+      consumeFocus,
       hasMessages,
       newChatToken,
       requestNewChat,
