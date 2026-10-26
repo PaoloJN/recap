@@ -115,11 +115,11 @@ describe("runStreamRequest", () => {
     const { post } = collect()
     const model = helloModel()
     await runStreamRequest(
-      { kind: "summary", preset: "takeaways", context, selection },
+      { kind: "summary", preset: "detailed", context, selection },
       { model, post, signal: new AbortController().signal },
     )
     const sent = JSON.stringify(model.doStreamCalls[0]?.prompt)
-    expect(sent).toContain(JSON.stringify(SUMMARY_PRESETS.takeaways.instructions).slice(1, -1))
+    expect(sent).toContain(JSON.stringify(SUMMARY_PRESETS.detailed.instructions).slice(1, -1))
     expect(sent).toContain("hello there")
   })
 })

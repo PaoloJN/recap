@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { openStream, readTextFromUIStream } from "@/lib/transport"
-import type { ModelSelection, SummaryPresetId, VideoContext } from "@/lib/types"
+import type { ModelSelection, SummaryStyle, VideoContext } from "@/lib/types"
 import { summaryCache, summaryCacheKey } from "./summary-cache"
 
 export type SummaryStatus = "idle" | "streaming" | "done" | "error"
@@ -9,8 +9,8 @@ export interface SummaryState {
   status: SummaryStatus
   text: string
   error: string | null
-  preset: SummaryPresetId
-  setPreset(preset: SummaryPresetId): void
+  preset: SummaryStyle
+  setPreset(preset: SummaryStyle): void
   generate(opts?: { force?: boolean }): void
   stop(): void
 }
@@ -20,7 +20,7 @@ function errorMessage(err: unknown): string {
 }
 
 export function useSummary(ctx: VideoContext, selection: ModelSelection): SummaryState {
-  const [preset, setPreset] = useState<SummaryPresetId>("tldr")
+  const [preset, setPreset] = useState<SummaryStyle>("tldr")
   const [status, setStatus] = useState<SummaryStatus>("idle")
   const [text, setText] = useState("")
   const [error, setError] = useState<string | null>(null)

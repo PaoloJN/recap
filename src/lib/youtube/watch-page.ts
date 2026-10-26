@@ -69,6 +69,7 @@ export function parseWatchPage(html: string): WatchPageData {
     },
     captionTracks: parseTracks(player),
     innertube,
+    chapters: [],
   }
 }
 

@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { SUMMARY_PRESETS } from "@/lib/prompts/presets"
-import type { ModelSelection, SummaryPresetId, VideoContext } from "@/lib/types"
+import type { ModelSelection, SummaryStyle, VideoContext } from "@/lib/types"
 import { useSummary } from "./useSummary"
 
 export interface SummaryPanelProps {
@@ -20,7 +20,7 @@ export interface SummaryPanelProps {
   selection: ModelSelection
 }
 
-const PRESET_IDS = Object.keys(SUMMARY_PRESETS) as SummaryPresetId[]
+const PRESET_IDS = Object.keys(SUMMARY_PRESETS) as SummaryStyle[]
 
 export function SummaryPanel({ context, selection }: SummaryPanelProps) {
   const { status, text, error, preset, setPreset, generate, stop } = useSummary(context, selection)
@@ -30,7 +30,7 @@ export function SummaryPanel({ context, selection }: SummaryPanelProps) {
   return (
     <div className="flex flex-col gap-3 p-4">
       <div className="flex items-center gap-2">
-        <Select value={preset} onValueChange={(v) => setPreset(v as SummaryPresetId)}>
+        <Select value={preset} onValueChange={(v) => setPreset(v as SummaryStyle)}>
           <SelectTrigger className="min-w-0 flex-1" aria-label="Summary type">
             <SelectValue>{current.label}</SelectValue>
           </SelectTrigger>

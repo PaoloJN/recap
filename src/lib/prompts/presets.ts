@@ -1,29 +1,29 @@
-import type { SummaryPresetId, VideoContext } from "@/lib/types"
+import type { SummaryStyle, VideoContext } from "@/lib/types"
 import { transcriptForPrompt, videoMetadataBlock } from "./transcript-text"
 
 export interface SummaryPreset {
-  id: SummaryPresetId
+  id: SummaryStyle
   label: string
   description: string
   instructions: string
 }
 
-export const SUMMARY_PRESETS: Record<SummaryPresetId, SummaryPreset> = {
+export const SUMMARY_PRESETS: Record<SummaryStyle, SummaryPreset> = {
   tldr: {
     id: "tldr",
     label: "TL;DR",
     description: "One short paragraph",
     instructions: "Summarize the video in one paragraph of at most 120 words.",
   },
-  takeaways: {
-    id: "takeaways",
+  detailed: {
+    id: "detailed",
     label: "Key takeaways",
     description: "5–8 bullets with timestamps",
     instructions:
       "List the 5 to 8 most important takeaways as Markdown bullets. Start each bullet with the m:ss timestamp of the moment it comes from.",
   },
-  chapters: {
-    id: "chapters",
+  moments: {
+    id: "moments",
     label: "Chapters",
     description: "Timestamped sections",
     instructions:
@@ -32,7 +32,7 @@ export const SUMMARY_PRESETS: Record<SummaryPresetId, SummaryPreset> = {
 }
 
 export function buildSummaryPrompt(
-  preset: SummaryPresetId,
+  preset: SummaryStyle,
   ctx: VideoContext,
 ): { system: string; user: string } {
   const system = [

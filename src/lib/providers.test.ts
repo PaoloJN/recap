@@ -4,7 +4,7 @@ import type { ProviderId } from "./types"
 
 describe("PROVIDERS", () => {
   it("lists every provider id", () => {
-    expect([...PROVIDER_IDS]).toEqual(["openai", "anthropic", "google"])
+    expect([...PROVIDER_IDS]).toEqual(["openai", "anthropic", "google", "openrouter"])
   })
   it("includes each default model in its models", () => {
     for (const id of PROVIDER_IDS) {

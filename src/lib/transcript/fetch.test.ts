@@ -9,6 +9,7 @@ const page = (captionTracks: WatchPageData["captionTracks"]): WatchPageData => (
   metadata: { videoId: "Tn6-PIqc4UM", title: "t", author: "a", durationSeconds: 128 },
   captionTracks,
   innertube: { client },
+  chapters: [],
 })
 const tracks = [{ languageCode: "en", name: "English" }]
 const json = (body: unknown) => new Response(JSON.stringify(body))

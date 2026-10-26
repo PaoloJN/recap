@@ -76,15 +76,15 @@ describe("buildChatSystemPrompt", () => {
 
 describe("summary presets", () => {
   it("has labels and descriptions for all presets", () => {
-    for (const id of ["tldr", "takeaways", "chapters"] as const) {
+    for (const id of ["tldr", "detailed", "moments"] as const) {
       expect(SUMMARY_PRESETS[id].id).toBe(id)
       expect(SUMMARY_PRESETS[id].label).not.toBe("")
       expect(SUMMARY_PRESETS[id].description).not.toBe("")
     }
   })
   it("builds a user message with instructions, metadata and transcript", () => {
-    const { system, user } = buildSummaryPrompt("chapters", small)
-    expect(user).toContain(SUMMARY_PRESETS.chapters.instructions)
+    const { system, user } = buildSummaryPrompt("moments", small)
+    expect(user).toContain(SUMMARY_PRESETS.moments.instructions)
     expect(user).toContain("My Title")
     expect(user).toContain("[0:00] hello")
     expect(system).toContain("en")

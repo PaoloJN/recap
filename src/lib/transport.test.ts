@@ -2,7 +2,7 @@ import type { UIMessage, UIMessageChunk } from "ai"
 import { describe, expect, it } from "vitest"
 import type { StreamPortMessage } from "./port-protocol"
 import { openStream, PortChatTransport, type PortLike, readTextFromUIStream } from "./transport"
-import type { ModelSelection, SummaryPresetId, VideoContext } from "./types"
+import type { ModelSelection, SummaryStyle, VideoContext } from "./types"
 
 class FakePort implements PortLike {
   posted: unknown[] = []
@@ -38,7 +38,7 @@ const context = { videoId: "abc" } as unknown as VideoContext
 const selection = { provider: "openai", model: "gpt-6-luna" } as unknown as ModelSelection
 const summaryReq = {
   kind: "summary" as const,
-  preset: "tldr" as unknown as SummaryPresetId,
+  preset: "tldr" as unknown as SummaryStyle,
   context,
   selection,
 }

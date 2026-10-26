@@ -7,7 +7,7 @@ describe("summaryCacheKey", () => {
   })
 
   it("differs per preset", () => {
-    expect(summaryCacheKey("abc", "tldr")).not.toBe(summaryCacheKey("abc", "takeaways"))
-    expect(summaryCacheKey("abc", "chapters")).not.toBe(summaryCacheKey("abd", "chapters"))
+    expect(summaryCacheKey("abc", "tldr")).not.toBe(summaryCacheKey("abc", "detailed"))
+    expect(summaryCacheKey("abc", "moments")).not.toBe(summaryCacheKey("abd", "moments"))
   })
 })

@@ -1,6 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai"
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import type { LanguageModel } from "ai"
 import type { ModelSelection, ProviderId } from "./types"
 
@@ -17,7 +18,7 @@ export interface ProviderInfo {
   keyUrl: string
 }
 
-export const PROVIDER_IDS: readonly ProviderId[] = ["openai", "anthropic", "google"]
+export const PROVIDER_IDS: readonly ProviderId[] = ["openai", "anthropic", "google", "openrouter"]
 
 export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   openai: {
@@ -53,6 +54,17 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     defaultModel: "gemini-3.8-flash",
     keyUrl: "https://aistudio.google.com/apikey",
   },
+  openrouter: {
+    id: "openrouter",
+    label: "OpenRouter",
+    models: [
+      { id: "openai/gpt-6-luna", label: "GPT-6 Luna" },
+      { id: "anthropic/claude-sonnet-5.5", label: "Claude Sonnet 5.5" },
+      { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+    ],
+    defaultModel: "openai/gpt-6-luna",
+    keyUrl: "https://openrouter.ai/settings/keys",
+  },
 }
 
 export function createModel(selection: ModelSelection, apiKey: string): LanguageModel {
@@ -67,6 +79,8 @@ export function createModel(selection: ModelSelection, apiKey: string): Language
       })(model)
     case "google":
       return createGoogleGenerativeAI({ apiKey })(model)
+    case "openrouter":
+      return createOpenRouter({ apiKey })(model)
     default: {
       const unknown: never = provider
       throw new Error(`Unknown provider: ${unknown}`)
