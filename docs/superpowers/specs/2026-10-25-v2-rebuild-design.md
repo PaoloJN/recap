@@ -178,28 +178,35 @@ Streaming goes over a `browser.runtime.connect` port:
   HTML and regex-parse it (known to still work as of 2026-10-25) or read
   the global from a small MAIN-world script. Builder's call.
 
-### Transcript source (decided 2026-10-25, owner approved)
+### Transcript source (decided 2026-10-25, owner approved; endpoint revised after spike)
 
 The 2023-era path (caption `baseUrl` from the player response, fetched
 with `fmt=json3`) is dead: verified on 2026-10-25 it returns HTTP 200 with
 an empty body, because YouTube now requires a proof-of-origin token on
 caption requests. Do not build on it.
 
-Primary: call the same internal endpoint that YouTube's own "Show
-transcript" button calls, `POST /youtubei/v1/get_transcript`, from the
-content script, with the page's own `INNERTUBE_API_KEY` and
-`INNERTUBE_CONTEXT` (read from `ytcfg`) and the user's own session
-cookies. No client spoofing, no token forging; it is the request the page
-already makes for this user. Parse `transcriptSegmentRenderer` entries
-into `{ text, startMs, endMs }[]`.
+The owner approved depending on the internal endpoint behind YouTube's own
+"Show transcript" button, with the DOM panel as fallback. The spike
+(`docs/superpowers/notes/2026-10-25-transcript-spike.md`) found that the
+legacy endpoint `get_transcript` returns 400 unless the body carries a
+page-generated BotGuard attestation, which we will not forge or lift. The
+modern transcript panel's endpoint works without it:
+
+Primary: `POST https://www.youtube.com/youtubei/v1/get_panel` from the
+content script with `panelId: "PAmodern_transcript_view"`, a `params`
+string built from the video id alone (protobuf, recipe in the spike notes),
+and a minimal `context.client` (`clientName`, `clientVersion`, `hl`, `gl`)
+read from the page. No auth header, no API key, no client spoofing. Parse
+`transcriptSegmentViewModel` items into `{ text, startMs, endMs }[]`,
+deriving each `endMs` from the next item's start.
 
 Fallback: if the primary call fails or returns no segments, open
-YouTube's transcript engagement panel programmatically and read the
-segments from the DOM, then close it again.
+YouTube's transcript panel programmatically (both the legacy and modern
+panel variants exist), read the segment rows from the DOM, then close it.
 
-The first task in the plan is a short spike that confirms the primary
-call works from a content script on the current YouTube, and records the
-`params` encoding and response shape as a test fixture.
+Language selection is not supported by `get_panel`; the transcript is
+whatever track YouTube serves by default. The Transcript panel labels it
+with the default caption track's language code.
 
 README must say: transcripts come from YouTube's own transcript feature,
 which is undocumented and may change; the extension will degrade to "no
@@ -211,9 +218,9 @@ Many videos have no captions at all (no manual, no auto-generated), and
 some have captions only in a language the user did not pick. Treat
 "transcript unavailable" as a normal state, never an error:
 
-- Detect it up front, before any LLM call, from the `get_transcript`
-  response (and fallback) returning no segments, or from the player
-  response having no `captionTracks`.
+- Detect it up front, before any LLM call: the `get_panel` response has
+  no `content` key (or yields zero segments) and the fallback finds no
+  rows, or the player response has no `captionTracks`.
 - Transcript panel: empty state "This video has no transcript".
 - Summary and Chat: same empty state, with the Generate button and the
   prompt input disabled. No API key is spent.
@@ -303,8 +310,9 @@ hooks for settings, panel open/tab, chat history. No Redux, no Jotai.
 ## Decisions settled after the builder check
 
 Owner's answer:
-- Depending on YouTube's internal `get_transcript` endpoint, with the DOM
-  transcript panel as fallback: approved. No-captions videos must be
+- Depending on YouTube's internal transcript endpoint, with the DOM
+  transcript panel as fallback: approved. (Revised from `get_transcript`
+  to `get_panel` after the spike; same category of dependency.) No-captions videos must be
   handled as a normal state (see above).
 
 Builder-check items settled by the author (not owner decisions):
