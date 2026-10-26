@@ -1,10 +1,16 @@
 {
   "name": "youtube-ai",
   "displayName": "YouTube AI",
-  "description": "Summarize, read the transcript of, and chat with YouTube videos",
+  "description": "Chat with YouTube videos. Summaries, searchable transcripts and Q&A in the sidebar, powered by your own OpenAI, Anthropic or Google key.",
   "author": "Paolo Nessim",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PaoloJN/youtube-ai-extension.git"
+  },
+  "license": "AGPL-3.0-only",
   "private": true,
   "version": "2.0.0",
+  "packageManager": "pnpm@11.5.2",
   "type": "module",
   "scripts": {
     "dev": "wxt",
