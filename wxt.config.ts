@@ -3,6 +3,7 @@ import { defineConfig } from "wxt"
 import { twPropertyDefaults } from "./src/build/tw-property-defaults"
 
 const REM_BASE_PX = 14
+const YOUTUBE_MATCHES = ["*://www.youtube.com/*"]
 
 const remToPx = {
   postcssPlugin: "rem-to-px",
@@ -28,7 +29,6 @@ export default defineConfig({
       "https://generativelanguage.googleapis.com/*",
       "https://openrouter.ai/*",
     ],
-    web_accessible_resources: [{ resources: ["fonts/*"], matches: ["*://www.youtube.com/*"] }],
     icons: {
       16: "icon/16.png",
       32: "icon/32.png",
@@ -41,6 +41,20 @@ export default defineConfig({
         suggested_key: { default: "Alt+Y" },
         description: "Toggle the YouTube AI panel",
       },
+    },
+  },
+  hooks: {
+    // WXT adds the `cssInjectionMode: "ui"` stylesheet as its own entry with
+    // `use_dynamic_url: true`; Chrome then rejects the fetch from youtube.com ("Domains,
+    // protocols and ports must match"). Replace every entry with a single static one.
+    "build:manifestGenerated": (_wxt, manifest) => {
+      manifest.web_accessible_resources = [
+        {
+          resources: ["fonts/*", "content-scripts/youtube.css"],
+          matches: YOUTUBE_MATCHES,
+          use_dynamic_url: false,
+        },
+      ]
     },
   },
   vite: () => ({
