@@ -1,5 +1,6 @@
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "wxt"
+import { twPropertyDefaults } from "./src/build/tw-property-defaults"
 
 const REM_BASE_PX = 14
 
@@ -44,6 +45,6 @@ export default defineConfig({
   },
   vite: () => ({
     plugins: [tailwindcss()],
-    css: { postcss: { plugins: [remToPx] } },
+    css: { postcss: { plugins: [remToPx, twPropertyDefaults] } },
   }),
 })
