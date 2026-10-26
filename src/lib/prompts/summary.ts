@@ -50,7 +50,7 @@ export function buildSummaryPrompt(
   opts: { language: AnswerLanguage; customInstructions: string },
 ): { system: string; user: string } {
   const language =
-    opts.language === "match"
+    (opts.language ?? "match") === "match"
       ? `Write in the transcript's language (${ctx.language}).`
       : `Write in ${opts.language}.`
   const system = [
@@ -58,16 +58,16 @@ export function buildSummaryPrompt(
     language,
     "Reply in Markdown using exactly this shape, with these literal headings:",
     "",
-    ...SHAPES[style],
+    ...(SHAPES[style] ?? SHAPES.detailed),
     "",
-    ...SECTIONS[style],
+    ...(SECTIONS[style] ?? SECTIONS.detailed),
     "",
     "Rules:",
     "- Write each moment bullet as `- m:ss Text`: a plain m:ss timestamp (or h:mm:ss), then the text. No bold, no brackets, no links.",
     "- Use the timestamps from the transcript lines.",
     '- Do not add a preamble such as "Here is the summary" or any closing remark.',
   ].join("\n")
-  const custom = opts.customInstructions.trim()
+  const custom = (opts.customInstructions ?? "").trim()
   const user = [
     videoMetadataBlock(ctx),
     "",

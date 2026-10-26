@@ -5,15 +5,10 @@ import { SummaryPanel } from "@/components/summary/SummaryPanel"
 import { TranscriptPanel } from "@/components/transcript/TranscriptPanel"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useSettings } from "@/hooks/useSettings"
 import { useStorageItem } from "@/hooks/useStorageItem"
 import { useVideo, type VideoState } from "@/hooks/useVideo"
-import {
-  type ApiKeys,
-  apiKeysItem,
-  panelStateItem,
-  type Settings,
-  settingsItem,
-} from "@/lib/storage"
+import { type ApiKeys, apiKeysItem, panelStateItem, type Settings } from "@/lib/storage"
 import type { ModelSelection, PanelTab, VideoMetadata } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { EmptyState } from "./EmptyState"
@@ -115,7 +110,7 @@ function Body({ tab, settings, apiKeys, selection, video, onOpenSettings }: Body
 
 export function Panel() {
   const [panelState, setPanelState] = useStorageItem(panelStateItem)
-  const [settings] = useStorageItem(settingsItem)
+  const [settings] = useSettings()
   const [apiKeys] = useStorageItem(apiKeysItem)
   const [showSettings, setShowSettings] = useState(false)
   const provider = settings?.provider

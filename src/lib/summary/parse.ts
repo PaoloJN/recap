@@ -14,6 +14,7 @@ const HEADING_NAMES = ["key moments", "notes", "in plain terms", "questions"] as
 const HEADING = /^#{1,6}\s*(key moments|notes|in plain terms|questions)\s*$/i
 const ANY_HEADING = /^#{1,6}\s*([a-z ]*)$/i
 const MOMENT = /^[-*•]\s*\**\[?((?:\d{1,2}:)?\d{1,2}:\d{2})\]?\**[\s:–—-]*(.*)$/
+const OTHER_HEADING = /^#{1,6}\s*\S/
 const BULLET = /^[-*•]\s*/
 
 const SECTION_BY_NAME: Record<(typeof HEADING_NAMES)[number], Section> = {
@@ -50,13 +51,17 @@ export function parseSummary(text: string): ParsedSummary {
     const lines = text.split("\n")
     // Drop an unfinished heading at the very end (streaming).
     const last = lines.at(-1)
+    let popped = false
     if (last !== undefined && headingSection(last) === null && isPartialHeading(last)) {
       lines.pop()
+      popped = true
     }
+    // The final line of unterminated input may still be streaming in.
+    const openIndex = !popped && !text.endsWith("\n") ? lines.length - 1 : -1
     const lead: string[] = []
     const plain: string[] = []
     let section: Section = "lead"
-    for (const raw of lines) {
+    for (const [i, raw] of lines.entries()) {
       const line = raw.trimEnd()
       const next = headingSection(line)
       if (next) {
@@ -64,10 +69,17 @@ export function parseSummary(text: string): ParsedSummary {
         continue
       }
       const t = line.trim()
+      if (OTHER_HEADING.test(t)) {
+        // Unknown headings belong to the lead.
+        section = "lead"
+        lead.push(line)
+        continue
+      }
       if (section === "lead") lead.push(line)
       else if (section === "plain") plain.push(line)
       else if (t === "") continue
       else if (section === "moments") {
+        if (i === openIndex) continue
         const m = MOMENT.exec(t)
         const seconds = m?.[1] ? parseTimestamp(m[1]) : null
         if (m && seconds !== null) out.moments.push({ seconds, text: (m[2] ?? "").trim() })

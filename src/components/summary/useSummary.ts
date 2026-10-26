@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useStorageItem } from "@/hooks/useStorageItem"
-import { type Settings, type StoredSummary, summariesItem, upsertSummary } from "@/lib/storage"
+import {
+  mergeSettings,
+  type Settings,
+  type StoredSummary,
+  summariesItem,
+  upsertSummary,
+} from "@/lib/storage"
 import { type ParsedSummary, parseSummary } from "@/lib/summary/parse"
 import { openStream, readTextFromUIStream } from "@/lib/transport"
 import type { ModelSelection, SummaryStyle, VideoContext } from "@/lib/types"
@@ -30,9 +36,11 @@ function errorMessage(err: unknown): string {
 export function useSummary(
   ctx: VideoContext | null,
   selection: ModelSelection | null,
-  settings: Settings,
+  rawSettings: Settings,
   enabled: boolean,
 ): SummaryState {
+  // Defensive: saved v2 settings may lack the newer fields.
+  const settings = useMemo(() => mergeSettings(rawSettings), [rawSettings])
   const videoId = ctx?.metadata.videoId
   const [store] = useStorageItem(summariesItem)
   const stored = videoId === undefined ? undefined : store?.[videoId]

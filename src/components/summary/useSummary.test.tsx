@@ -144,6 +144,18 @@ describe("useSummary", () => {
     expect(state.status).toBe("done")
   })
 
+  it("tolerates legacy settings without the newer fields", async () => {
+    settings = { provider: "openai" } as unknown as Settings
+    await mount()
+    vi.mocked(readTextFromUIStream).mockResolvedValue("Out")
+    await act(async () => state.generate())
+    expect(state.style).toBe("detailed")
+    expect(vi.mocked(openStream).mock.calls[0]?.[0]).toMatchObject({
+      language: "match",
+      customInstructions: "",
+    })
+  })
+
   it("persists feedback into the stored summary", async () => {
     await summariesItem.setValue({
       vid: { style: "tldr", model: "m", language: "en", text: "Saved", createdAt: 1 },

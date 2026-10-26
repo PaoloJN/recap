@@ -45,8 +45,23 @@ describe("parseSummary", () => {
   })
 
   it("ignores moment bullets without a timestamp", () => {
-    expect(parseSummary("## Key moments\n- nope\n- 2:00: Real").moments).toEqual([
+    expect(parseSummary("## Key moments\n- nope\n- 2:00: Real\n").moments).toEqual([
       { seconds: 120, text: "Real" },
+    ])
+  })
+
+  it("sends an unknown heading after a known section back to the lead", () => {
+    const p = parseSummary("## Notes\n- n\n## Extra\n- bar\n")
+    expect(p.notes).toEqual(["n"])
+    expect(p.lead).toContain("bar")
+  })
+
+  it("ignores a moment bullet that is still streaming in", () => {
+    expect(parseSummary("## Key moments\n- 0:14 A\n- 1:02:0").moments).toEqual([
+      { seconds: 14, text: "A" },
+    ])
+    expect(parseSummary("## Key moments\n- 1:02:03 B\n").moments).toEqual([
+      { seconds: 3723, text: "B" },
     ])
   })
 

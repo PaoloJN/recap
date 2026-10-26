@@ -8,7 +8,7 @@ export function buildChatSystemPrompt(ctx: VideoContext, language: AnswerLanguag
     videoMetadataBlock(ctx),
     "",
     "Rules:",
-    language === "match"
+    (language ?? "match") === "match"
       ? "- Answer in the language the user writes in."
       : `- Answer in ${language}.`,
     "- Cite moments as timestamps in m:ss form (for example 4:32), matching the transcript lines.",

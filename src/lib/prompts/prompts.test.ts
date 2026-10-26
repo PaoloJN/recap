@@ -104,6 +104,14 @@ describe("buildSummaryPrompt", () => {
   })
 })
 
+describe("legacy settings", () => {
+  it("does not throw when new fields are missing", () => {
+    const legacy = {} as unknown as Parameters<typeof buildSummaryPrompt>[2]
+    expect(() => buildSummaryPrompt("detailed", small, legacy)).not.toThrow()
+    expect(buildSummaryPrompt("detailed", small, legacy).system).toContain("transcript's language")
+  })
+})
+
 describe("buildChatSystemPrompt language", () => {
   it("keeps match as answer-in-user-language and pins a named language", () => {
     expect(buildChatSystemPrompt(small, "match")).toContain(
