@@ -8,7 +8,7 @@
       "!**/node_modules",
       "!.superpowers",
       "!docs",
-      "!**/__fixtures__/**",
+      "!**/__fixtures__",
       "!**/*.md",
       "!pnpm-lock.yaml",
       "!src/components/ui",
