@@ -37,6 +37,10 @@ describe("createModel", () => {
       expect(m.provider).toContain("google")
     }
   })
+  it("creates an OpenRouter model", () => {
+    const m = createModel({ provider: "openrouter", model: "openai/gpt-6-luna" }, "k")
+    if (typeof m !== "string") expect(m.modelId).toBe("openai/gpt-6-luna")
+  })
   it("throws on unknown provider", () => {
     expect(() => createModel({ provider: "nope" as ProviderId, model: "x" }, "k")).toThrow(
       "Unknown provider: nope",

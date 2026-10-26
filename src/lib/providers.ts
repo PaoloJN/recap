@@ -8,6 +8,7 @@ import type { ModelSelection, ProviderId } from "./types"
 export interface ModelInfo {
   id: string
   label: string
+  note: string
 }
 
 export interface ProviderInfo {
@@ -16,6 +17,9 @@ export interface ProviderInfo {
   models: ModelInfo[]
   defaultModel: string
   keyUrl: string
+  keyHint: string
+  tagline: string
+  tag: string
 }
 
 export const PROVIDER_IDS: readonly ProviderId[] = ["openai", "anthropic", "google", "openrouter"]
@@ -25,45 +29,61 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: "openai",
     label: "OpenAI",
     models: [
-      { id: "gpt-6-luna", label: "GPT-6 Luna" },
-      { id: "gpt-6.1-sol", label: "GPT-6.1 Sol" },
-      { id: "gpt-6-astra", label: "GPT-6 Astra" },
+      { id: "gpt-6-luna", label: "GPT-6 Luna", note: "Fast. Good for summaries" },
+      { id: "gpt-6.1-sol", label: "GPT-6.1 Sol", note: "Slower. Better reasoning" },
+      { id: "gpt-6-astra", label: "GPT-6 Astra", note: "Cheapest" },
     ],
     defaultModel: "gpt-6-luna",
     keyUrl: "https://platform.openai.com/api-keys",
+    keyHint: "sk-…",
+    tagline: "GPT-6 Luna, GPT-6.1 Sol",
+    tag: "Most used",
   },
   anthropic: {
     id: "anthropic",
     label: "Anthropic",
     models: [
-      { id: "claude-haiku-5-5", label: "Claude Haiku 5.5" },
-      { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
-      { id: "claude-opus-5-5", label: "Claude Opus 5.5" },
+      { id: "claude-haiku-5-5", label: "Claude Haiku 5.5", note: "Fast" },
+      { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5", note: "Best on long videos" },
+      { id: "claude-opus-5-5", label: "Claude Opus 5.5", note: "Strongest reasoning" },
     ],
     defaultModel: "claude-haiku-5-5",
     keyUrl: "https://platform.claude.com/settings/keys",
+    keyHint: "sk-ant-…",
+    tagline: "Claude Haiku 5.5, Claude Sonnet 5.5",
+    tag: "Long videos",
   },
   google: {
     id: "google",
     label: "Google",
     models: [
-      { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
-      { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite" },
-      { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro (preview)" },
+      { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", note: "Fastest" },
+      { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite", note: "Cheapest" },
+      { id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro (preview)", note: "Deepest" },
     ],
     defaultModel: "gemini-3.8-flash",
     keyUrl: "https://aistudio.google.com/apikey",
+    keyHint: "AIza…",
+    tagline: "Gemini 3.8 Flash, Gemini 3.5 Flash-Lite",
+    tag: "Free tier",
   },
   openrouter: {
     id: "openrouter",
     label: "OpenRouter",
     models: [
-      { id: "openai/gpt-6-luna", label: "GPT-6 Luna" },
-      { id: "anthropic/claude-sonnet-5.5", label: "Claude Sonnet 5.5" },
-      { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+      { id: "openai/gpt-6-luna", label: "GPT-6 Luna", note: "Fast. Good for summaries" },
+      {
+        id: "anthropic/claude-sonnet-5.5",
+        label: "Claude Sonnet 5.5",
+        note: "Best on long videos",
+      },
+      { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash", note: "Fastest" },
     ],
     defaultModel: "openai/gpt-6-luna",
     keyUrl: "https://openrouter.ai/settings/keys",
+    keyHint: "sk-or-…",
+    tagline: "One key, 300+ models",
+    tag: "",
   },
 }
 

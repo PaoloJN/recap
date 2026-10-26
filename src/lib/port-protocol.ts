@@ -1,5 +1,5 @@
 import type { UIMessage, UIMessageChunk } from "ai"
-import type { ModelSelection, SummaryStyle, VideoContext } from "./types"
+import type { ModelSelection, ProviderId, SummaryStyle, VideoContext } from "./types"
 
 export const STREAM_PORT_NAME = "yt-ai-stream"
 
@@ -13,3 +13,11 @@ export type StreamPortMessage =
   | { type: "done" }
 
 export type ToggleMessage = { type: "toggle-panel" }
+
+export type KeyCheckRequest = { type: "validate-key"; provider: ProviderId; key: string }
+
+export type KeyCheckResult =
+  | { ok: true; models: string[] }
+  | { ok: false; status: number | null; message: string }
+
+export type RuntimeMessage = ToggleMessage | KeyCheckRequest
