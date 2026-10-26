@@ -27,7 +27,7 @@ export function DataSection() {
       toast("Nothing to export")
       return
     }
-    downloadText("youtube-ai-chats.md", exportAllChats(chats))
+    downloadText("recap-chats.md", exportAllChats(chats))
     toast("Exported chats")
   }
 

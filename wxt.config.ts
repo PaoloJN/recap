@@ -20,7 +20,7 @@ export default defineConfig({
   srcDir: "src",
   modules: ["@wxt-dev/module-react"],
   manifest: {
-    name: "YouTube AI",
+    name: "Recap for YouTube",
     version: "2.0.0",
     permissions: ["storage"],
     host_permissions: [
@@ -39,7 +39,7 @@ export default defineConfig({
     commands: {
       "toggle-panel": {
         suggested_key: { default: "Alt+Y" },
-        description: "Toggle the YouTube AI panel",
+        description: "Toggle the Recap panel",
       },
     },
   },

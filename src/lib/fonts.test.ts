@@ -6,7 +6,7 @@ describe("injectFontFaces", () => {
     const doc = document.implementation.createHTMLDocument("")
     injectFontFaces(doc, (p) => `chrome-extension://id/${p}`)
     injectFontFaces(doc, (p) => `chrome-extension://id/${p}`)
-    const styles = doc.head.querySelectorAll("style[data-youtube-ai-fonts]")
+    const styles = doc.head.querySelectorAll("style[data-recap-fonts]")
     expect(styles).toHaveLength(1)
     expect(styles[0]?.textContent).toContain('font-family: "Roboto Mono"')
     expect(styles[0]?.textContent).toContain("chrome-extension://id/fonts/roboto-mono-500.woff2")

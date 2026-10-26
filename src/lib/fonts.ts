@@ -6,9 +6,9 @@ export function injectFontFaces(
   doc: Document = document,
   getUrl: (path: string) => string = (p) => browser.runtime.getURL(`/${p}` as never),
 ): void {
-  if (doc.head.querySelector("style[data-youtube-ai-fonts]")) return
+  if (doc.head.querySelector("style[data-recap-fonts]")) return
   const style = doc.createElement("style")
-  style.setAttribute("data-youtube-ai-fonts", "")
+  style.setAttribute("data-recap-fonts", "")
   style.textContent = WEIGHTS.map(
     (weight) => `@font-face {
   font-family: "Roboto Mono";

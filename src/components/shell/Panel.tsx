@@ -321,7 +321,7 @@ export function Panel() {
             />
           ) : (
             <Header
-              title={page?.metadata.title ?? "YouTube AI"}
+              title={page?.metadata.title ?? "Recap"}
               author={author}
               hasVideo={page !== null}
               open={open}

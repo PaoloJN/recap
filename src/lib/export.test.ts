@@ -21,7 +21,7 @@ describe("exportVideoMarkdown", () => {
         "# My Video",
         "https://www.youtube.com/watch?v=abc\nChannel: Chan",
         "## Summary\n\nSum",
-        "## Chat\n\n> [0:14] Static\n**You:** Why?\n\n**YouTube AI:** Because.",
+        "## Chat\n\n> [0:14] Static\n**You:** Why?\n\n**Recap:** Because.",
       ].join("\n\n"),
     )
   })
@@ -40,7 +40,7 @@ describe("exportAllChats", () => {
       new: { updatedAt: 2, title: "Newer", messages: msgs },
     }
     const out = exportAllChats(store)
-    expect(out.startsWith("# YouTube AI chats")).toBe(true)
+    expect(out.startsWith("# Recap chats")).toBe(true)
     expect(out.indexOf("## Newer")).toBeLessThan(out.indexOf("## old"))
     expect(out).toContain("https://www.youtube.com/watch?v=old")
   })

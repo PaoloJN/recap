@@ -21,7 +21,7 @@ export default defineContentScript({
   async main(ctx) {
     injectFontFaces()
     const ui = await createShadowRootUi<Root>(ctx, {
-      name: "youtube-ai-panel",
+      name: "recap-panel",
       css,
       position: "inline",
       anchor: "#secondary-inner",
