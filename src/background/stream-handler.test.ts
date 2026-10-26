@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { browser } from "wxt/browser"
 import { fakeBrowser } from "wxt/testing/fake-browser"
 import { STREAM_PORT_NAME, type StreamPortMessage, type StreamRequest } from "../lib/port-protocol"
-import { SUMMARY_PRESETS } from "../lib/prompts/presets"
 import { apiKeysItem } from "../lib/storage"
 import type { VideoContext } from "../lib/types"
 import { mapStreamError, registerStreamPortHandler, runStreamRequest } from "./stream-handler"
@@ -15,6 +14,17 @@ const context: VideoContext = {
   language: "en",
 }
 const selection = { provider: "openai", model: "gpt-6-luna" } as const
+
+function summaryReq(style: "tldr" | "detailed" | "moments"): StreamRequest {
+  return {
+    kind: "summary",
+    style,
+    context,
+    selection,
+    language: "match",
+    customInstructions: "",
+  }
+}
 
 const usage = {
   inputTokens: { total: 0, noCache: 0, cacheRead: 0, cacheWrite: 0 },
@@ -50,6 +60,7 @@ describe("runStreamRequest", () => {
       messages: [{ id: "1", role: "user", parts: [{ type: "text", text: "hi" }] }],
       context,
       selection,
+      language: "match",
     }
     await runStreamRequest(req, {
       model: helloModel(),
@@ -79,10 +90,11 @@ describe("runStreamRequest", () => {
         })
       },
     })
-    await runStreamRequest(
-      { kind: "summary", preset: "tldr", context, selection },
-      { model, post, signal: new AbortController().signal },
-    )
+    await runStreamRequest(summaryReq("tldr"), {
+      model,
+      post,
+      signal: new AbortController().signal,
+    })
     const errors = messages.filter((m) => m.type === "error")
     expect(errors).toHaveLength(1)
     expect(errors[0]).toMatchObject({ message: expect.stringContaining("Invalid API key") })
@@ -102,10 +114,11 @@ describe("runStreamRequest", () => {
         }),
       }),
     })
-    await runStreamRequest(
-      { kind: "summary", preset: "tldr", context, selection },
-      { model, post, signal: new AbortController().signal },
-    )
+    await runStreamRequest(summaryReq("tldr"), {
+      model,
+      post,
+      signal: new AbortController().signal,
+    })
     const errors = messages.filter((m) => m.type === "error")
     expect(errors).toEqual([{ type: "error", message: "provider exploded" }])
     expect(messages.some((m) => m.type === "done")).toBe(false)
@@ -114,13 +127,70 @@ describe("runStreamRequest", () => {
   it("uses the summary prompt for summary requests", async () => {
     const { post } = collect()
     const model = helloModel()
-    await runStreamRequest(
-      { kind: "summary", preset: "detailed", context, selection },
-      { model, post, signal: new AbortController().signal },
-    )
+    await runStreamRequest(summaryReq("detailed"), {
+      model,
+      post,
+      signal: new AbortController().signal,
+    })
     const sent = JSON.stringify(model.doStreamCalls[0]?.prompt)
-    expect(sent).toContain(JSON.stringify(SUMMARY_PRESETS.detailed.instructions).slice(1, -1))
+    expect(sent).toContain("## Key moments")
     expect(sent).toContain("hello there")
+  })
+})
+
+describe("usage accounting", () => {
+  function usageModel(inputTokens: number, outputTokens: number) {
+    return new MockLanguageModelV3({
+      doStream: async () => ({
+        stream: simulateReadableStream({
+          chunks: [
+            { type: "text-start", id: "t1" },
+            { type: "text-delta", id: "t1", delta: "Hi" },
+            { type: "text-end", id: "t1" },
+            {
+              type: "finish",
+              finishReason: { unified: "stop", raw: "stop" },
+              usage: {
+                inputTokens: {
+                  total: inputTokens,
+                  noCache: inputTokens,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                },
+                outputTokens: { total: outputTokens, text: outputTokens, reasoning: 0 },
+              },
+            },
+          ],
+        }),
+      }),
+    })
+  }
+
+  it("records input + output tokens after a completed summary stream", async () => {
+    const recordUsage = vi.fn(async () => {})
+    await runStreamRequest(summaryReq("tldr"), {
+      model: usageModel(10, 20),
+      post: collect().post,
+      signal: new AbortController().signal,
+      recordUsage,
+    })
+    expect(recordUsage).toHaveBeenCalledWith("summary", 30)
+  })
+
+  it("does not record usage when the stream errors", async () => {
+    const recordUsage = vi.fn(async () => {})
+    const model = new MockLanguageModelV3({
+      doStream: async () => {
+        throw new Error("boom")
+      },
+    })
+    await runStreamRequest(summaryReq("tldr"), {
+      model,
+      post: collect().post,
+      signal: new AbortController().signal,
+      recordUsage,
+    })
+    expect(recordUsage).not.toHaveBeenCalled()
   })
 })
 
@@ -232,7 +302,7 @@ describe("registerStreamPortHandler", () => {
     const connect = install()
     const { port, sent, send } = fakePort(STREAM_PORT_NAME)
     connect(port)
-    send({ kind: "summary", preset: "tldr", context, selection } satisfies StreamRequest)
+    send(summaryReq("tldr") satisfies StreamRequest)
     await vi.waitFor(() => expect(sent).toHaveLength(1))
     expect(sent).toEqual([{ type: "error", message: "No API key configured for OpenAI." }])
   })
@@ -241,7 +311,7 @@ describe("registerStreamPortHandler", () => {
     const connect = install()
     const { port, sent, send } = fakePort("other")
     connect(port)
-    send({ kind: "summary", preset: "tldr", context, selection })
+    send(summaryReq("tldr"))
     await new Promise((r) => setTimeout(r, 20))
     expect(sent).toEqual([])
   })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { VideoContext } from "@/lib/types"
-import { buildSummaryPrompt, SUMMARY_PRESETS } from "./presets"
+import { buildSummaryPrompt } from "./summary"
 import { buildChatSystemPrompt } from "./system"
 import {
   formatTranscriptForPrompt,
@@ -62,7 +62,7 @@ describe("truncateTranscript", () => {
 
 describe("buildChatSystemPrompt", () => {
   it("includes metadata, transcript, and no marker when within budget", () => {
-    const p = buildChatSystemPrompt(small)
+    const p = buildChatSystemPrompt(small, "match")
     expect(p).toContain("My Title")
     expect(p).toContain("My Channel")
     expect(p).toContain("2:05")
@@ -70,24 +70,45 @@ describe("buildChatSystemPrompt", () => {
     expect(p).not.toContain(TRUNCATION_MARKER)
   })
   it("includes the marker when over budget", () => {
-    expect(buildChatSystemPrompt(big)).toContain(TRUNCATION_MARKER)
+    expect(buildChatSystemPrompt(big, "match")).toContain(TRUNCATION_MARKER)
   })
 })
 
-describe("summary presets", () => {
-  it("has labels and descriptions for all presets", () => {
-    for (const id of ["tldr", "detailed", "moments"] as const) {
-      expect(SUMMARY_PRESETS[id].id).toBe(id)
-      expect(SUMMARY_PRESETS[id].label).not.toBe("")
-      expect(SUMMARY_PRESETS[id].description).not.toBe("")
+describe("buildSummaryPrompt", () => {
+  const opts = { language: "match" as const, customInstructions: "" }
+  it("fixes the section shape in the system prompt", () => {
+    const { system } = buildSummaryPrompt("detailed", small, opts)
+    for (const h of ["## Key moments", "## Notes", "## In plain terms", "## Questions"]) {
+      expect(system).toContain(h)
     }
+    expect(system).toContain("- m:ss Text")
   })
-  it("builds a user message with instructions, metadata and transcript", () => {
-    const { system, user } = buildSummaryPrompt("moments", small)
-    expect(user).toContain(SUMMARY_PRESETS.moments.instructions)
+  it("tldr only asks for the lead and questions, in a named language", () => {
+    const { system, user } = buildSummaryPrompt("tldr", small, {
+      language: "Deutsch",
+      customInstructions: "Be brief",
+    })
+    expect(system).toContain("Write in Deutsch.")
+    expect(system).toContain("## Questions")
+    expect(system).not.toContain("## Notes")
+    expect(user).toContain("Additional instructions from the user:\nBe brief")
+  })
+  it("match uses the transcript language and omits empty custom instructions", () => {
+    const { system, user } = buildSummaryPrompt("moments", small, opts)
+    expect(system).toContain("Write in the transcript's language (en).")
+    expect(system).toContain("## Key moments")
+    expect(system).not.toContain("## Notes")
+    expect(user).not.toContain("Additional instructions")
     expect(user).toContain("My Title")
     expect(user).toContain("[0:00] hello")
-    expect(system).toContain("en")
-    expect(system).toContain("m:ss")
+  })
+})
+
+describe("buildChatSystemPrompt language", () => {
+  it("keeps match as answer-in-user-language and pins a named language", () => {
+    expect(buildChatSystemPrompt(small, "match")).toContain(
+      "Answer in the language the user writes in.",
+    )
+    expect(buildChatSystemPrompt(small, "Deutsch")).toContain("Answer in Deutsch.")
   })
 })

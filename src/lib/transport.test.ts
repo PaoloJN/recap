@@ -38,9 +38,11 @@ const context = { videoId: "abc" } as unknown as VideoContext
 const selection = { provider: "openai", model: "gpt-6-luna" } as unknown as ModelSelection
 const summaryReq = {
   kind: "summary" as const,
-  preset: "tldr" as unknown as SummaryStyle,
+  style: "tldr" as SummaryStyle,
   context,
   selection,
+  language: "match" as const,
+  customInstructions: "",
 }
 const delta = (d: string): UIMessageChunk => ({ type: "text-delta", id: "t", delta: d })
 
@@ -136,7 +138,7 @@ describe("PortChatTransport", () => {
   it("sends a chat request with messages and context", async () => {
     const port = new FakePort()
     const transport = new PortChatTransport(
-      () => ({ context, selection }),
+      () => ({ context, selection, language: "match" as const }),
       () => port,
     )
     const messages: UIMessage[] = [{ id: "1", role: "user", parts: [{ type: "text", text: "hi" }] }]
@@ -147,13 +149,17 @@ describe("PortChatTransport", () => {
       messages,
       abortSignal: undefined,
     })
-    expect(port.posted).toEqual([{ kind: "chat", messages, context, selection }])
+    expect(port.posted).toEqual([{ kind: "chat", messages, context, selection, language: "match" }])
     port.emit({ type: "done" })
     expect((await stream.getReader().read()).done).toBe(true)
   })
 
   it("reconnectToStream resolves null", async () => {
-    const transport = new PortChatTransport(() => ({ context, selection }))
+    const transport = new PortChatTransport(() => ({
+      context,
+      selection,
+      language: "match" as const,
+    }))
     expect(await transport.reconnectToStream({ chatId: "c" })).toBeNull()
   })
 })

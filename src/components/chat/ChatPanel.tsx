@@ -23,16 +23,17 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { PortChatTransport } from "@/lib/transport"
-import type { ModelSelection, VideoContext } from "@/lib/types"
+import type { AnswerLanguage, ModelSelection, VideoContext } from "@/lib/types"
 import { ChatEmptyState } from "./ChatEmptyState"
 import { useChatHistory } from "./useChatHistory"
 
 export interface ChatPanelProps {
   context: VideoContext
   selection: ModelSelection
+  language: AnswerLanguage
 }
 
-export function ChatPanel({ context, selection }: ChatPanelProps) {
+export function ChatPanel({ context, selection, language }: ChatPanelProps) {
   const videoId = context.metadata.videoId
   const { initialMessages, ready, save, clear } = useChatHistory(videoId)
 
@@ -51,6 +52,7 @@ export function ChatPanel({ context, selection }: ChatPanelProps) {
         videoId={videoId}
         context={context}
         selection={selection}
+        language={language}
         initialMessages={initialMessages}
         save={save}
         clear={clear}
@@ -66,7 +68,15 @@ interface ChatViewProps extends ChatPanelProps {
   clear: () => Promise<void>
 }
 
-function ChatView({ videoId, context, selection, initialMessages, save, clear }: ChatViewProps) {
+function ChatView({
+  videoId,
+  context,
+  selection,
+  language,
+  initialMessages,
+  save,
+  clear,
+}: ChatViewProps) {
   const ctxRef = useRef(context)
   const selectionRef = useRef(selection)
   useEffect(() => {
@@ -75,11 +85,19 @@ function ChatView({ videoId, context, selection, initialMessages, save, clear }:
   useEffect(() => {
     selectionRef.current = selection
   }, [selection])
+  const languageRef = useRef(language)
+  useEffect(() => {
+    languageRef.current = language
+  }, [language])
 
   // Built once per mounted view (the view is keyed by videoId); refs carry the latest settings.
   const transport = useMemo(
     () =>
-      new PortChatTransport(() => ({ context: ctxRef.current, selection: selectionRef.current })),
+      new PortChatTransport(() => ({
+        context: ctxRef.current,
+        selection: selectionRef.current,
+        language: languageRef.current,
+      })),
     [],
   )
 

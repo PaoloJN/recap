@@ -1,11 +1,30 @@
 import type { UIMessage, UIMessageChunk } from "ai"
-import type { ModelSelection, ProviderId, SummaryStyle, VideoContext } from "./types"
+import type {
+  AnswerLanguage,
+  ModelSelection,
+  ProviderId,
+  SummaryStyle,
+  VideoContext,
+} from "./types"
 
 export const STREAM_PORT_NAME = "yt-ai-stream"
 
 export type StreamRequest =
-  | { kind: "chat"; messages: UIMessage[]; context: VideoContext; selection: ModelSelection }
-  | { kind: "summary"; preset: SummaryStyle; context: VideoContext; selection: ModelSelection }
+  | {
+      kind: "chat"
+      messages: UIMessage[]
+      context: VideoContext
+      selection: ModelSelection
+      language: AnswerLanguage
+    }
+  | {
+      kind: "summary"
+      style: SummaryStyle
+      context: VideoContext
+      selection: ModelSelection
+      language: AnswerLanguage
+      customInstructions: string
+    }
 
 export type StreamPortMessage =
   | { type: "chunk"; chunk: UIMessageChunk }

@@ -1,7 +1,7 @@
 import type { ChatTransport, UIMessage, UIMessageChunk } from "ai"
 import { browser } from "wxt/browser"
 import { STREAM_PORT_NAME, type StreamPortMessage, type StreamRequest } from "./port-protocol"
-import type { ModelSelection, VideoContext } from "./types"
+import type { AnswerLanguage, ModelSelection, VideoContext } from "./types"
 
 export interface PortLike {
   postMessage(m: unknown): void
@@ -112,7 +112,11 @@ type ReconnectOptions = Parameters<ChatTransport<UIMessage>["reconnectToStream"]
 
 export class PortChatTransport implements ChatTransport<UIMessage> {
   constructor(
-    private getContext: () => { context: VideoContext; selection: ModelSelection },
+    private getContext: () => {
+      context: VideoContext
+      selection: ModelSelection
+      language: AnswerLanguage
+    },
     private connect?: PortFactory,
   ) {}
 

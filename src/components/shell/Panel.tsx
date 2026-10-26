@@ -101,13 +101,13 @@ function Body({ tab, settings, apiKeys, selection, video, onOpenSettings }: Body
   return (
     <>
       <div className={pane("summary")}>
-        <SummaryPanel context={context} selection={selection} />
+        <SummaryPanel context={context} selection={selection} settings={settings} />
       </div>
       <div className={pane("transcript")}>
         <TranscriptPanel transcript={transcript} active={tab === "transcript"} />
       </div>
       <div className={pane("chat")}>
-        <ChatPanel context={context} selection={selection} />
+        <ChatPanel context={context} selection={selection} language={settings.language} />
       </div>
     </>
   )

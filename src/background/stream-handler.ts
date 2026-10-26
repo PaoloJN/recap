@@ -8,10 +8,10 @@ import {
 } from "ai"
 import { browser } from "wxt/browser"
 import { STREAM_PORT_NAME, type StreamPortMessage, type StreamRequest } from "../lib/port-protocol"
-import { buildSummaryPrompt } from "../lib/prompts/presets"
+import { buildSummaryPrompt } from "../lib/prompts/summary"
 import { buildChatSystemPrompt } from "../lib/prompts/system"
 import { createModel, PROVIDERS } from "../lib/providers"
-import { apiKeysItem } from "../lib/storage"
+import { recordUsage as addUsage, apiKeysItem, monthKey, usageItem } from "../lib/storage"
 
 const INVALID_KEY = "Invalid API key. Check it in Settings."
 const RATE_LIMITED = "Rate limited by the provider. Try again shortly."
@@ -62,6 +62,16 @@ interface StreamDeps {
   model: LanguageModel
   post: (m: StreamPortMessage) => void
   signal: AbortSignal
+  recordUsage?: (kind: "summary" | "chat", tokens: number) => Promise<void>
+}
+
+function clampTokens(n: number): number {
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+async function defaultRecordUsage(kind: "summary" | "chat", tokens: number): Promise<void> {
+  const store = await usageItem.getValue()
+  await usageItem.setValue(addUsage(store, monthKey(new Date()), kind, tokens))
 }
 
 export async function runStreamRequest(req: StreamRequest, deps: StreamDeps): Promise<void> {
@@ -75,14 +85,17 @@ export async function runStreamRequest(req: StreamRequest, deps: StreamDeps): Pr
       req.kind === "chat"
         ? streamText({
             model,
-            system: buildChatSystemPrompt(req.context),
+            system: buildChatSystemPrompt(req.context, req.language),
             messages: await convertToModelMessages(req.messages),
             abortSignal: signal,
             maxRetries: MAX_RETRIES,
             onError,
           })
         : (() => {
-            const { system, user } = buildSummaryPrompt(req.preset, req.context)
+            const { system, user } = buildSummaryPrompt(req.style, req.context, {
+              language: req.language,
+              customInstructions: req.customInstructions,
+            })
             return streamText({
               model,
               system,
@@ -102,6 +115,14 @@ export async function runStreamRequest(req: StreamRequest, deps: StreamDeps): Pr
     if (streamError !== undefined && !signal.aborted) {
       post({ type: "error", message: mapStreamError(streamError) })
       return
+    }
+    if (!signal.aborted && deps.recordUsage) {
+      try {
+        const u = await result.totalUsage
+        await deps.recordUsage(req.kind, clampTokens((u.inputTokens ?? 0) + (u.outputTokens ?? 0)))
+      } catch (e) {
+        console.error("Failed to record usage", e)
+      }
     }
     post({ type: "done" })
   } catch (e) {
@@ -152,6 +173,7 @@ export function registerStreamPortHandler(): void {
           model: createModel(req.selection, key),
           post,
           signal: controller.signal,
+          recordUsage: defaultRecordUsage,
         })
       } catch (e) {
         post({ type: "error", message: mapStreamError(e) })
