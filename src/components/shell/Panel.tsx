@@ -95,14 +95,22 @@ function Body({ tab, settings, apiKeys, selection, video, onOpenSettings }: Body
   }
 
   if (!context) return <TranscriptSkeleton />
-  switch (tab) {
-    case "summary":
-      return <SummaryPanel context={context} selection={selection} />
-    case "transcript":
-      return <TranscriptPanel transcript={transcript} />
-    case "chat":
-      return <ChatPanel context={context} selection={selection} />
-  }
+  // All three stay mounted so in-flight chat/summary streams and transcript search/scroll survive
+  // tab switches; inactive ones are hidden (a class, since the panels set their own display).
+  const pane = (name: PanelTab) => (tab === name ? "contents" : "hidden")
+  return (
+    <>
+      <div className={pane("summary")}>
+        <SummaryPanel context={context} selection={selection} />
+      </div>
+      <div className={pane("transcript")}>
+        <TranscriptPanel transcript={transcript} active={tab === "transcript"} />
+      </div>
+      <div className={pane("chat")}>
+        <ChatPanel context={context} selection={selection} />
+      </div>
+    </>
+  )
 }
 
 export function Panel() {
@@ -148,11 +156,13 @@ export function Panel() {
         onToggleOpen={toggleOpen}
         onOpenSettings={openSettings}
       />
-      {panelState.open && settings && apiKeys && selection ? (
+      {settings && apiKeys && selection ? (
+        // Kept mounted while collapsed so streams and panel state survive; hidden instead.
         <div
           className={cn(
             "flex max-h-[520px] flex-col rounded-lg border bg-card text-card-foreground",
             transcriptScrolls ? "overflow-hidden" : "overflow-auto",
+            !panelState.open && "hidden",
           )}
         >
           {video.page ? <VideoStrip metadata={video.page.metadata} /> : null}
@@ -162,7 +172,9 @@ export function Panel() {
               apiKeys={apiKeys}
               onBack={() => setShowSettings(false)}
             />
-          ) : (
+          ) : null}
+          {/* Settings is an alternate view: the body stays mounted underneath, just hidden. */}
+          <div className={showSettings ? "hidden" : "contents"}>
             <Body
               tab={panelState.tab}
               settings={settings}
@@ -171,7 +183,7 @@ export function Panel() {
               video={video}
               onOpenSettings={openSettings}
             />
-          )}
+          </div>
         </div>
       ) : null}
     </main>

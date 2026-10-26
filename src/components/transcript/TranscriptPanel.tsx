@@ -14,9 +14,11 @@ import { seekTo } from "@/lib/youtube/player"
 
 export interface TranscriptPanelProps {
   transcript: Extract<TranscriptStatus, { state: "ready" }>
+  /** False while the tab is hidden; follow-scrolling waits until it is visible again. */
+  active?: boolean
 }
 
-export function TranscriptPanel({ transcript }: TranscriptPanelProps) {
+export function TranscriptPanel({ transcript, active = true }: TranscriptPanelProps) {
   const [query, setQuery] = useState("")
   const [following, setFollowing] = useState(true)
   const { copied, copy } = useCopyToClipboard()
@@ -40,8 +42,8 @@ export function TranscriptPanel({ transcript }: TranscriptPanelProps) {
   }, [activeIndex])
 
   useEffect(() => {
-    if (following && !searching) scrollToActive()
-  }, [following, searching, scrollToActive])
+    if (active && following && !searching) scrollToActive()
+  }, [active, following, searching, scrollToActive])
 
   const stopFollowing = () => setFollowing(false)
 
