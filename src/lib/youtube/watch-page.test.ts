@@ -6,7 +6,26 @@ import { fetchWatchPage, parseWatchPage, pickCaptionTrack } from "./watch-page"
 
 const html = readFileSync(resolve("src/lib/youtube/__fixtures__/watch-page.html"), "utf8")
 
+const chaptersHtml = readFileSync(
+  resolve("src/lib/youtube/__fixtures__/watch-page.chapters.html"),
+  "utf8",
+)
+
 describe("parseWatchPage", () => {
+  it("parses chapters from the chapters fixture", () => {
+    const data = parseWatchPage(chaptersHtml)
+    expect(data.chapters).toHaveLength(3)
+    expect(data.metadata.durationSeconds).toBe(2672)
+    expect(data.metadata.description).toContain("Timestamps:")
+  })
+  it("falls back to description chapters when ytInitialData is missing", () => {
+    const stripped = chaptersHtml.replace("var ytInitialData", "var somethingElse")
+    expect(parseWatchPage(stripped).chapters).toHaveLength(3)
+  })
+  it("returns [] chapters for the plain fixture", () => {
+    expect(parseWatchPage(html).chapters).toEqual([])
+  })
+
   it("parses the fixture", () => {
     const data = parseWatchPage(html)
     expect(data.metadata).toEqual({
@@ -14,6 +33,7 @@ describe("parseWatchPage", () => {
       title: "React in 100 Seconds",
       author: expect.any(String),
       durationSeconds: 128,
+      description: expect.any(String),
     })
     expect(data.metadata.author.length).toBeGreaterThan(0)
     expect(data.captionTracks).toEqual([

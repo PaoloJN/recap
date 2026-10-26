@@ -124,8 +124,7 @@ export function Panel() {
     () => (provider && model ? { provider, model } : null),
     [provider, model],
   )
-  const hasKey = Boolean(provider && apiKeys?.[provider])
-  const video = useVideo(Boolean(panelState?.open) && hasKey)
+  const video = useVideo(Boolean(panelState?.open))
 
   if (!panelState) return null
 

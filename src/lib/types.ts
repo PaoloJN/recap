@@ -44,6 +44,7 @@ export interface VideoMetadata {
   title: string
   author: string
   durationSeconds: number
+  description?: string
 }
 
 export interface CaptionTrack {

@@ -1,6 +1,8 @@
-import type { CaptionTrack, InnertubeConfig, WatchPageData } from "@/lib/types"
+import type { CaptionTrack, Chapter, InnertubeConfig, WatchPageData } from "@/lib/types"
+import { parseChaptersFromDescription, parseChaptersFromInitialData } from "./chapters"
 
 const PLAYER_RE = /var ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*var\s/s
+const INITIAL_DATA_RE = /var ytInitialData\s*=\s*(\{.+?\});<\/script>/s
 const YTCFG_RE = /ytcfg\.set\((\{.+?\})\);/gs
 
 type Json = Record<string, unknown>
@@ -49,6 +51,19 @@ function parseTracks(player: Json): CaptionTrack[] {
   return tracks
 }
 
+function parseChapters(html: string, description: string): Chapter[] {
+  const raw = INITIAL_DATA_RE.exec(html)?.[1]
+  if (raw) {
+    try {
+      const fromData = parseChaptersFromInitialData(JSON.parse(raw))
+      if (fromData.length > 0) return fromData
+    } catch {
+      // fall back to the description
+    }
+  }
+  return parseChaptersFromDescription(description)
+}
+
 export function parseWatchPage(html: string): WatchPageData {
   const match = PLAYER_RE.exec(html)
   if (!match?.[1]) throw new Error("player response not found")
@@ -60,16 +75,18 @@ export function parseWatchPage(html: string): WatchPageData {
   }
   const details = obj(player.videoDetails)
   const innertube = parseInnertube(html)
+  const description = str(details.shortDescription) ?? ""
   return {
     metadata: {
       videoId: str(details.videoId) ?? "",
       title: str(details.title) ?? "",
       author: str(details.author) ?? "",
       durationSeconds: Number(details.lengthSeconds) || 0,
+      description,
     },
     captionTracks: parseTracks(player),
     innertube,
-    chapters: [],
+    chapters: parseChapters(html, description),
   }
 }
 

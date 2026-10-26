@@ -1,20 +1,6 @@
-import { useEffect, useState } from "react"
-import { createTrailingThrottle } from "@/lib/throttle"
-import { onTimeUpdate } from "@/lib/youtube/player"
+import { usePlayer } from "./usePlayer"
 
-const THROTTLE_MS = 250
-
+/** Thin wrapper kept until the old UI is removed. */
 export function usePlaybackMs(): number {
-  const [ms, setMs] = useState(0)
-
-  useEffect(() => {
-    const throttled = createTrailingThrottle(setMs, THROTTLE_MS)
-    const off = onTimeUpdate(throttled)
-    return () => {
-      off()
-      throttled.cancel()
-    }
-  }, [])
-
-  return ms
+  return usePlayer().ms
 }
