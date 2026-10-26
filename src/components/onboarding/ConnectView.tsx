@@ -1,4 +1,4 @@
-import { ArrowLeft, CircleNotch, HardDrives, LockSimple, Trash } from "@phosphor-icons/react"
+import { CircleNotch, HardDrives, LockSimple, Trash } from "@phosphor-icons/react"
 import { RadioGroup } from "radix-ui"
 import { useState } from "react"
 import { usePanelNav } from "@/components/shell/NavigationContext"
@@ -60,17 +60,7 @@ export function ConnectView({ initialProvider }: { initialProvider: ProviderId }
 
   return (
     <div className="min-h-0 flex-1 overflow-auto">
-      <div className="px-[8px] pt-[4px]">
-        <button
-          type="button"
-          aria-label="Back"
-          onClick={() => setView("main")}
-          className="flex size-[36px] cursor-pointer items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-secondary hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        >
-          <ArrowLeft size={18} />
-        </button>
-      </div>
-      <div className="flex flex-col gap-[20px] p-[16px]">
+      <div className="flex flex-col gap-[20px] px-[16px] py-[20px]">
         <div className="flex flex-col gap-[6px]">
           <h2 className="text-[18px] leading-[24px] font-medium text-foreground">
             Connect your API key

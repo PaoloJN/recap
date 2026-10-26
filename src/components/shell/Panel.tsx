@@ -30,7 +30,8 @@ import { Header } from "./Header"
 import { MoreMenu } from "./MoreMenu"
 import { usePanelNav } from "./NavigationContext"
 import { usePortalContainer } from "./PortalContainer"
-import { SettingsView } from "./SettingsView"
+import { SettingsVersion, SettingsView } from "./SettingsView"
+import { SubHeader } from "./SubHeader"
 import { TabRow } from "./TabRow"
 import { useToast } from "./ToastContext"
 
@@ -203,9 +204,14 @@ export function Panel() {
 
   const showShortcuts = () => {
     openSettings()
-    requestAnimationFrame(() => {
-      cardRef.current?.querySelector("#shortcuts")?.scrollIntoView({ behavior: "smooth" })
-    })
+    // Settings renders once its storage read resolves, so retry for a few frames.
+    let frames = 0
+    const scroll = () => {
+      const target = cardRef.current?.querySelector("#shortcuts")
+      if (target) target.scrollIntoView({ behavior: "smooth" })
+      else if (++frames < 30) requestAnimationFrame(scroll)
+    }
+    requestAnimationFrame(scroll)
   }
 
   const status = collapsedStatus({
@@ -237,17 +243,25 @@ export function Panel() {
           dark && "dark",
         )}
       >
-        <Header
-          title={page?.metadata.title ?? "YouTube AI"}
-          author={author}
-          hasVideo={page !== null}
-          open={open}
-          onToggleOpen={() => setOpen(!open)}
-          onOpenSettings={openSettings}
-          moreMenu={
-            <MoreMenu videoId={videoId} onExport={exportMarkdown} onShortcuts={showShortcuts} />
-          }
-        />
+        {open && view !== "main" ? (
+          <SubHeader
+            title={view === "settings" ? "Settings" : "Add API key"}
+            onBack={() => setView("main")}
+            right={view === "settings" ? <SettingsVersion /> : null}
+          />
+        ) : (
+          <Header
+            title={page?.metadata.title ?? "YouTube AI"}
+            author={author}
+            hasVideo={page !== null}
+            open={open}
+            onToggleOpen={() => setOpen(!open)}
+            onOpenSettings={openSettings}
+            moreMenu={
+              <MoreMenu videoId={videoId} onExport={exportMarkdown} onShortcuts={showShortcuts} />
+            }
+          />
+        )}
         {page && page.metadata.durationSeconds > 0 && (view === "main" || !open) ? (
           <LiveChapterBar
             chapters={page.chapters}
@@ -258,16 +272,7 @@ export function Panel() {
         {open && view === "onboarding" && storedSettings ? (
           <ConnectView key={storedSettings.provider} initialProvider={storedSettings.provider} />
         ) : null}
-        {open && view === "settings" && storedSettings && apiKeys ? (
-          // Task 12 replaces this with the v3 SettingsView.
-          <div className="min-h-0 flex-1 overflow-auto">
-            <SettingsView
-              settings={storedSettings}
-              apiKeys={apiKeys}
-              onBack={() => setView("main")}
-            />
-          </div>
-        ) : null}
+        {open && view === "settings" ? <SettingsView /> : null}
         {/* Kept mounted while collapsed or in settings so streams and panel state survive. */}
         <div className={showMain ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
           <TabRow
