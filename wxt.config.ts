@@ -25,7 +25,9 @@ export default defineConfig({
       "https://api.openai.com/*",
       "https://api.anthropic.com/*",
       "https://generativelanguage.googleapis.com/*",
+      "https://openrouter.ai/*",
     ],
+    web_accessible_resources: [{ resources: ["fonts/*"], matches: ["*://www.youtube.com/*"] }],
     icons: {
       16: "icon/16.png",
       32: "icon/32.png",
@@ -35,7 +37,7 @@ export default defineConfig({
     },
     commands: {
       "toggle-panel": {
-        suggested_key: { default: "Alt+Shift+Y" },
+        suggested_key: { default: "Alt+Y" },
         description: "Toggle the YouTube AI panel",
       },
     },
