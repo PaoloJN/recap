@@ -1,96 +1,67 @@
-import {
-  Check,
-  ChevronsUpDown,
-  FileText,
-  Link,
-  ListOrdered,
-  type LucideIcon,
-  MessageSquare,
-  Settings,
-  Sparkles,
-} from "lucide-react"
+import { CaretDown, CaretUp, GearSix, Pause, Play } from "@phosphor-icons/react"
 import type { ReactNode } from "react"
-import { Button } from "@/components/ui/button"
-import { ButtonGroup } from "@/components/ui/button-group"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
-import type { PanelTab } from "@/lib/types"
-import { cn } from "@/lib/utils"
-
-const TABS: { id: PanelTab; label: string; icon: LucideIcon }[] = [
-  { id: "summary", label: "Summary", icon: FileText },
-  { id: "transcript", label: "Transcript", icon: ListOrdered },
-  { id: "chat", label: "Chat", icon: MessageSquare },
-]
+import { formatMs } from "@/lib/timestamps"
+import { IconButton } from "./IconButton"
+import { Logo } from "./Logo"
 
 export interface HeaderProps {
-  tab: PanelTab
+  title: string
+  author: string
+  /** False while there is no video page yet: the meta row shows only `author`. */
+  hasVideo: boolean
+  ms: number
+  paused: boolean
   open: boolean
-  settingsActive: boolean
-  onTabSelect(tab: PanelTab): void
   onToggleOpen(): void
   onOpenSettings(): void
-}
-
-function IconButton(props: { label: string; onClick(): void; children: ReactNode }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label={props.label} onClick={props.onClick}>
-          {props.children}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{props.label}</TooltipContent>
-    </Tooltip>
-  )
+  moreMenu: ReactNode
 }
 
 export function Header({
-  tab,
+  title,
+  author,
+  hasVideo,
+  ms,
+  paused,
   open,
-  settingsActive,
-  onTabSelect,
   onToggleOpen,
   onOpenSettings,
+  moreMenu,
 }: HeaderProps) {
-  const { copied, copy } = useCopyToClipboard()
-  const copyUrl = () => copy(location.href)
-
+  const PlayIcon = paused ? Play : Pause
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2.5 text-card-foreground">
-      <div className="flex flex-1 items-center">
-        <Sparkles className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+    <div className="flex items-center gap-[12px] py-[12px] pr-[8px] pl-[16px]">
+      <div className="flex size-[32px] shrink-0 items-center justify-center text-foreground">
+        <Logo size={22} />
       </div>
-      <ButtonGroup aria-label="Panel tabs">
-        {TABS.map(({ id, label, icon: Icon }) => {
-          const active = open && !settingsActive && tab === id
-          return (
-            <Button
-              key={id}
-              variant="outline"
-              size="sm"
-              aria-pressed={active}
-              className={cn(
-                "text-xs",
-                active && "bg-accent text-accent-foreground dark:bg-input/60",
-              )}
-              onClick={() => onTabSelect(id)}
-            >
-              <Icon className="size-3.5" />
-              {label}
-            </Button>
-          )
-        })}
-      </ButtonGroup>
-      <div className="flex flex-1 items-center justify-end gap-0.5">
-        <IconButton label="Copy video URL" onClick={copyUrl}>
-          {copied ? <Check /> : <Link />}
-        </IconButton>
+      <button
+        type="button"
+        tabIndex={open ? -1 : 0}
+        aria-label={open ? undefined : "Expand"}
+        className="flex min-w-0 flex-1 cursor-default flex-col gap-[2px] text-left outline-none"
+        onClick={open ? undefined : onToggleOpen}
+      >
+        <span className="block truncate text-[14px] leading-[20px] font-medium text-foreground">
+          {title}
+        </span>
+        <span className="flex items-center gap-[6px] overflow-hidden text-[12px] leading-[16px] whitespace-nowrap text-muted-foreground">
+          {hasVideo ? (
+            <>
+              <PlayIcon weight="fill" className="size-[10px] shrink-0" aria-hidden />
+              <span className="font-mono text-[11px]">{formatMs(ms)}</span>
+              <span className="text-subtle-foreground">·</span>
+            </>
+          ) : null}
+          <span className="truncate">{author}</span>
+        </span>
+      </button>
+      <div className="flex shrink-0 items-center">
         <IconButton label="Settings" onClick={onOpenSettings}>
-          <Settings />
+          <GearSix />
         </IconButton>
+        {moreMenu}
         <IconButton label={open ? "Collapse" : "Expand"} onClick={onToggleOpen}>
-          <ChevronsUpDown />
+          {open ? <CaretUp /> : <CaretDown />}
         </IconButton>
       </div>
     </div>

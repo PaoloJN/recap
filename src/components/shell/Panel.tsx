@@ -1,37 +1,43 @@
-import { CaptionsOff, KeyRound, TriangleAlert } from "lucide-react"
-import { type ReactNode, useMemo, useState } from "react"
+import { ClosedCaptioning, Key, WarningCircle } from "@phosphor-icons/react"
+import { type ReactNode, useEffect, useMemo, useRef } from "react"
 import { ChatPanel } from "@/components/chat/ChatPanel"
+import { SummaryProvider } from "@/components/summary/SummaryContext"
 import { SummaryPanel } from "@/components/summary/SummaryPanel"
+import { useSummary } from "@/components/summary/useSummary"
 import { TranscriptPanel } from "@/components/transcript/TranscriptPanel"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { usePlayer } from "@/hooks/usePlayer"
 import { useSettings } from "@/hooks/useSettings"
 import { useStorageItem } from "@/hooks/useStorageItem"
+import { useTheme } from "@/hooks/useTheme"
 import { useVideo, type VideoState } from "@/hooks/useVideo"
-import { type ApiKeys, apiKeysItem, panelStateItem, type Settings } from "@/lib/storage"
-import type { ModelSelection, PanelTab, VideoMetadata } from "@/lib/types"
+import { downloadText } from "@/lib/download"
+import { exportVideoMarkdown, slugify } from "@/lib/export"
+import {
+  apiKeysItem,
+  chatsItem,
+  DEFAULT_SETTINGS,
+  type Settings,
+  summariesItem,
+} from "@/lib/storage"
+import type { ModelSelection, PanelTab, TranscriptStatus, VideoContext } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { ChapterBar } from "./ChapterBar"
+import { CollapsedRow } from "./CollapsedRow"
+import { collapsedStatus } from "./collapsed-status"
 import { EmptyState } from "./EmptyState"
 import { Header } from "./Header"
+import { MoreMenu } from "./MoreMenu"
+import { usePanelNav } from "./NavigationContext"
+import { usePortalContainer } from "./PortalContainer"
 import { SettingsView } from "./SettingsView"
+import { TabRow } from "./TabRow"
+import { useToast } from "./ToastContext"
 
-interface BodyProps {
-  tab: PanelTab
-  settings: Settings
-  apiKeys: ApiKeys
-  selection: ModelSelection
-  video: VideoState
-  onOpenSettings(): void
-}
+type ReadyTranscript = Extract<TranscriptStatus, { state: "ready" }>
 
-function VideoStrip({ metadata }: { metadata: VideoMetadata }) {
-  const label = metadata.author ? `${metadata.title} · ${metadata.author}` : metadata.title
-  return (
-    <div className="truncate border-b px-3 py-1.5 text-xs text-muted-foreground" title={label}>
-      {label}
-    </div>
-  )
-}
+const TEXT_SIZE_CLASS = { s: "text-size-s", m: "text-size-m", l: "text-size-l" } as const
 
 function TranscriptSkeleton() {
   return (
@@ -44,38 +50,30 @@ function TranscriptSkeleton() {
   )
 }
 
-function Body({ tab, settings, apiKeys, selection, video, onOpenSettings }: BodyProps): ReactNode {
-  if (!apiKeys[settings.provider]) {
-    return (
-      <EmptyState
-        icon={KeyRound}
-        title="Add an API key to get started"
-        description="Your key is stored locally in this extension and sent only to the provider you choose."
-        action={
-          <Button size="sm" onClick={onOpenSettings}>
-            Open settings
-          </Button>
-        }
-      />
-    )
-  }
-
-  const { transcript, context } = video
+/** Loading / no captions / error states until the transcript and context are ready. */
+function TranscriptGate({
+  video,
+  children,
+}: {
+  video: VideoState
+  children: (ready: ReadyTranscript, context: VideoContext) => ReactNode
+}): ReactNode {
+  const { transcript } = video
   switch (transcript.state) {
     case "loading":
       return <TranscriptSkeleton />
     case "unavailable":
       return (
         <EmptyState
-          icon={CaptionsOff}
-          title="This video has no transcript"
-          description="Summaries and chat need captions. Try another video."
+          icon={ClosedCaptioning}
+          title="No captions on this video"
+          description="Summaries, chat and the transcript all need captions. Try another video."
         />
       )
     case "error":
       return (
         <EmptyState
-          icon={TriangleAlert}
+          icon={WarningCircle}
           title="Couldn't load the transcript"
           description={transcript.message}
           action={
@@ -86,100 +84,207 @@ function Body({ tab, settings, apiKeys, selection, video, onOpenSettings }: Body
         />
       )
     case "ready":
-      break
+      return video.context ? children(transcript, video.context) : <TranscriptSkeleton />
   }
+}
 
-  if (!context) return <TranscriptSkeleton />
-  // All three stay mounted so in-flight chat/summary streams and transcript search/scroll survive
-  // tab switches; inactive ones are hidden (a class, since the panels set their own display).
+interface BodyProps {
+  tab: PanelTab
+  hasKey: boolean
+  settings: Settings
+  selection: ModelSelection
+  video: VideoState
+  onAddKey(): void
+}
+
+function Body({ tab, hasKey, settings, selection, video, onAddKey }: BodyProps) {
+  const noKey = (
+    <EmptyState
+      icon={Key}
+      title="Add a key to get started"
+      description="Your key is stored locally in this extension and sent only to the provider you choose."
+      action={
+        <Button size="sm" onClick={onAddKey}>
+          Add API key
+        </Button>
+      }
+    />
+  )
+  // All three stay mounted so in-flight chat streams and transcript search/scroll survive tab
+  // switches; inactive ones are hidden (a class, since the panels set their own display).
   const pane = (name: PanelTab) => (tab === name ? "contents" : "hidden")
   return (
     <>
       <div className={pane("summary")}>
-        <SummaryPanel context={context} selection={selection} settings={settings} />
+        {hasKey ? (
+          <TranscriptGate video={video}>
+            {(_, context) => (
+              <SummaryPanel context={context} selection={selection} settings={settings} />
+            )}
+          </TranscriptGate>
+        ) : (
+          noKey
+        )}
       </div>
       <div className={pane("transcript")}>
-        <TranscriptPanel transcript={transcript} active={tab === "transcript"} />
+        <TranscriptGate video={video}>
+          {(transcript) => (
+            <TranscriptPanel transcript={transcript} active={tab === "transcript"} />
+          )}
+        </TranscriptGate>
       </div>
       <div className={pane("chat")}>
-        <ChatPanel context={context} selection={selection} language={settings.language} />
+        {hasKey ? (
+          <TranscriptGate video={video}>
+            {(_, context) => (
+              <ChatPanel context={context} selection={selection} language={settings.language} />
+            )}
+          </TranscriptGate>
+        ) : (
+          noKey
+        )}
       </div>
     </>
   )
 }
 
 export function Panel() {
-  const [panelState, setPanelState] = useStorageItem(panelStateItem)
-  const [settings] = useSettings()
+  const nav = usePanelNav()
+  const { open, setOpen, tab, view, setView } = nav
+  const [storedSettings] = useSettings()
   const [apiKeys] = useStorageItem(apiKeysItem)
-  const [showSettings, setShowSettings] = useState(false)
-  const provider = settings?.provider
-  const model = provider ? settings?.models[provider] : undefined
-  const selection = useMemo<ModelSelection | null>(
-    () => (provider && model ? { provider, model } : null),
-    [provider, model],
-  )
-  const video = useVideo(Boolean(panelState?.open))
+  const youtubeTheme = useTheme()
+  const { ms, paused } = usePlayer()
+  const toast = useToast()
+  const container = usePortalContainer()
+  const cardRef = useRef<HTMLDivElement>(null)
+  const video = useVideo(open)
 
-  if (!panelState) return null
+  const settings = storedSettings ?? DEFAULT_SETTINGS
+  const provider = settings.provider
+  const model = settings.models[provider]
+  const selection = useMemo<ModelSelection>(() => ({ provider, model }), [provider, model])
+  const hasKey = Boolean(apiKeys?.[provider])
+  const summary = useSummary(video.context, selection, settings, open && hasKey)
+
+  const dark = settings.theme === "youtube" ? youtubeTheme === "dark" : settings.theme === "dark"
+  // Portaled menus/tooltips render into the shadow container, outside the card.
+  useEffect(() => {
+    container?.classList.toggle("dark", dark)
+    return () => container?.classList.remove("dark")
+  }, [container, dark])
+
+  const { page } = video
+  const videoId = page?.metadata.videoId ?? null
 
   const openSettings = () => {
-    setShowSettings(true)
-    if (!panelState.open) void setPanelState({ ...panelState, open: true })
+    setView("settings")
+    if (!open) setOpen(true)
   }
 
-  const selectTab = (tab: PanelTab) => {
-    setShowSettings(false)
-    void setPanelState({ tab, open: true })
+  const exportMarkdown = () => {
+    if (!page) return
+    const { metadata } = page
+    void Promise.all([summariesItem.getValue(), chatsItem.getValue()]).then(
+      ([summaries, chats]) => {
+        const filename = `${slugify(metadata.title)}.md`
+        const text = exportVideoMarkdown(
+          metadata,
+          summaries[metadata.videoId]?.text,
+          chats[metadata.videoId]?.messages,
+        )
+        downloadText(filename, text)
+        toast(`Saved ${filename}`)
+      },
+    )
   }
 
-  const toggleOpen = () => {
-    void setPanelState({ ...panelState, open: !panelState.open })
+  const showShortcuts = () => {
+    openSettings()
+    requestAnimationFrame(() => {
+      cardRef.current?.querySelector("#shortcuts")?.scrollIntoView({ behavior: "smooth" })
+    })
   }
 
-  const transcriptScrolls =
-    panelState.tab === "transcript" && !showSettings && video.transcript.state === "ready"
+  const status = collapsedStatus({
+    hasKey,
+    transcript: video.transcript.state,
+    summary: summary.status,
+    style: summary.style,
+    momentCount: summary.parsed.moments.length,
+  })
+
+  const author = page ? page.metadata.author : video.videoId === null ? "No video open" : "Loading…"
+  const showMain = open && view === "main"
+  const transcriptScrolls = tab === "transcript" && showMain && video.transcript.state === "ready"
 
   return (
-    <main className="mb-3 flex w-full flex-col gap-2">
-      <Header
-        tab={panelState.tab}
-        open={panelState.open}
-        settingsActive={showSettings}
-        onTabSelect={selectTab}
-        onToggleOpen={toggleOpen}
-        onOpenSettings={openSettings}
-      />
-      {settings && apiKeys && selection ? (
-        // Kept mounted while collapsed so streams and panel state survive; hidden instead.
-        <div
-          className={cn(
-            "max-h-[520px] flex-col rounded-lg border bg-card text-card-foreground",
-            panelState.open ? "flex" : "hidden",
-            transcriptScrolls ? "overflow-hidden" : "overflow-auto",
-          )}
-        >
-          {video.page ? <VideoStrip metadata={video.page.metadata} /> : null}
-          {showSettings ? (
-            <SettingsView
-              settings={settings}
-              apiKeys={apiKeys}
-              onBack={() => setShowSettings(false)}
+    <SummaryProvider value={summary}>
+      <div
+        ref={cardRef}
+        className={cn(
+          "flex flex-col overflow-hidden rounded-[12px] border bg-background text-foreground",
+          open ? "h-[640px]" : "h-auto",
+          TEXT_SIZE_CLASS[settings.textSize],
+          dark && "dark",
+        )}
+      >
+        <Header
+          title={page?.metadata.title ?? "YouTube AI"}
+          author={author}
+          hasVideo={page !== null}
+          ms={ms}
+          paused={paused}
+          open={open}
+          onToggleOpen={() => setOpen(!open)}
+          onOpenSettings={openSettings}
+          moreMenu={
+            <MoreMenu
+              videoId={videoId}
+              ms={ms}
+              onExport={exportMarkdown}
+              onShortcuts={showShortcuts}
             />
-          ) : null}
-          {/* Settings is an alternate view: the body stays mounted underneath, just hidden. */}
-          <div className={showSettings ? "hidden" : "contents"}>
-            <Body
-              tab={panelState.tab}
-              settings={settings}
+          }
+        />
+        {view === "main" || !open ? (
+          <ChapterBar
+            chapters={page?.chapters ?? []}
+            durationSeconds={page?.metadata.durationSeconds ?? 0}
+            ms={ms}
+          />
+        ) : null}
+        {open ? null : <CollapsedRow status={status} onExpand={() => setOpen(true)} />}
+        {open && view !== "main" && storedSettings && apiKeys ? (
+          // Tasks 11–12 replace this with ConnectView (onboarding) and the v3 SettingsView.
+          <div className="min-h-0 flex-1 overflow-auto">
+            <SettingsView
+              settings={storedSettings}
               apiKeys={apiKeys}
+              onBack={() => setView("main")}
+            />
+          </div>
+        ) : null}
+        {/* Kept mounted while collapsed or in settings so streams and panel state survive. */}
+        <div className={showMain ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
+          <TabRow />
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col",
+              transcriptScrolls ? "overflow-hidden" : "overflow-auto",
+            )}
+          >
+            <Body
+              tab={tab}
+              hasKey={hasKey}
+              settings={settings}
               selection={selection}
               video={video}
-              onOpenSettings={openSettings}
+              onAddKey={() => setView("onboarding")}
             />
           </div>
         </div>
-      ) : null}
-    </main>
+      </div>
+    </SummaryProvider>
   )
 }

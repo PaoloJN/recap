@@ -3,7 +3,7 @@ import { Markdown } from "@/components/markdown/Markdown"
 import { Button } from "@/components/ui/button"
 import type { Settings } from "@/lib/storage"
 import type { ModelSelection, VideoContext } from "@/lib/types"
-import { useSummary } from "./useSummary"
+import { useSummaryContext } from "./SummaryContext"
 
 export interface SummaryPanelProps {
   context: VideoContext
@@ -11,9 +11,10 @@ export interface SummaryPanelProps {
   settings: Settings
 }
 
-// Placeholder: Task 8 replaces this with the structured summary UI.
-export function SummaryPanel({ context, selection, settings }: SummaryPanelProps) {
-  const { status, text, error, generate, stop } = useSummary(context, selection, settings, true)
+// Placeholder: Task 8 replaces this with the structured summary UI. State comes from the
+// Panel-level `useSummary` (via SummaryProvider) so there is a single summary request per video.
+export function SummaryPanel(_props: SummaryPanelProps) {
+  const { status, text, error, generate, stop } = useSummaryContext()
 
   return (
     <div className="flex flex-col gap-3 p-4">
