@@ -16,6 +16,7 @@
     "dev": "wxt",
     "build": "wxt build",
     "zip": "wxt zip",
+    "icons": "node scripts/make-icons.mjs",
     "test": "vitest run",
     "check": "biome check .",
     "check:fix": "biome check --write .",
@@ -33,16 +34,13 @@
     "ai": "^7.0.153",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "cmdk": "^1.1.1",
-    "lucide-react": "^1.61.0",
     "nanoid": "^6.0.2",
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "streamdown": "^2.7.1",
     "tailwind-merge": "^3.7.0",
-    "tw-animate-css": "^1.4.0",
-    "use-stick-to-bottom": "^1.1.6"
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",

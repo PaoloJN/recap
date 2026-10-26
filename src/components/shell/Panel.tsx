@@ -14,6 +14,7 @@ import { TranscriptPanel } from "@/components/transcript/TranscriptPanel"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSettings } from "@/hooks/useSettings"
+import { useShortcuts } from "@/hooks/useShortcuts"
 import { useStorageItem } from "@/hooks/useStorageItem"
 import { useTheme } from "@/hooks/useTheme"
 import { useVideo, type VideoState } from "@/hooks/useVideo"
@@ -147,7 +148,7 @@ function Body({ tab, hasKey, video }: BodyProps) {
 
 export function Panel() {
   const nav = usePanelNav()
-  const { open, setOpen, tab, view, setView, goBack } = nav
+  const { open, setOpen, tab, view, setView, goBack, selectTab, requestSearchFocus } = nav
   const [storedSettings] = useSettings()
   const [apiKeys] = useStorageItem(apiKeysItem)
   const youtubeTheme = useTheme()
@@ -160,7 +161,7 @@ export function Panel() {
     setCard(el)
   }, [])
   const video = useVideo(open)
-  const { hasMessages, reset: resetChatDraft } = useChatDraft()
+  const { hasMessages, reset: resetChatDraft, requestFocus } = useChatDraft()
   // A draft, quote or "current moment" belongs to the video it was written for.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the video id changes
   useEffect(() => {
@@ -173,6 +174,27 @@ export function Panel() {
   const selection = useMemo<ModelSelection>(() => ({ provider, model }), [provider, model])
   const hasKey = Boolean(apiKeys?.[provider])
   const summary = useSummary(video.context, selection, settings, open && hasKey)
+
+  const transcriptReady = video.transcript.state === "ready"
+  const openTab = (t: PanelTab) => {
+    setOpen(true)
+    setView("main")
+    selectTab(t)
+  }
+  useShortcuts({
+    "focus-chat": () => {
+      openTab("chat")
+      requestFocus()
+    },
+    summarize: () => {
+      openTab("summary")
+      if (hasKey && transcriptReady) summary.generate({ force: false })
+    },
+    "search-transcript": () => {
+      openTab("transcript")
+      requestSearchFocus()
+    },
+  })
 
   const dark = settings.theme === "youtube" ? youtubeTheme === "dark" : settings.theme === "dark"
   // Portaled menus/tooltips render into the shadow container, outside the card.

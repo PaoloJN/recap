@@ -3,7 +3,11 @@
 import * as React from "react"
 import { usePortalContainer } from "@/components/shell/PortalContainer"
 import { cn } from "@/lib/utils"
-import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
+import {
+  CaretRight as ChevronRightIcon,
+  Check as CheckIcon,
+  Circle as CircleIcon,
+} from "@phosphor-icons/react"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 
 function DropdownMenu({
