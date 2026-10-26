@@ -1,77 +1,59 @@
 {
-  "name": "youtube-ai",
-  "displayName": "Youtube AI",
-  "version": "0.0.1",
-  "description": "A chrome extension that lets you chat with youtube videos",
+  "name": "recap",
+  "displayName": "Recap",
+  "description": "Recap for YouTube: summaries, a searchable transcript and chat about the video, powered by your own OpenAI, Anthropic, Google or OpenRouter key.",
   "author": "Paolo Nessim",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PaoloJN/youtube-ai-extension.git"
+  },
+  "license": "MIT",
+  "private": true,
+  "version": "2.0.0",
+  "packageManager": "pnpm@11.5.2",
+  "type": "module",
   "scripts": {
-    "dev": "plasmo dev",
-    "build": "plasmo build",
-    "package": "plasmo package"
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "icons": "node scripts/make-icons.mjs",
+    "test": "vitest run",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "@plasmohq/messaging": "^0.6.2",
-    "@plasmohq/redux-persist": "^6.1.0",
-    "@plasmohq/storage": "^1.10.0",
-    "@radix-ui/react-collapsible": "^1.0.3",
-    "@radix-ui/react-icons": "^1.3.0",
-    "@radix-ui/react-label": "^2.0.2",
-    "@radix-ui/react-scroll-area": "^1.0.5",
-    "@radix-ui/react-select": "^2.0.0",
-    "@radix-ui/react-slot": "^1.0.2",
-    "@radix-ui/react-tabs": "^1.0.4",
-    "@radix-ui/react-tooltip": "^1.0.7",
-    "@reduxjs/toolkit": "^2.2.3",
-    "@supabase/supabase-js": "^2.43.1",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.0",
-    "jotai": "^2.8.3",
-    "openai": "^4.38.5",
-    "plasmo": "0.85.2",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "react-hotkeys-hook": "^4.5.0",
-    "react-intersection-observer": "^9.10.1",
-    "react-markdown": "^9.0.1",
-    "react-textarea-autosize": "^8.5.3",
-    "redux-persist-webextension-storage": "^1.0.2",
-    "remark-gfm": "^4.0.0",
-    "remark-math": "^6.0.0",
-    "tailwind-merge": "^2.2.2",
-    "tailwindcss-animate": "^1.0.7"
+    "@ai-sdk/anthropic": "^4.0.88",
+    "@ai-sdk/google": "^4.0.105",
+    "@ai-sdk/openai": "^4.0.102",
+    "@ai-sdk/react": "^4.0.157",
+    "@openrouter/ai-sdk-provider": "^3.1.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "@streamdown/cjk": "^1.0.4",
+    "ai": "^7.0.153",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "nanoid": "^6.0.2",
+    "radix-ui": "^1.8.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "streamdown": "^2.7.1",
+    "tailwind-merge": "^3.7.0",
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
-    "@ianvs/prettier-plugin-sort-imports": "4.1.1",
-    "@types/chrome": "0.0.258",
-    "@types/node": "20.11.5",
-    "@types/react": "18.2.48",
-    "@types/react-dom": "18.2.18",
-    "autoprefixer": "^10.4.19",
-    "path-browserify": "^1.0.0",
-    "postcss": "^8.4.38",
-    "prettier": "3.2.4",
-    "process": "^0.11.10",
-    "tailwindcss": "^3.4.3",
-    "typescript": "5.3.3",
-    "url": "^0.11.0"
-  },
-  "manifest": {
-    "key": "$CRX_KEY",
-    "host_permissions": [
-      "https://*/*"
-    ],
-    "web_accessible_resources": [
-      {
-        "resources": [
-          "options.html"
-        ],
-        "matches": [
-          "<all_urls>"
-        ],
-        "extension_ids": [
-          "$CRX_ID"
-        ]
-      }
-    ]
+    "@biomejs/biome": "^2.6.3",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@wxt-dev/module-react": "^1.2.2",
+    "jsdom": "^30.1.3",
+    "sharp": "^0.35.5",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "wxt": "^0.21.4"
   }
 }

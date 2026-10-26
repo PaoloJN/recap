@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="yt-theme.css">
+<style>body { margin: 0; background: #0f0f0f; } a { color: #3ea6ff; text-decoration: none; } a:hover { text-decoration: underline; }</style>
+</helmet>
+<section id="3" class="yt-dark yt-font-youtube" style="padding:56px;background:#0f0f0f;font-family:var(--font-sans);color:var(--fg)">
+  <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px">
+    <div style="display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:16px;background:#0f0f0f;border:1px solid var(--border)"><img src="assets/logo-dark.svg" alt="Logo, dark" style="width:36px;height:36px"></div>
+    <div style="display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:16px;background:#ffffff"><img src="assets/logo-light.svg" alt="Logo, light" style="width:36px;height:36px"></div>
+    <div style="display:flex;flex-direction:column;gap:4px;max-width:640px">
+      <div style="font-size:24px;font-weight:500">YouTube AI panel, v3</div>
+      <div style="font-size:14px;line-height:21px;color:var(--fg-muted);text-wrap:pretty">One less toolbar: summary options live in the tab row, so content starts higher. A chapter progress bar ties the panel to the video. A BYOK flow, a no-key state and a chat start screen that knows what's playing.</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:40px 32px;align-items:flex-start">
+    <sc-for list="{{ dark }}" as="f" hint-placeholder-count="12">
+      <div id="{{ f.id }}" style="display:flex;flex-direction:column;gap:10px;width:400px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--font-mono);font-size:11px;font-weight:500;padding:2px 6px;border-radius:4px;color:#0f0f0f;background:#f1f1f1">{{ f.id }}</span>
+          <span style="font-size:14px;font-weight:500">{{ f.label }}</span>
+        </div>
+        <span style="font-size:12px;line-height:18px;color:var(--fg-muted);min-height:36px">{{ f.note }}</span>
+        <dc-import name="YT Panel v3" scenario="{{ f.scenario }}" initial-tab="{{ f.tab }}" theme="dark" playing="{{ true }}" height="640px" hint-size="400px,640px"></dc-import>
+      </div>
+    </sc-for>
+  </div>
+</section>
+<section id="3-light" class="yt-light yt-font-youtube" style="padding:56px;background:#ffffff;font-family:var(--font-sans);color:var(--fg)">
+  <div style="font-size:24px;font-weight:500;margin-bottom:24px">Light</div>
+  <div style="display:flex;flex-wrap:wrap;gap:40px 32px;align-items:flex-start">
+    <sc-for list="{{ light }}" as="f" hint-placeholder-count="5">
+      <div id="{{ f.id }}" style="display:flex;flex-direction:column;gap:10px;width:400px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--font-mono);font-size:11px;font-weight:500;padding:2px 6px;border-radius:4px;color:#fff;background:#0f0f0f">{{ f.id }}</span>
+          <span style="font-size:14px;font-weight:500">{{ f.label }}</span>
+        </div>
+        <dc-import name="YT Panel v3" scenario="{{ f.scenario }}" theme="light" playing="{{ true }}" height="640px" hint-size="400px,640px"></dc-import>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const D = [
+  ['3a', 'Summary', 'default', 'Options + regenerate moved into the tab row. Lead paragraph is the summary; no redundant heading.'],
+  ['3b', 'Chat: start', 'chat-empty', 'Knows what\u2019s playing. Explain or quote the current line, quick actions, suggestions, and earlier chats.'],
+  ['3c', 'No key yet', 'no-key', 'Summary and chat ask for a key. Transcript stays usable without one.'],
+  ['3d', 'BYOK: connect', 'onboarding', 'Provider list with models, show/hide and Paste on the key field. Try submitting empty.'],
+  ['3e', 'BYOK: rejected', 'byok-invalid', 'Says which provider rejected it and why it usually happens.'],
+  ['3f', 'BYOK: works', 'byok-valid', 'Confirms and shows the models the key can reach.'],
+  ['3g', 'Chat', 'chat', 'Answers cite timestamps; follow-ups under the last reply.'],
+  ['3h', 'Chat: quoting a line', 'chat-quote', 'Hover a transcript line → Ask, or Quote it from the start screen.'],
+  ['3i', 'Transcript', 'transcript-search', 'Chapters, filler words stripped, match stepping.'],
+  ['3j', 'Settings', 'settings', 'Adds Usage: spend this month and a monthly limit.'],
+  ['3k', 'Summary: generating', 'summary-loading', ''],
+  ['3l', 'Collapsed', 'collapsed', 'Chapter bar stays visible.']
+];
+const L = [['3m', 'Summary', 'default'], ['3n', 'Chat: start', 'chat-empty'], ['3o', 'No key yet', 'no-key'], ['3p', 'BYOK: connect', 'onboarding'], ['3q', 'Settings', 'settings']];
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      dark: D.map(([id, label, scenario, note]) => ({ id, label, scenario, note })),
+      light: L.map(([id, label, scenario]) => ({ id, label, scenario }))
+    };
+  }
+}
+</script>
+</body>
+</html>

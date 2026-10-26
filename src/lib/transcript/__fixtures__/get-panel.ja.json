@@ -1,0 +1,390 @@
+{
+  "content": {
+    "engagementPanelSectionListRenderer": {
+      "content": {
+        "sectionListRenderer": {
+          "contents": [
+            {
+              "itemSectionRenderer": {
+                "contents": [
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:01",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "宇宙の有限な領域 例えば観測可能な宇宙には 有限のエネルギーがある",
+                                "timestamp": "0:01",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 33,
+                                "timestampA11yLabel": "1 second"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 0,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=pcD9vh1jtBE&t=1s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "pcD9vh1jtBE",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 1
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:09",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "それを運ぶのは有限の粒子だ 有限の粒子は 有限に多くのパターンで 配列されうる",
+                                "timestamp": "0:09",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 39,
+                                "timestampA11yLabel": "9 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 1,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=pcD9vh1jtBE&t=9s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "pcD9vh1jtBE",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 9
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:22",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "粒子の配列パターンは 多大にあるが有限だ 宇宙の広さが無限なら",
+                                "timestamp": "0:22",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 31,
+                                "timestampA11yLabel": "22 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 2,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=pcD9vh1jtBE&t=22s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "pcD9vh1jtBE",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 22
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:30",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "配列を繰り返す必要がある つまり我々のコピーが 存在する",
+                                "timestamp": "0:30",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 28,
+                                "timestampA11yLabel": "30 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 3,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=pcD9vh1jtBE&t=30s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "pcD9vh1jtBE",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 30
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:42",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "我々のコピー 無限のコピーが 存在する 無限のコピー 我々が 無限に多く 宇宙にいる",
+                                "timestamp": "0:42",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 42,
+                                "timestampA11yLabel": "42 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 4,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=pcD9vh1jtBE&t=42s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "pcD9vh1jtBE",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 42
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:51",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "同じ事を コピーしてる コピーは生き いつかコピーは死ぬ",
+                                "timestamp": "0:51",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 28,
+                                "timestampA11yLabel": "51 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 5,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=pcD9vh1jtBE&t=51s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "pcD9vh1jtBE",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 51
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "0:57",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "あらゆる事が 無限に何度も起きる 突然 荒野に… 地球があって… 人と違う…",
+                                "timestamp": "0:57",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 38,
+                                "timestampA11yLabel": "57 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 6,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=pcD9vh1jtBE&t=57s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "pcD9vh1jtBE",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 57
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "1:05",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "〝ノットフリックス〞 こうして話をしてる 場所 暑くなくて エアコンが効いてる 無限のコピーでは",
+                                "timestamp": "1:05",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 48,
+                                "timestampA11yLabel": "1 minute, 5 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 7,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=pcD9vh1jtBE&t=65s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "pcD9vh1jtBE",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 65
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "1:13",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "突然 ゾウが目の前に現れる 同じ地球だが歴史が違うかも ヒラリーが大統領で ドイツが勝つ 〝ヒラリー勝利〞",
+                                "timestamp": "1:13",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 53,
+                                "timestampA11yLabel": "1 minute, 13 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 8,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=pcD9vh1jtBE&t=73s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "pcD9vh1jtBE",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 73
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "macroMarkersPanelItemViewModel": {
+                      "item": {
+                        "timelineItemViewModel": {
+                          "timestamp": "1:21",
+                          "contentItems": [
+                            {
+                              "transcriptSegmentViewModel": {
+                                "simpleText": "ヒラリーが大統領で ドイツが勝つ",
+                                "timestamp": "1:21",
+                                "timestampUtf16Length": 4,
+                                "textUtf16Length": 16,
+                                "timestampA11yLabel": "1 minute, 21 seconds"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "index": 9,
+                      "panelId": "PAmodern_transcript_view",
+                      "onTap": {
+                        "innertubeCommand": {
+                          "commandMetadata": {
+                            "webCommandMetadata": {
+                              "url": "/watch?v=pcD9vh1jtBE&t=81s",
+                              "webPageType": "WEB_PAGE_TYPE_WATCH"
+                            }
+                          },
+                          "watchEndpoint": {
+                            "videoId": "pcD9vh1jtBE",
+                            "continuePlayback": true,
+                            "startTimeSeconds": 81
+                          }
+                        }
+                      }
+                    }
+                  }
+                ],
+                "sectionIdentifier": "timeline_view_section0"
+              }
+            }
+          ],
+          "targetId": "PAmodern_transcript_view"
+        }
+      }
+    }
+  }
+}

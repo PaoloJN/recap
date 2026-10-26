@@ -1,95 +1,80 @@
-<img width="1980" alt="Screenshot 2023-10-29 at 13 39 22" src="assets/screen.png">
+# Recap
 
-<h1 align="center">YouTube AI Extension</h1>
+Recap for YouTube: summaries, a searchable transcript and chat about the video, in the sidebar, powered by your own OpenAI, Anthropic, Google or OpenRouter key.
 
-<p align="center">
-  <strong>🚀 Big update coming June 10, 2025! 🚀</strong><br/>
-  A new version is on the way with powerful new features, a streamlined install process, and an official release on the Chrome Web Store.
-</p>
-
-
-<p align="center" style="padding: 20px 0;">
-YouTube Chat Extension allows you to chat directly with YouTube videos, providing a unique interactive experience.
-</p>
-
-
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=d35tmCKP4ds&ab_channel=PaoloNessim"><strong>Demo Video</strong></a> ·
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#roadmap"><strong>Roadmap</strong></a> ·
-  <a href="#installation"><strong>Installation</strong></a> ·
-  <a href="#acknowledgments"><strong>Acknowledgments</strong></a>
-</p>
-<br/>
+![Screenshot](assets/screenshot.png)
 
 ## Features
 
-- Seamlessly chat with YouTube videos in real-time.
-- Get video summaries, ask questions, and receive detailed explanations.
-- User-friendly interface integrated directly into YouTube.
-- Support for multiple languages and context-aware responses.
+- Structured summary with key moments, notes, a plain-terms paragraph and a "current moment" marker that follows playback. Styles: Detailed, TL;DR and Key moments.
+- Chapter bar under the header, synced to playback. Click a segment to jump. Videos without chapters get a single bar.
+- Transcript that works without a key: search, follow playback, click to jump, chapter headers, copy.
+- Chat with quotes from the transcript, a "Current moment" toggle, citation chips that seek the video, and per-video history.
+- Starter questions generated from the summary.
+- Bring your own key for OpenAI, Anthropic, Google or OpenRouter, with a model picker. The key is tested in the panel before it is saved.
+- Usage counters for the month (tokens, summaries, chats).
+- Auto-summarize (off by default), filler-word stripping, answer language and custom instructions.
+- Text size (S, M, L) and theme (follow YouTube, dark or light).
+- Export a video's summary and chat as Markdown, or all chats in one file.
+- Shortcuts: `Alt+Y` toggle panel, `Alt+C` focus chat, `Alt+S` summarize, `Alt+F` search transcript. `Alt+Y` can be rebound at `chrome://extensions/shortcuts`.
 
-## Roadmap
+## Install
 
-- **June 10, 2025**: Major update with new features and official Chrome Web Store release.
+From a release:
 
-## Installation
+1. Download the zip from the [latest GitHub Release](https://github.com/PaoloJN/youtube-ai-extension/releases/latest).
+2. Unzip it.
+3. Open `chrome://extensions` and turn on Developer mode.
+4. Click Load unpacked and select the unzipped folder.
 
-To install and run the YouTube Chat Extension locally, follow these steps:
+Or build from source, as described under Development, and load `.output/chrome-mv3` the same way.
 
-1. Clone the repository:
+## Setup
 
-   ```bash
-   git clone https://github.com/PaoloJN/youtube-ai-extension.git
+1. Open a YouTube video. The card shows "Add a key".
+2. Click Add API key and pick a provider.
+3. Paste your key and click Test key.
+4. Click Save and continue.
 
-   cd youtube-chat-extension
-   ```
+Get a key here:
 
-2. Add your OpenAI API key. Replace `YOUR_API_KEY` with your actual key in the files `chat.ts` and `completion.ts`
+- OpenAI: https://platform.openai.com/api-keys
+- Anthropic: https://platform.claude.com/settings/keys
+- Google: https://aistudio.google.com/apikey
+- OpenRouter: https://openrouter.ai/settings/keys
 
-   ```typescript
-   const openai = new OpenAI({
-     apiKey: "YOUR_API_KEY"
-   })
-   ```
+The transcript tab works without a key.
 
-3. Install the dependencies and build the project:
+## Privacy
 
-   ```bash
-   pnpm install
-   pnpm run build
-   ```
+- Your key is stored in `chrome.storage.local` on your device and sent only to the provider you pick.
+- Requests go only to YouTube and the provider you chose. There is no server of ours in between.
+- No analytics, no telemetry, no tracking.
+- Transcripts come from YouTube's own transcript feature. It is undocumented and may change. If it breaks, the panel shows "no transcript".
 
-4. Load the extension into Chrome:
+## Development
 
-   1. Open Chrome and navigate to `chrome://extensions/`.
-   2. Enable "Developer mode" by toggling the switch in the top right corner.
-   3. Click "Load unpacked" and select the `build/chrome-mv3-dev` directory from the project you just built.
+```sh
+pnpm install
+pnpm dev        # run the extension with hot reload
+pnpm test       # unit tests
+pnpm check      # lint and format (Biome)
+pnpm typecheck
+pnpm build
+pnpm zip        # package into .output/
+pnpm icons      # regenerate extension icons
+```
 
-5. Open YouTube and start chatting with videos! :)
+## Tech stack
 
-> The extension does not support the new YouTube layout. To revert to the old layout, use the uBlock Origin extension. The extension should then work correctly.
-
-
+- [WXT](https://wxt.dev) for the extension framework
+- React 19 and TypeScript
+- Tailwind CSS v4 and shadcn/ui
+- Phosphor icons
+- Vercel AI SDK and Streamdown
+- Biome for lint and format
+- Vitest for tests
 
 ## License
 
-This project is licensed under the **[AGPL-3.0](https://opensource.org/licenses/AGPL-3.0)** for non-commercial use. 
-
-### Commercial Use
-
-For commercial use or deployments requiring a setup fee, please contact us
-for a commercial license at [paolo.j.nessim@gmail.com](mailto:paolo.j.nessim@gmail.com).
-
-By using this software, you agree to the terms of the license.
-
-## Acknowledgments
-
-This project wouldn't be possible without the following resources:
-
-- [OpenAI API](https://openai.com/api/)
-- [React](https://reactjs.org)
-- [Tailwind CSS](https://tailwindcss.com)
-- [Plasmo Extension](https://www.plasmo.com)
-- [Chrome Extension Documentation](https://developer.chrome.com/docs/extensions/)
-
+See [LICENSE](LICENSE).

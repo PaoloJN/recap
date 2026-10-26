@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="yt-theme.css">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>body { margin: 0; } a { color: var(--info); text-decoration: none; } a:hover { text-decoration: underline; }</style>
+</helmet>
+<div class="{{ rootClass }}" style="position:relative;width:100%;height:{{ panelH }};box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:12px;font-family:var(--font-sans);-webkit-font-smoothing:antialiased">
+  <sc-if value="{{ anyMenu }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeMenu }}" style="position:absolute;inset:0;z-index:20"></div>
+  </sc-if>
+
+  <sc-if value="{{ isMainHead }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 8px 12px 16px">
+      <div style="width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--fg)"><svg width="22" height="22" viewBox="0 0 90 90" fill="currentColor" style="display:block;flex-shrink:0"><path d="M0 30H30V90H0V30Z"></path><path d="M60 60H90V90H60V60Z"></path><path d="M90 0L30 60H60V34H90V0Z"></path><path d="M30 0H60V30H30V0Z"></path></svg></div>
+      <div onClick="{{ expandIfCollapsed }}" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;cursor:default">
+        <div style="font-size:14px;font-weight:500;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg)">{{ headTitle }}</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;line-height:16px;color:var(--fg-muted);white-space:nowrap;overflow:hidden">
+          <sc-if value="{{ hasVideo }}" hint-placeholder-val="{{ true }}">
+            <i class="{{ playIcon }}" style="font-size:10px"></i>
+            <span style="font-family:var(--font-mono);font-size:11px">{{ timeLabel }}</span>
+            <span style="color:var(--fg-subtle)">·</span>
+          </sc-if>
+          <span style="overflow:hidden;text-overflow:ellipsis">{{ headSub }}</span>
+        </div>
+      </div>
+      <button onClick="{{ openSettings }}" title="Settings" style="width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)">
+        <i class="ph ph-gear-six" style="font-size:18px"></i>
+      </button>
+      <div style="position:relative">
+        <button onClick="{{ openMore }}" title="More" style="width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)">
+          <i class="ph ph-dots-three-vertical" style="font-size:18px"></i>
+        </button>
+        <sc-if value="{{ moreMenu }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:calc(100% + 4px);right:0;z-index:30;width:244px;padding:8px 0;background:var(--popover);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-pop)">
+            <sc-for list="{{ moreItems }}" as="mi" hint-placeholder-count="4">
+              <button onClick="{{ mi.onClick }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:8px 16px;text-align:left;font-family:var(--font-sans);font-size:14px;color:var(--fg);background:transparent;border:0;cursor:pointer" style-hover="background:var(--secondary)">
+                <i class="{{ mi.icon }}" style="font-size:18px;color:var(--fg-muted)"></i>
+                <span style="flex:1">{{ mi.label }}</span>
+                <span style="font-family:var(--font-mono);font-size:11px;color:var(--fg-subtle)">{{ mi.kbd }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <button onClick="{{ toggleCollapse }}" title="{{ collapseTitle }}" style="width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)">
+        <i class="{{ collapseIcon }}" style="font-size:18px"></i>
+      </button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showProgress }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;gap:3px;padding:0 16px 8px">
+      <sc-for list="{{ segs }}" as="sg" hint-placeholder-count="5">
+        <div onClick="{{ sg.onClick }}" title="{{ sg.title }}" style="flex:{{ sg.w }};padding:4px 0;cursor:pointer">
+          <div style="height:3px;border-radius:2px;background:var(--muted);overflow:hidden"><div style="height:100%;width:{{ sg.fill }};background:#ff0033"></div></div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSettingsHead }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 16px 12px 8px;border-bottom:1px solid var(--border)">
+      <button onClick="{{ closeSettings }}" title="Back" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg);cursor:pointer" style-hover="background:var(--bg-overlay)">
+        <i class="ph ph-arrow-left" style="font-size:18px"></i>
+      </button>
+      <div style="flex:1;font-size:16px;font-weight:500">Settings</div>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--fg-subtle)">v2.0.0</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCollapsed }}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{ toggleCollapse }}" style="display:flex;align-items:center;gap:8px;margin:0 12px 12px;padding:8px 12px;text-align:left;font-family:var(--font-sans);font-size:13px;color:var(--card-foreground);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--muted)">
+      <i class="ph-fill ph-check-circle" style="font-size:16px;color:var(--success)"></i>
+      <span style="flex:1">Summary ready · 5 key moments</span>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--fg-subtle)">⌥ Y</span>
+    </button>
+  </sc-if>
+
+  <sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:center;gap:8px;padding:0 10px 12px 16px;border-bottom:1px solid var(--border)">
+      <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="3">
+        <sc-if value="{{ tab.on }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ tab.onClick }}" style="height:32px;padding:0 12px;font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--accent-fg);background:var(--accent);border:0;border-radius:8px;cursor:pointer">{{ tab.label }}</button>
+        </sc-if>
+        <sc-if value="{{ tab.off }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ tab.onClick }}" style="height:32px;padding:0 12px;font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer;transition:background 150ms cubic-bezier(0.2,0,0,1)" style-hover="background:var(--muted)">{{ tab.label }}</button>
+        </sc-if>
+      </sc-for>
+      <div style="flex:1"></div>
+      <sc-if value="{{ isSummaryTab }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center">
+          <button onClick="{{ generate }}" title="Regenerate" style="width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)"><i class="ph ph-arrow-clockwise" style="font-size:17px"></i></button>
+          <div style="position:relative">
+            <button onClick="{{ openOpts }}" title="Summary options" style="width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)"><i class="ph ph-sliders-horizontal" style="font-size:17px"></i></button>
+            <sc-if value="{{ optsMenu }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;top:calc(100% + 4px);right:0;z-index:30;width:252px;padding:8px 0;background:var(--popover);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-pop)">
+                <div style="padding:4px 16px 6px;font-size:12px;color:var(--fg-subtle)">Style</div>
+                <sc-for list="{{ styleOpts }}" as="o" hint-placeholder-count="3">
+                  <button onClick="{{ o.pick }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:8px 16px;text-align:left;font-family:var(--font-sans);background:transparent;border:0;color:var(--fg);cursor:pointer" style-hover="background:var(--secondary)">
+                    <i class="ph ph-check" style="font-size:16px;visibility:{{ o.check }}"></i>
+                    <div style="flex:1;display:flex;flex-direction:column">
+                      <span style="font-size:14px">{{ o.name }}</span>
+                      <span style="font-size:12px;color:var(--fg-muted)">{{ o.note }}</span>
+                    </div>
+                  </button>
+                </sc-for>
+                <div style="height:1px;background:var(--border);margin:8px 0"></div>
+                <div style="padding:4px 16px 6px;font-size:12px;color:var(--fg-subtle)">Model</div>
+                <sc-for list="{{ modelOpts }}" as="o" hint-placeholder-count="3">
+                  <button onClick="{{ o.pick }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:8px 16px;text-align:left;font-family:var(--font-sans);background:transparent;border:0;color:var(--fg);cursor:pointer" style-hover="background:var(--secondary)">
+                    <i class="ph ph-check" style="font-size:16px;visibility:{{ o.check }}"></i>
+                    <div style="flex:1;display:flex;flex-direction:column">
+                      <span style="font-size:14px">{{ o.name }}</span>
+                      <span style="font-size:12px;color:var(--fg-muted)">{{ o.note }}</span>
+                    </div>
+                  </button>
+                </sc-for>
+                <div style="height:1px;background:var(--border);margin:8px 0"></div>
+                <button onClick="{{ openSettings }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:8px 16px;text-align:left;font-family:var(--font-sans);font-size:14px;background:transparent;border:0;color:var(--fg);cursor:pointer" style-hover="background:var(--secondary)">
+                  <i class="ph ph-pencil-simple" style="font-size:16px;color:var(--fg-muted)"></i><span>Custom prompt…</span>
+                </button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ showNewChat }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ newChat }}" title="New chat" style="height:32px;display:flex;align-items:center;gap:6px;padding:0 10px;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--fg-muted);background:transparent;border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)">
+          <i class="ph ph-note-pencil" style="font-size:16px"></i><span>New</span>
+        </button>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showBody }}" hint-placeholder-val="{{ true }}">
+    <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column">
+
+      <sc-if value="{{ isSummary }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:16px">
+          <sc-if value="{{ sumIdle }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:16px;padding:24px 4px">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:16px;font-weight:500;color:var(--fg)">Summarize this video</div>
+                <div style="font-size:14px;line-height:21px;color:var(--fg-muted);text-wrap:pretty">13 transcript segments, 3:42 long. Takes about 5s with {{ modelName }}.</div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button onClick="{{ generate }}" style="height:36px;display:flex;align-items:center;gap:8px;padding:0 16px;font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--accent-fg);background:var(--accent);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--accent-hover)">
+                  <i class="ph-fill ph-sparkle" style="font-size:16px"></i>
+                  <span>Generate summary</span>
+                </button>
+                <button onClick="{{ goChat }}" style="height:36px;display:flex;align-items:center;gap:8px;padding:0 14px;font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--muted)">Just chat</button>
+              </div>
+              <div style="font-size:12px;color:var(--fg-subtle)">Turn on auto-summarize in settings to skip this step.</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ sumLoading }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:24px">
+              <div style="display:flex;flex-direction:column;gap:12px;padding:14px 16px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px">
+                <sc-for list="{{ loadSteps }}" as="st" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+                    <span style="width:16px;height:16px;display:flex;align-items:center;justify-content:center">
+                      <sc-if value="{{ st.done }}" hint-placeholder-val="{{ false }}"><i class="ph-bold ph-check" style="font-size:14px;color:var(--success)"></i></sc-if>
+                      <sc-if value="{{ st.active }}" hint-placeholder-val="{{ false }}">{{ spinner }}</sc-if>
+                      <sc-if value="{{ st.pending }}" hint-placeholder-val="{{ true }}"><i class="ph ph-circle" style="font-size:14px;color:var(--fg-subtle)"></i></sc-if>
+                    </span>
+                    <span style="color:{{ st.color }}">{{ st.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              {{ skeleton }}
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ sumError }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--danger-soft);border-radius:12px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <i class="ph-fill ph-warning-circle" style="font-size:18px;color:var(--danger)"></i>
+                <span style="font-size:14px;font-weight:500;color:var(--fg)">Can't reach {{ providerName }}</span>
+              </div>
+              <div style="font-size:14px;line-height:21px;color:var(--card-foreground);text-wrap:pretty">Your key returned 429 — out of credits or rate-limited. I'll retry in 5s, or switch to another model.</div>
+              <div style="display:flex;gap:8px">
+                <button onClick="{{ generate }}" style="height:32px;padding:0 14px;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--accent-fg);background:var(--accent);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--accent-hover)">Retry now</button>
+                <button onClick="{{ openOpts }}" style="height:32px;padding:0 14px;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--muted)">Switch model</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ sumNoCaptions }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:16px;padding:24px 4px">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:16px;font-weight:500;color:var(--fg)">This video has no captions</div>
+                <div style="font-size:14px;line-height:21px;color:var(--fg-muted);text-wrap:pretty">I need a transcript to summarize it. I can transcribe the audio — about 40s for a 4-minute video.</div>
+              </div>
+              <sc-if value="{{ tNone }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ transcribe }}" style="align-self:flex-start;height:36px;display:flex;align-items:center;gap:8px;padding:0 16px;font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--accent-fg);background:var(--accent);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--accent-hover)">
+                  <i class="ph ph-waveform" style="font-size:16px"></i>
+                  <span>Transcribe audio</span>
+                </button>
+              </sc-if>
+              <sc-if value="{{ tTranscribing }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--fg-muted)"><span>Transcribing audio…</span><span style="font-family:var(--font-mono)">{{ pctLabel }}</span></div>
+                  <div style="height:4px;border-radius:2px;background:var(--bg-overlay);overflow:hidden"><div style="height:100%;width:{{ pctLabel }};background:var(--info);transition:width 80ms linear"></div></div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ sumDone }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:24px">
+              <sc-if value="{{ showTldr }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <p style="margin:0;font-size:{{ leadFs }};line-height:{{ leadLh }};color:var(--fg);text-wrap:pretty">Next.js 14 can prerender a static shell for any route and stream the dynamic parts into it in the same request. No new APIs — the split comes from the Suspense boundaries you already write.</p>
+                </div>
+              </sc-if>
+              <sc-if value="{{ showMoments }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;padding-bottom:4px">
+                    <span style="font-size:13px;font-weight:500;color:var(--fg-muted)">Key moments</span>
+                    <span style="font-size:12px;color:var(--fg-subtle)">Click to jump</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;margin:0 -8px">
+                    <sc-for list="{{ moments }}" as="m" hint-placeholder-count="5">
+                      <button onClick="{{ m.onClick }}" style="display:grid;grid-template-columns:44px minmax(0,1fr);align-items:baseline;gap:8px;padding:8px;text-align:left;font-family:var(--font-sans);background:{{ m.bg }};border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--bg-overlay)">
+                        <span style="font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--info)">{{ m.time }}</span>
+                        <span style="font-size:{{ fs }};line-height:{{ lh }};color:{{ m.color }};text-wrap:pretty">{{ m.text }}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ showDetail }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <div style="font-size:13px;font-weight:500;color:var(--fg-muted)">Notes</div>
+                  <sc-for list="{{ notes }}" as="n" hint-placeholder-count="4">
+                    <div style="display:grid;grid-template-columns:14px minmax(0,1fr);gap:4px">
+                      <span style="width:4px;height:4px;margin-top:9px;border-radius:50%;background:var(--fg-subtle)"></span>
+                      <span style="font-size:{{ fs }};line-height:{{ lh }};color:var(--card-foreground);text-wrap:pretty">{{ n }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;padding:12px 14px;background:var(--bg-overlay);border-radius:12px">
+                  <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--fg)">
+                    <i class="ph ph-lightbulb" style="font-size:16px;color:var(--fg-muted)"></i>
+                    <span>In plain terms</span>
+                  </div>
+                  <p style="margin:0;font-size:{{ fs }};line-height:{{ lh }};color:var(--card-foreground);text-wrap:pretty">A building where the frame goes up ahead of time and the furniture arrives with the tenant. You walk in right away; the personal bits fill in around you.</p>
+                </div>
+              </sc-if>
+              <div style="display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--border)">
+                <div style="display:flex;align-items:center;gap:2px">
+                  <span style="font-size:12px;color:var(--fg-muted);margin-right:4px">Useful?</span>
+                  <button onClick="{{ fbUp }}" title="Yes" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:{{ upColor }};cursor:pointer" style-hover="background:var(--bg-overlay)">
+                    <i class="{{ upIcon }}" style="font-size:16px"></i>
+                  </button>
+                  <button onClick="{{ fbDown }}" title="No" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:{{ downColor }};cursor:pointer" style-hover="background:var(--bg-overlay)">
+                    <i class="{{ downIcon }}" style="font-size:16px"></i>
+                  </button>
+                  <button onClick="{{ copySummary }}" title="Copy as Markdown" style="width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)"><i class="ph ph-copy" style="font-size:16px"></i></button>
+                  <div style="flex:1"></div>
+                  <button onClick="{{ askFollowUp }}" style="height:32px;display:flex;align-items:center;gap:6px;padding:0 12px;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--muted)">
+                    <i class="ph ph-chat-circle" style="font-size:16px"></i>
+                    <span>Ask a follow-up</span>
+                  </button>
+                </div>
+                <span style="font-size:11px;color:var(--fg-subtle)">{{ summaryMeta }}</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isGate }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:28px 20px;display:flex;flex-direction:column;gap:20px">
+          <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--bg-overlay)"><i class="ph ph-key" style="font-size:22px;color:var(--fg)"></i></div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:18px;font-weight:500">Add a key to {{ gateVerb }}</div>
+            <div style="font-size:14px;line-height:21px;color:var(--fg-muted);text-wrap:pretty">This runs on your own API key. No account, no subscription — you pay OpenAI, Anthropic, Google or OpenRouter directly.</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <sc-for list="{{ gateRows }}" as="g" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <i class="{{ g.icon }}" style="font-size:18px;color:var(--fg-muted)"></i>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px">{{ g.title }}</span>
+                  <span style="font-size:12px;color:var(--fg-muted)">{{ g.note }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onClick="{{ openOnboarding }}" style="height:36px;display:flex;align-items:center;gap:8px;padding:0 16px;font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--accent-fg);background:var(--accent);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--accent-hover)"><i class="ph ph-key" style="font-size:16px"></i><span>Add API key</span></button>
+            <button onClick="{{ goTranscript }}" style="height:36px;display:flex;align-items:center;gap:8px;padding:0 14px;font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--muted)">Open transcript</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isTranscript }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ tOk }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:8px;padding:12px 16px 8px">
+            <div style="position:relative;flex:1;min-width:0">
+              <i class="ph ph-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--fg-muted);pointer-events:none"></i>
+              <input value="{{ query }}" onChange="{{ onQuery }}" onKeyDown="{{ onSearchKey }}" placeholder="Search transcript" style="width:100%;box-sizing:border-box;height:36px;padding:0 {{ searchPadR }} 0 36px;font-family:var(--font-sans);font-size:14px;color:var(--fg);background:var(--bg-inset);border:1px solid var(--border-strong);border-radius:8px;outline:none" style-focus="border-color:var(--ring)">
+              <sc-if value="{{ hasQuery }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:0">
+                  <span style="font-family:var(--font-mono);font-size:11px;color:var(--fg-muted);padding:0 4px">{{ matchLabel }}</span>
+                  <button onClick="{{ prevMatch }}" title="Previous" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)"><i class="ph ph-caret-up" style="font-size:14px"></i></button>
+                  <button onClick="{{ nextMatch }}" title="Next" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)"><i class="ph ph-caret-down" style="font-size:14px"></i></button>
+                  <button onClick="{{ clearQuery }}" title="Clear" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)"><i class="ph ph-x" style="font-size:14px"></i></button>
+                </div>
+              </sc-if>
+            </div>
+            <sc-if value="{{ follow }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ toggleFollow }}" title="Following playback" style="height:36px;display:flex;align-items:center;gap:6px;padding:0 12px;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--accent-fg);background:var(--accent);border:0;border-radius:8px;cursor:pointer">
+                <i class="ph ph-crosshair-simple" style="font-size:16px"></i><span>Follow</span>
+              </button>
+            </sc-if>
+            <sc-if value="{{ notFollow }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ toggleFollow }}" title="Follow playback" style="height:36px;display:flex;align-items:center;gap:6px;padding:0 12px;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--muted)">
+                <i class="ph ph-crosshair-simple" style="font-size:16px"></i><span>Follow</span>
+              </button>
+            </sc-if>
+            <button onClick="{{ copyTranscript }}" title="Copy transcript" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)">
+              <i class="ph ph-copy" style="font-size:18px"></i>
+            </button>
+          </div>
+          <div ref="{{ tRef }}" onWheel="{{ onTranscriptWheel }}" style="position:relative;flex:1;min-height:0;overflow-y:auto;padding:0 8px 56px">
+            <sc-for list="{{ items }}" as="it" hint-placeholder-count="8">
+              <sc-if value="{{ it.isChapter }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:baseline;gap:8px;padding:16px 8px 6px">
+                  <span style="font-size:13px;font-weight:500;color:var(--fg)">{{ it.title }}</span>
+                  <span style="font-family:var(--font-mono);font-size:11px;color:var(--fg-subtle)">{{ it.time }}</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ it.isLine }}" hint-placeholder-val="{{ true }}">
+                <div data-active="{{ it.activeStr }}" data-match="{{ it.matchStr }}" onClick="{{ it.onClick }}" onMouseEnter="{{ it.onEnter }}" onMouseLeave="{{ it.onLeave }}" style="position:relative;display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;padding:8px;border-radius:8px;cursor:pointer;background:{{ it.bg }}">
+                  <span style="font-family:var(--font-mono);font-size:12px;line-height:{{ lh }};color:{{ it.timeColor }}">{{ it.time }}</span>
+                  <span style="font-size:{{ fs }};line-height:{{ lh }};color:{{ it.textColor }};text-wrap:pretty">
+                    <sc-for list="{{ it.parts }}" as="p" hint-placeholder-count="1">
+                      <span style="background:{{ p.bg }};color:{{ p.color }};border-radius:3px">{{ p.text }}</span>
+                    </sc-for>
+                  </span>
+                  <sc-if value="{{ it.hovered }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;right:6px;top:4px;display:flex;gap:2px;padding:2px;background:var(--popover);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-pop)">
+                      <button onClick="{{ it.onAsk }}" style="height:26px;display:flex;align-items:center;gap:4px;padding:0 8px;font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--fg);background:transparent;border:0;border-radius:6px;cursor:pointer" style-hover="background:var(--secondary)">
+                        <i class="ph ph-chat-circle" style="font-size:14px"></i><span>Ask</span>
+                      </button>
+                      <button onClick="{{ it.onCopy }}" title="Copy line" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:var(--fg-muted);background:transparent;border:0;border-radius:6px;cursor:pointer" style-hover="background:var(--secondary);color:var(--fg)">
+                        <i class="ph ph-copy" style="font-size:14px"></i>
+                      </button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </sc-for>
+            <sc-if value="{{ noMatches }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:40px 16px;text-align:center;font-size:13px;color:var(--fg-muted)">Nothing matches “{{ query }}”.</div>
+            </sc-if>
+          </div>
+          <sc-if value="{{ showJump }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ jumpNow }}" style="position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:10;height:36px;display:flex;align-items:center;gap:6px;padding:0 14px;white-space:nowrap;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--accent-fg);background:var(--accent);border:0;border-radius:8px;box-shadow:var(--shadow-pop);cursor:pointer" style-hover="background:var(--accent-hover)">
+              <i class="ph ph-arrow-down" style="font-size:14px"></i>
+              <span>Back to {{ timeLabel }}</span>
+            </button>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{ tNotOk }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:24px 20px">
+            <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--bg-overlay)">
+              <i class="ph ph-closed-captioning" style="font-size:22px;color:var(--fg-muted)"></i>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="font-size:16px;font-weight:500">No captions on this video</div>
+              <div style="font-size:14px;line-height:21px;color:var(--fg-muted);text-wrap:pretty">The creator didn't upload any, and YouTube didn't auto-generate them. I can transcribe the audio — about 40s.</div>
+            </div>
+            <sc-if value="{{ tNone }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ transcribe }}" style="align-self:flex-start;height:36px;display:flex;align-items:center;gap:8px;padding:0 16px;font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--accent-fg);background:var(--accent);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--accent-hover)">
+                <i class="ph ph-waveform" style="font-size:16px"></i><span>Transcribe audio</span>
+              </button>
+            </sc-if>
+            <sc-if value="{{ tTranscribing }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--fg-muted)"><span>Transcribing audio…</span><span style="font-family:var(--font-mono)">{{ pctLabel }}</span></div>
+                <div style="height:4px;border-radius:2px;background:var(--bg-overlay);overflow:hidden"><div style="height:100%;width:{{ pctLabel }};background:var(--info);transition:width 80ms linear"></div></div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}">
+        <div ref="{{ cRef }}" style="flex:1;min-height:0;overflow-y:auto;padding:16px">
+          <sc-if value="{{ chatEmpty }}" hint-placeholder-val="{{ true }}">
+            <div style="min-height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font-size:16px;font-weight:500;color:var(--fg)">Ask about this video</div>
+                <div style="font-size:13px;line-height:19px;color:var(--fg-muted)">Answers link to the moment they came from.</div>
+              </div>
+              <div style="display:flex;flex-direction:column;margin:0 -8px">
+                <button onClick="{{ explainNow }}" style="display:flex;align-items:center;gap:10px;padding:9px 8px;text-align:left;font-family:var(--font-sans);font-size:14px;color:var(--card-foreground);background:transparent;border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)">
+                  <i class="ph ph-clock" style="font-size:15px;color:var(--info)"></i>
+                  <span style="flex:1">Explain what's happening at <span style="font-family:var(--font-mono);font-size:13px;color:var(--info)">{{ timeLabel }}</span></span>
+                </button>
+                <sc-for list="{{ suggestions }}" as="sg" hint-placeholder-count="3">
+                  <button onClick="{{ sg.onClick }}" style="display:flex;align-items:center;gap:10px;padding:9px 8px;text-align:left;font-family:var(--font-sans);font-size:14px;color:var(--card-foreground);background:transparent;border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)">
+                    <i class="ph ph-arrow-bend-down-right" style="font-size:15px;color:var(--fg-subtle)"></i>
+                    <span style="flex:1">{{ sg.text }}</span>
+                  </button>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ quickActions }}" as="qa" hint-placeholder-count="3">
+                  <button onClick="{{ qa.onClick }}" style="height:28px;display:flex;align-items:center;gap:6px;padding:0 10px;font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--muted)">
+                    <i class="{{ qa.icon }}" style="font-size:14px;color:var(--fg-muted)"></i><span>{{ qa.label }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <sc-for list="{{ msgs }}" as="m" hint-placeholder-count="0">
+              <sc-if value="{{ m.isUser }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                  <sc-if value="{{ m.hasQuote }}" hint-placeholder-val="{{ false }}">
+                    <div style="max-width:85%;display:flex;gap:8px;padding:6px 10px;border-left:0;border-radius:8px;background:var(--bg-elevated);border:1px solid var(--border)">
+                      <span style="font-family:var(--font-mono);font-size:11px;line-height:18px;color:var(--info)">{{ m.quoteTime }}</span>
+                      <span style="font-size:12px;line-height:18px;color:var(--fg-muted)">{{ m.quoteText }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ m.hasAt }}" hint-placeholder-val="{{ false }}">
+                    <span style="display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:11px;color:var(--fg-subtle)"><i class="ph ph-clock" style="font-size:12px"></i><span>at {{ m.at }}</span></span>
+                  </sc-if>
+                  <div style="max-width:85%;padding:8px 14px;font-size:{{ fs }};line-height:{{ lh }};color:var(--fg);background:var(--bg-overlay);border-radius:12px 12px 4px 12px">{{ m.text }}</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ m.isAssistant }}" hint-placeholder-val="{{ false }}">
+                <div style="display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px">
+                  <div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:var(--bg-overlay)">
+                    <span style="color:var(--fg)"><svg width="11" height="11" viewBox="0 0 90 90" fill="currentColor" style="display:block;flex-shrink:0"><path d="M0 30H30V90H0V30Z"></path><path d="M60 60H90V90H60V60Z"></path><path d="M90 0L30 60H60V34H90V0Z"></path><path d="M30 0H60V30H30V0Z"></path></svg></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px;min-width:0;padding-top:2px">
+                    <sc-if value="{{ m.waiting }}" hint-placeholder-val="{{ false }}">{{ dots }}</sc-if>
+                    <sc-if value="{{ m.hasText }}" hint-placeholder-val="{{ true }}">
+                      <p style="margin:0;font-size:{{ fs }};line-height:{{ lh }};color:var(--card-foreground);text-wrap:pretty">{{ m.text }}{{ m.caret }}</p>
+                    </sc-if>
+                    <sc-if value="{{ m.stopped }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:12px;color:var(--fg-subtle)">Stopped.</span>
+                    </sc-if>
+                    <sc-if value="{{ m.hasCites }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-wrap:wrap;gap:6px">
+                        <sc-for list="{{ m.cites }}" as="c" hint-placeholder-count="2">
+                          <button onClick="{{ c.onClick }}" style="height:24px;display:flex;align-items:center;gap:4px;padding:0 8px;font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--info);background:var(--info-soft);border:0;border-radius:6px;cursor:pointer" style-hover="background:var(--bg-overlay)">
+                            <i class="ph-fill ph-play" style="font-size:9px"></i><span>{{ c.label }}</span>
+                          </button>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ m.showActions }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;gap:0;margin-left:-8px">
+                        <button onClick="{{ m.onCopy }}" title="Copy" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)"><i class="ph ph-copy" style="font-size:15px"></i></button>
+                        <button onClick="{{ m.onRetry }}" title="Regenerate" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)"><i class="ph ph-arrow-clockwise" style="font-size:15px"></i></button>
+                        <button onClick="{{ m.onCopy }}" title="Good answer" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)"><i class="ph ph-thumbs-up" style="font-size:15px"></i></button>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ m.hasFollowups }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
+                        <sc-for list="{{ m.followups }}" as="f" hint-placeholder-count="2">
+                          <button onClick="{{ f.onClick }}" style="display:flex;align-items:center;gap:6px;padding:6px 10px;text-align:left;font-family:var(--font-sans);font-size:13px;color:var(--fg);background:transparent;border:1px solid var(--border-strong);border-radius:8px;cursor:pointer" style-hover="background:var(--bg-overlay)">
+                            <i class="ph ph-arrow-bend-down-right" style="font-size:13px;color:var(--fg-muted)"></i><span>{{ f.text }}</span>
+                          </button>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-if>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="padding:8px 12px 12px">
+          <div style="display:flex;flex-direction:column;gap:8px;padding:10px 10px 8px 12px;background:var(--bg-inset);border:1px solid var(--border-strong);border-radius:12px">
+            <sc-if value="{{ hasQuote }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 6px 6px 10px;background:var(--bg-overlay);border-radius:8px">
+                <span style="font-family:var(--font-mono);font-size:11px;line-height:18px;color:var(--info)">{{ quoteTime }}</span>
+                <span style="flex:1;min-width:0;font-size:12px;line-height:18px;color:var(--card-foreground);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ quoteText }}</span>
+                <button onClick="{{ clearQuote }}" title="Remove" style="width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--muted);color:var(--fg)"><i class="ph ph-x" style="font-size:12px"></i></button>
+              </div>
+            </sc-if>
+            <textarea value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onKey }}" rows="2" placeholder="Ask anything about this video" style="resize:none;padding:0;font-family:var(--font-sans);font-size:14px;line-height:20px;color:var(--fg);background:transparent;border:0;outline:none"></textarea>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="position:relative">
+                <button onClick="{{ openModelC }}" style="height:28px;display:flex;align-items:center;gap:4px;padding:0 8px;font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--fg-muted);background:transparent;border:0;border-radius:6px;cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)">
+                  <span>{{ modelName }}</span><i class="ph ph-caret-down" style="font-size:11px"></i>
+                </button>
+                <sc-if value="{{ modelMenuC }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;bottom:calc(100% + 6px);left:0;z-index:30;width:236px;padding:8px 0;background:var(--popover);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-pop)">
+                    <sc-for list="{{ modelOpts }}" as="o" hint-placeholder-count="4">
+                      <button onClick="{{ o.pick }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:8px 16px;text-align:left;font-family:var(--font-sans);background:transparent;border:0;color:var(--fg);cursor:pointer" style-hover="background:var(--secondary)">
+                        <i class="ph ph-check" style="font-size:16px;visibility:{{ o.check }}"></i>
+                        <div style="flex:1;display:flex;flex-direction:column">
+                          <span style="font-size:14px">{{ o.name }}</span>
+                          <span style="font-size:12px;color:var(--fg-muted)">{{ o.note }}</span>
+                        </div>
+                      </button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+              <sc-if value="{{ attachTime }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ toggleAttach }}" title="Remove timestamp" style="height:28px;display:flex;align-items:center;gap:4px;padding:0 8px;font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--info);background:var(--info-soft);border:0;border-radius:6px;cursor:pointer">
+                  <i class="ph ph-clock" style="font-size:13px"></i><span>at {{ timeLabel }}</span><i class="ph ph-x" style="font-size:10px"></i>
+                </button>
+              </sc-if>
+              <sc-if value="{{ noAttach }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ toggleAttach }}" title="Ask about the current moment" style="height:28px;display:flex;align-items:center;gap:4px;padding:0 8px;font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--fg-muted);background:transparent;border:0;border-radius:6px;cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)">
+                  <i class="ph ph-clock" style="font-size:13px"></i><span>Current moment</span>
+                </button>
+              </sc-if>
+              <div style="flex:1"></div>
+              <sc-if value="{{ isStreaming }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ stop }}" title="Stop" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:var(--accent);color:var(--accent-fg);cursor:pointer" style-hover="background:var(--accent-hover)">
+                  <i class="ph-fill ph-stop" style="font-size:13px"></i>
+                </button>
+              </sc-if>
+              <sc-if value="{{ canSend }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ sendDraft }}" title="Send (⏎)" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:var(--accent);color:var(--accent-fg);cursor:pointer" style-hover="background:var(--accent-hover)">
+                  <i class="ph-bold ph-arrow-up" style="font-size:15px"></i>
+                </button>
+              </sc-if>
+              <sc-if value="{{ sendDisabled }}" hint-placeholder-val="{{ true }}">
+                <button disabled="" title="Type a question" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:var(--bg-overlay);color:var(--fg-disabled)">
+                  <i class="ph-bold ph-arrow-up" style="font-size:15px"></i>
+                </button>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:16px 16px 24px;display:flex;flex-direction:column;gap:24px">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:13px;font-weight:500;color:var(--fg-muted);padding:0 4px">Model</div>
+            <div style="display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;font-size:14px">Provider</div>
+                <div style="position:relative">
+                  <select value="{{ provider }}" onChange="{{ onProvider }}" style="appearance:none;-webkit-appearance:none;height:32px;padding:0 28px 0 10px;font-family:var(--font-sans);font-size:13px;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer;outline:none">
+                    <sc-for list="{{ providerSel }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+                  </select>
+                  <i class="ph ph-caret-down" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--fg-muted);pointer-events:none"></i>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px">API key</span>
+                  <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg-muted)">
+                    <span style="width:6px;height:6px;border-radius:50%;background:var(--success)"></span>
+                    <span>Connected</span>
+                    <span style="font-family:var(--font-mono);color:var(--fg-subtle)">{{ keyMask }}</span>
+                  </span>
+                </div>
+                <button onClick="{{ replaceKey }}" style="height:32px;padding:0 12px;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--muted)">Replace</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;font-size:14px">Default model</div>
+                <div style="position:relative">
+                  <select value="{{ model }}" onChange="{{ onModel }}" style="appearance:none;-webkit-appearance:none;height:32px;padding:0 28px 0 10px;font-family:var(--font-sans);font-size:13px;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer;outline:none">
+                    <sc-for list="{{ modelSel }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+                  </select>
+                  <i class="ph ph-caret-down" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--fg-muted);pointer-events:none"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:13px;font-weight:500;color:var(--fg-muted);padding:0 4px">Usage</div>
+            <div style="display:flex;flex-direction:column;gap:12px;padding:14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px">This month</span>
+                  <span style="font-size:12px;color:var(--fg-muted)">412k tokens · 38 summaries · 61 chats</span>
+                </div>
+                <span style="font-family:var(--font-mono);font-size:16px;font-weight:500">$0.41</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="height:4px;border-radius:2px;background:var(--bg-overlay);overflow:hidden"><div style="height:100%;width:{{ usagePct }};background:var(--fg-muted)"></div></div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--fg-subtle)"><span>{{ limitLabel }}</span><span>Resets Nov 1</span></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding-top:12px;border-top:1px solid var(--border)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px">Monthly limit</span>
+                  <span style="font-size:12px;color:var(--fg-muted)">Pauses requests when reached</span>
+                </div>
+                <div style="display:flex;gap:2px;padding:2px;background:var(--bg-overlay);border-radius:8px">
+                  <sc-for list="{{ limitSeg }}" as="o" hint-placeholder-count="4">
+                    <button onClick="{{ o.onClick }}" style="height:28px;padding:0 8px;font-family:var(--font-sans);font-size:12px;font-weight:500;border:0;border-radius:6px;cursor:pointer;background:{{ o.bg }};color:{{ o.color }}">{{ o.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <span style="font-size:11px;line-height:16px;color:var(--fg-subtle);padding:0 4px">Estimated from token counts. Your provider's dashboard is the source of truth.</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:13px;font-weight:500;color:var(--fg-muted);padding:0 4px">Summaries</div>
+            <div style="display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;font-size:14px">Default style</div>
+                <div style="position:relative">
+                  <select value="{{ styleId }}" onChange="{{ onStyle }}" style="appearance:none;-webkit-appearance:none;height:32px;padding:0 28px 0 10px;font-family:var(--font-sans);font-size:13px;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer;outline:none">
+                    <sc-for list="{{ styleSel }}" as="o" hint-placeholder-count="3"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+                  </select>
+                  <i class="ph ph-caret-down" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--fg-muted);pointer-events:none"></i>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px">Answer language</span>
+                  <span style="font-size:12px;color:var(--fg-muted)">Summaries and chat replies</span>
+                </div>
+                <div style="position:relative">
+                  <select value="{{ lang }}" onChange="{{ onLang }}" style="appearance:none;-webkit-appearance:none;height:32px;padding:0 28px 0 10px;font-family:var(--font-sans);font-size:13px;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer;outline:none">
+                    <sc-for list="{{ langSel }}" as="o" hint-placeholder-count="5"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+                  </select>
+                  <i class="ph ph-caret-down" style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--fg-muted);pointer-events:none"></i>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px">Auto-summarize</span>
+                  <span style="font-size:12px;color:var(--fg-muted)">Start as soon as a video opens</span>
+                </div>
+                <button onClick="{{ tgAutoSum.onClick }}" style="position:relative;width:36px;height:20px;flex-shrink:0;padding:0;border:0;border-radius:10px;background:{{ tgAutoSum.bg }};cursor:pointer;transition:background 150ms cubic-bezier(0.2,0,0,1)">
+                  <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transform:translateX({{ tgAutoSum.x }});transition:transform 150ms cubic-bezier(0.2,0,0,1)"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:13px;font-weight:500;color:var(--fg-muted);padding:0 4px">Transcript</div>
+            <div style="display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px">Follow playback</span>
+                  <span style="font-size:12px;color:var(--fg-muted)">Keep the current line in view</span>
+                </div>
+                <button onClick="{{ tgFollow.onClick }}" style="position:relative;width:36px;height:20px;flex-shrink:0;padding:0;border:0;border-radius:10px;background:{{ tgFollow.bg }};cursor:pointer;transition:background 150ms cubic-bezier(0.2,0,0,1)">
+                  <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transform:translateX({{ tgFollow.x }});transition:transform 150ms cubic-bezier(0.2,0,0,1)"></span>
+                </button>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px">Remove filler words</span>
+                  <span style="font-size:12px;color:var(--fg-muted)">Strips “um”, “uh”, “you know”</span>
+                </div>
+                <button onClick="{{ tgFillers.onClick }}" style="position:relative;width:36px;height:20px;flex-shrink:0;padding:0;border:0;border-radius:10px;background:{{ tgFillers.bg }};cursor:pointer;transition:background 150ms cubic-bezier(0.2,0,0,1)">
+                  <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transform:translateX({{ tgFillers.x }});transition:transform 150ms cubic-bezier(0.2,0,0,1)"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:13px;font-weight:500;color:var(--fg-muted);padding:0 4px">Appearance</div>
+            <div style="display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;font-size:14px">Theme</div>
+                <div style="display:flex;gap:2px;padding:2px;background:var(--bg-overlay);border-radius:8px">
+                  <sc-for list="{{ themeSeg }}" as="o" hint-placeholder-count="3">
+                    <button onClick="{{ o.onClick }}" style="height:28px;padding:0 10px;font-family:var(--font-sans);font-size:12px;font-weight:500;border:0;border-radius:6px;cursor:pointer;background:{{ o.bg }};color:{{ o.color }}">{{ o.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;font-size:14px">Text size</div>
+                <div style="display:flex;gap:2px;padding:2px;background:var(--bg-overlay);border-radius:8px">
+                  <sc-for list="{{ sizeSeg }}" as="o" hint-placeholder-count="3">
+                    <button onClick="{{ o.onClick }}" style="height:28px;min-width:32px;padding:0 10px;font-family:var(--font-sans);font-size:12px;font-weight:500;border:0;border-radius:6px;cursor:pointer;background:{{ o.bg }};color:{{ o.color }}">{{ o.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px">Font</span>
+                  <span style="font-size:12px;color:var(--fg-muted)">Roboto matches YouTube</span>
+                </div>
+                <div style="display:flex;gap:2px;padding:2px;background:var(--bg-overlay);border-radius:8px">
+                  <sc-for list="{{ fontSeg }}" as="o" hint-placeholder-count="2">
+                    <button onClick="{{ o.onClick }}" style="height:28px;padding:0 10px;font-family:var(--font-sans);font-size:12px;font-weight:500;border:0;border-radius:6px;cursor:pointer;background:{{ o.bg }};color:{{ o.color }}">{{ o.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:13px;font-weight:500;color:var(--fg-muted);padding:0 4px">Keyboard shortcuts</div>
+            <div style="display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+              <sc-for list="{{ shortcuts }}" as="k" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg-elevated)">
+                  <span style="flex:1;font-size:14px">{{ k.label }}</span>
+                  <span style="font-family:var(--font-mono);font-size:11px;padding:2px 6px;color:var(--fg-muted);background:var(--bg-overlay);border-radius:4px">{{ k.keys }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:13px;font-weight:500;color:var(--fg-muted);padding:0 4px">Data</div>
+            <div style="display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px">Export chats</span>
+                  <span style="font-size:12px;color:var(--fg-muted)">Markdown, one file per video</span>
+                </div>
+                <button onClick="{{ exportChats }}" style="height:32px;padding:0 12px;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:8px;cursor:pointer" style-hover="background:var(--muted)">Export</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-elevated)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px">Clear chat history</span>
+                  <span style="font-size:12px;color:var(--fg-muted)">Stored locally. Can't be undone.</span>
+                </div>
+                <button onClick="{{ clearHistory }}" style="height:32px;padding:0 12px;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--danger);background:var(--danger-soft);border:0;border-radius:8px;cursor:pointer">Clear</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px;font-size:12px;color:var(--fg-subtle)">
+            <a href="#">What's new</a><span>·</span><a href="#">Send feedback</a><span>·</span><a href="#">Privacy</a>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isOnboarding }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:20px;border-top:1px solid var(--border)">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:18px;font-weight:500">Connect your API key</div>
+            <div style="font-size:14px;line-height:21px;color:var(--fg-muted);text-wrap:pretty">Pick a provider and paste a key. It's stored in Chrome on this device and only sent to that provider.</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:13px;font-weight:500">Provider</span>
+            <div style="display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+              <sc-for list="{{ providerOpts }}" as="pv" hint-placeholder-count="4">
+                <button onClick="{{ pv.onClick }}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;text-align:left;font-family:var(--font-sans);color:var(--fg);background:{{ pv.bg }};border:0;cursor:pointer" style-hover="background:var(--bg-overlay)">
+                  <span style="width:16px;height:16px;flex-shrink:0;box-sizing:border-box;border-radius:50%;border:{{ pv.ring }}"></span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+                    <span style="font-size:14px;font-weight:500">{{ pv.name }}</span>
+                    <span style="font-size:12px;color:var(--fg-muted)">{{ pv.models }}</span>
+                  </div>
+                  <span style="font-size:11px;color:var(--fg-subtle)">{{ pv.tag }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <span style="font-size:13px;font-weight:500">{{ providerName }} API key</span>
+              <a href="#" style="display:flex;align-items:center;gap:4px;font-size:12px"><span>Get a key</span><i class="ph ph-arrow-up-right" style="font-size:12px"></i></a>
+            </div>
+            <div style="display:flex;align-items:center;gap:2px;height:40px;padding:0 4px 0 12px;box-sizing:border-box;background:var(--bg-inset);border:1px solid {{ keyBorder }};border-radius:8px">
+              <input type="{{ keyType }}" value="{{ keyDraft }}" onChange="{{ onKeyDraft }}" placeholder="{{ keyPlaceholder }}" style="flex:1;min-width:0;height:100%;padding:0;font-family:var(--font-mono);font-size:13px;color:var(--fg);background:transparent;border:0;outline:none">
+              <button onClick="{{ toggleShowKey }}" title="Show or hide" style="width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:0;background:transparent;color:var(--fg-muted);cursor:pointer" style-hover="background:var(--bg-overlay);color:var(--fg)"><i class="{{ eyeIcon }}" style="font-size:16px"></i></button>
+              <button onClick="{{ pasteKey }}" style="height:30px;padding:0 10px;font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--fg);background:var(--bg-overlay);border:0;border-radius:6px;cursor:pointer" style-hover="background:var(--muted)">Paste</button>
+            </div>
+            <sc-if value="{{ keyError }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:12px;color:var(--danger)">Paste a key first.</span>
+            </sc-if>
+            <sc-if value="{{ keyChecking }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg-muted)">{{ spinner }}<span>Checking with {{ providerName }}…</span></div>
+            </sc-if>
+            <sc-if value="{{ keyInvalid }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:10px;padding:10px 12px;background:var(--danger-soft);border-radius:8px">
+                <i class="ph-fill ph-warning-circle" style="font-size:16px;line-height:20px;color:var(--danger)"></i>
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:13px;line-height:20px;font-weight:500;color:var(--fg)">{{ providerName }} rejected this key (401)</span>
+                  <span style="font-size:12px;line-height:18px;color:var(--card-foreground)">Check it's copied in full and billing is on for that project.</span>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ keyValid }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:10px;padding:10px 12px;background:var(--success-soft);border-radius:8px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <i class="ph-fill ph-check-circle" style="font-size:16px;color:var(--success)"></i>
+                  <span style="font-size:13px;font-weight:500;color:var(--fg)">Key works. {{ foundCount }} models available.</span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ foundModels }}" as="fm" hint-placeholder-count="3">
+                    <span style="height:24px;display:flex;align-items:center;padding:0 8px;font-size:12px;color:var(--fg);background:var(--bg-overlay);border-radius:6px">{{ fm.name }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+          <button onClick="{{ connect }}" style="height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font-sans);font-size:14px;font-weight:500;color:var(--accent-fg);background:var(--accent);border:0;border-radius:8px;cursor:pointer;opacity:{{ connectOpacity }}" style-hover="background:var(--accent-hover)">
+            <span>{{ connectLabel }}</span>
+          </button>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto;padding-top:4px">
+            <sc-for list="{{ privacyRows }}" as="pr" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--fg-muted)">
+                <i class="{{ pr.icon }}" style="font-size:14px;color:var(--fg-subtle)"></i><span>{{ pr.text }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isNoVideo }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:24px 20px;border-top:1px solid var(--border)">
+          <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--bg-overlay)">
+            <i class="ph ph-play-circle" style="font-size:22px;color:var(--fg-muted)"></i>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:16px;font-weight:500">Open a video to get started</div>
+            <div style="font-size:14px;line-height:21px;color:var(--fg-muted);text-wrap:pretty">I'll pull the transcript, summarize it and answer questions about it. Works on any video with captions.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--fg-subtle)">
+            <span style="font-family:var(--font-mono);font-size:11px;padding:2px 6px;color:var(--fg-muted);background:var(--bg-overlay);border-radius:4px">⌥ Y</span>
+            <span>toggles this panel anywhere on YouTube</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:12px;bottom:12px;z-index:40;display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:13px;color:var(--accent-fg);background:var(--accent);border-radius:8px;box-shadow:var(--shadow-pop)">
+          <span>{{ toast }}</span>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:400,&quot;height&quot;:640},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;},&quot;font&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;youtube&quot;,&quot;geist&quot;],&quot;default&quot;:&quot;youtube&quot;,&quot;tsType&quot;:&quot;'youtube'|'geist'&quot;},&quot;scenario&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;default&quot;,&quot;no-key&quot;,&quot;onboarding&quot;,&quot;byok-invalid&quot;,&quot;byok-valid&quot;,&quot;summary-idle&quot;,&quot;summary-loading&quot;,&quot;error&quot;,&quot;no-captions&quot;,&quot;transcript-search&quot;,&quot;chat-empty&quot;,&quot;chat&quot;,&quot;chat-streaming&quot;,&quot;chat-quote&quot;,&quot;settings&quot;,&quot;collapsed&quot;,&quot;no-video&quot;],&quot;default&quot;:&quot;default&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;initialTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;summary&quot;,&quot;transcript&quot;,&quot;chat&quot;],&quot;default&quot;:&quot;summary&quot;,&quot;tsType&quot;:&quot;'summary'|'transcript'|'chat'&quot;},&quot;playing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;height&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;640px&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const fmt = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+const DUR = 222;
+const CHAPTERS = { 0: 'Intro', 58: 'The problem', 74: 'How it works', 141: 'Demo', 196: 'Status' };
+const TRANSCRIPT = [
+  [0, "Partial prerendering is a new rendering model we've been working on in Next.js."],
+  [14, "So, um, the idea is simple. You shouldn't have to pick static or dynamic for a whole route."],
+  [29, 'Most pages are mostly static. A header, a product description, some layout.'],
+  [41, "But there's usually a small part that's, you know, personal. A cart, recommendations, a signed-in state."],
+  [58, 'Today, that one dynamic piece forces the whole page to render on every request.'],
+  [74, 'With partial prerendering, we prerender a static shell at build time and serve it from the edge.'],
+  [92, 'The dynamic parts stream in afterward, in the same HTTP request.'],
+  [108, "And, uh, there's no new API. You wrap the dynamic part in a Suspense boundary."],
+  [125, 'The fallback you pass to Suspense becomes part of the static shell.'],
+  [141, "Let's look at a demo. Here's an e-commerce page with a product and a cart."],
+  [160, 'Notice the product info loads instantly. The cart streams in a moment later.'],
+  [178, "That's the point. Fast initial load, and still fully dynamic where it matters."],
+  [196, "It's experimental in Next.js 14, on the canary channel. Try it and tell us what breaks."]
+];
+const clean = (t, on) => on ? t.replace(/,?\s*\b(um|uh|you know)\b,?/gi, '').replace(/\s{2,}/g, ' ') : t;
+const MODELS = [
+  { id: 'gpt-5-mini', name: 'GPT-5 mini', note: 'Fast. Good for summaries' },
+  { id: 'gpt-5', name: 'GPT-5', note: 'Slower. Better reasoning' },
+  { id: 'claude', name: 'Claude Sonnet 4.5', note: 'Best on long videos' },
+  { id: 'gemini', name: 'Gemini 2.5 Flash', note: 'Fastest' }
+];
+const STYLES = [
+  { id: 'detailed', name: 'Detailed', note: 'Summary, moments, notes' },
+  { id: 'tldr', name: 'TL;DR', note: '2–3 sentences' },
+  { id: 'moments', name: 'Key moments', note: 'Timestamped outline' }
+];
+const PROVIDERS = [
+  { id: 'openai', name: 'OpenAI', hint: 'sk-…', models: 'GPT-5, GPT-5 mini', tag: 'Most used', found: ['GPT-5', 'GPT-5 mini', 'GPT-4.1', 'GPT-4.1 mini', 'o4-mini', 'GPT-4o'] },
+  { id: 'anthropic', name: 'Anthropic', hint: 'sk-ant-…', models: 'Claude Sonnet 4.5, Haiku 4.5', tag: 'Long videos', found: ['Claude Sonnet 4.5', 'Claude Haiku 4.5', 'Claude Opus 4.1'] },
+  { id: 'google', name: 'Google AI', hint: 'AIza…', models: 'Gemini 2.5 Flash, Pro', tag: 'Free tier', found: ['Gemini 2.5 Flash', 'Gemini 2.5 Pro', 'Gemini 2.5 Flash-Lite'] },
+  { id: 'openrouter', name: 'OpenRouter', hint: 'sk-or-…', models: 'One key, 300+ models', tag: '', found: ['GPT-5 mini', 'Claude Sonnet 4.5', 'Gemini 2.5 Flash', 'Llama 4', 'DeepSeek V3'] }
+];
+const LANGS = ['Match video', 'English', 'Español', 'Deutsch', 'Français', 'Português', '日本語'];
+const MOMENTS = [
+  [14, "Static vs dynamic shouldn't be a per-route choice"],
+  [58, 'One dynamic component makes the whole page dynamic'],
+  [74, 'Static shell is prerendered and served from the edge'],
+  [108, 'No new API — Suspense boundaries define the split'],
+  [160, 'Demo: product renders instantly, cart streams in']
+];
+const NOTES = [
+  'The static shell includes every Suspense fallback, so loading states ship with the first byte.',
+  'Dynamic content streams in the same HTTP request — no extra round trip.',
+  'Works with existing App Router code. Nothing to rewrite.',
+  'Experimental in Next.js 14, canary only. Not for production yet.'
+];
+const SUGGEST = ["What's the main takeaway?", 'How does it decide what\u2019s static?', 'Is it production-ready?'];
+const REPLIES = {
+  [SUGGEST[0]]: { text: "You don't have to choose static or dynamic per route anymore. Next.js prerenders a static shell and streams the dynamic parts into it, using the Suspense boundaries you already write.", cites: [14, 108], follow: ['Show me the demo part', 'How is this different from ISR?'] },
+  [SUGGEST[1]]: { text: 'Anything outside a Suspense boundary gets prerendered. The fallback you pass to Suspense becomes part of the shell, and the wrapped component streams in at request time.', cites: [108, 125], follow: ['Does this work with the Pages Router?'] },
+  [SUGGEST[2]]: { text: "Not yet. It's experimental in Next.js 14 and only on the canary channel — he asks people to try it and report what breaks.", cites: [196], follow: ['How do I turn it on?'] }
+};
+const FALLBACK = { text: 'From the transcript: the talk pairs a prerendered static shell with dynamic content that streams in. The demo shows it best — the product loads instantly and the cart arrives a moment later.', cites: [141, 160], follow: ['Summarize the demo in 3 bullets'] };
+const QUICK = [
+  { icon: 'ph ph-graduation-cap', label: 'Explain simply', note: 'No jargon', prompt: 'Explain this video like I\u2019m new to web dev' },
+  { icon: 'ph ph-exam', label: 'Quiz me', note: '3 questions', prompt: 'Quiz me on this video' },
+  { icon: 'ph ph-notebook', label: 'Study notes', note: 'With timestamps', prompt: 'Turn this into study notes' },
+  { icon: 'ph ph-magnifying-glass', label: 'Find a moment', note: 'Where does he…', draft: 'Where does he talk about ' }
+];
+Object.assign(REPLIES, {
+  [QUICK[0].prompt]: { text: 'Most of a page never changes, like the header or a product description. A small part does, like your cart. Next.js now builds the unchanging part ahead of time so it shows up instantly, then fills in the personal part a moment later.', cites: [29, 74], follow: ['What is a Suspense boundary?'] },
+  [QUICK[1].prompt]: { text: '1. What decides which parts of a page are prerendered? 2. Does the dynamic content need a second request? 3. Which release channel is this available on? Reply with your answers and I\u2019ll check them.', cites: [], follow: ['Show me the answers'] },
+  [QUICK[2].prompt]: { text: 'Problem: one dynamic component makes the whole route dynamic. Fix: prerender a static shell, stream the rest in the same request. API: none new, Suspense boundaries mark the split. Status: experimental, canary only.', cites: [58, 74, 108, 196], follow: ['Copy as Markdown'] },
+  'Explain what he means here': { text: 'He means the page is sent as a ready-made shell from the edge first, so you see it immediately. The parts that depend on you are rendered on the server afterwards and streamed into that same response.', cites: [74, 92], follow: ['Why does that make it faster?'] }
+});
+const HIST = () => [{ role: 'user', text: 'How is this different from ISR?' }, { role: 'assistant', text: 'ISR regenerates a whole page in the background on a timer. Partial prerendering splits a single page: the shell is static, and the personal parts render per request and stream in. You can use both.', cites: [74, 92], follow: ['When would I still use ISR?'] }];
+const CH = Object.keys(CHAPTERS).map(Number);
+const SHORTCUTS = [['Toggle panel', '⌥ Y'], ['Focus chat', '/'], ['Summarize video', '⌥ S'], ['Search transcript', '⌥ F']];
+const LOAD_STEPS = ['Fetching transcript', 'Reading 13 segments', 'Writing summary'];
+const SEED = () => [{ role: 'user', text: SUGGEST[0] }, { role: 'assistant', ...REPLIES[SUGGEST[0]] }];
+const SCEN = {
+  onboarding: { view: 'onboarding', hasKey: false },
+  'byok-invalid': { view: 'onboarding', hasKey: false, keyDraft: 'sk-proj-8f2kQ', keyStatus: 'invalid' },
+  'byok-valid': { view: 'onboarding', hasKey: false, keyDraft: 'sk-proj-8f2kQ7vLx0aN4f2a', keyStatus: 'valid' },
+  'no-key': { hasKey: false, tab: 'chat' },
+  'chat-empty': { tab: 'chat' },
+  'summary-idle': { summary: 'idle' },
+  'summary-loading': { summary: 'loading', loadStep: 1 },
+  error: { summary: 'error' },
+  'no-captions': { summary: 'nocaptions', transcript: 'none' },
+  'transcript-search': { tab: 'transcript', query: 'suspense', follow: false },
+  chat: { tab: 'chat', messages: SEED() },
+  'chat-streaming': { tab: 'chat', messages: [{ role: 'user', text: SUGGEST[1], at: '01:48' }], stream: { ...REPLIES[SUGGEST[1]], n: 17 } },
+  'chat-quote': { tab: 'chat', messages: SEED(), quote: 8, draft: 'So where does the fallback actually render?' },
+  settings: { view: 'settings' },
+  collapsed: { collapsed: true },
+  'no-video': { view: 'novideo' }
+};
+
+class Component extends DCLogic {
+  state = Object.assign({
+    tab: this.props.initialTab ?? 'summary', view: 'main', collapsed: false, menu: null,
+    model: 'gpt-5-mini', style: 'detailed', summary: 'done', loadStep: 0, transcript: 'ok', pct: 0,
+    query: '', matchIdx: 0, follow: true, hover: -1, t: 96,
+    messages: [], stream: null, draft: '', quote: null, attachTime: false, toast: null, feedback: null,
+    provider: 'openai', keyDraft: '', keyError: false, keyStatus: 'idle', showKey: false, hasKey: true, limit: 5,
+    set: { theme: 'youtube', size: 'm', font: null, lang: 'Match video', autoSum: true, follow: true, fillers: true }
+  }, SCEN[this.props.scenario] || {});
+  tRef = React.createRef();
+  cRef = React.createRef();
+  componentDidMount() {
+    this.iv = setInterval(() => {
+      if ((this.props.playing ?? true) && this.state.view === 'main') this.setState(s => ({ t: (s.t + 1) % DUR }));
+    }, 1000);
+    setTimeout(() => this.componentDidUpdate(this.props, { ...this.state, tab: null, messages: null }), 60);
+  }
+  componentWillUnmount() { [this.iv, this.si, this.ti].forEach(clearInterval); [this.tt, this.g1, this.g2, this.g3, this.st].forEach(clearTimeout); }
+  ai(t) { let i = 0; TRANSCRIPT.forEach((r, j) => { if (r[0] <= t) i = j; }); return i; }
+  componentDidUpdate(pp, ps) {
+    if (pp.initialTab !== this.props.initialTab && this.props.initialTab) this.setState({ tab: this.props.initialTab });
+    const s = this.state, c = this.tRef.current;
+    if (c && s.tab === 'transcript') {
+      if (s.query) {
+        if (ps.query !== s.query || ps.matchIdx !== s.matchIdx || ps.tab !== s.tab) {
+          const el = c.querySelector('[data-match="true"]');
+          if (el) c.scrollTo({ top: el.offsetTop - c.clientHeight / 3, behavior: 'smooth' });
+        }
+      } else if (s.follow && (this.ai(ps.t) !== this.ai(s.t) || ps.tab !== s.tab || ps.follow !== s.follow || ps.query !== s.query)) {
+        const el = c.querySelector('[data-active="true"]');
+        if (el) c.scrollTo({ top: el.offsetTop - c.clientHeight / 3, behavior: ps.tab !== s.tab ? 'auto' : 'smooth' });
+      }
+    }
+    const cc = this.cRef.current;
+    if (cc && (ps.messages !== s.messages || ps.stream !== s.stream || ps.tab !== s.tab)) cc.scrollTop = cc.scrollHeight;
+  }
+  toast(msg) { this.setState({ toast: msg }); clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: null }), 1800); }
+  seek(sec) { this.setState({ t: sec }); this.toast('Jumped to ' + fmt(sec)); }
+  generate() {
+    [this.g1, this.g2, this.g3].forEach(clearTimeout);
+    this.setState({ summary: 'loading', loadStep: 0, menu: null, feedback: null });
+    this.g1 = setTimeout(() => this.setState({ loadStep: 1 }), 600);
+    this.g2 = setTimeout(() => this.setState({ loadStep: 2 }), 1200);
+    this.g3 = setTimeout(() => this.setState({ summary: 'done' }), 1900);
+  }
+  transcribe() {
+    clearInterval(this.ti);
+    this.setState({ transcript: 'transcribing', pct: 0 });
+    this.ti = setInterval(() => {
+      const p = this.state.pct + 3;
+      if (p >= 100) { clearInterval(this.ti); this.setState({ transcript: 'ok', summary: 'idle', pct: 100 }); this.toast('Transcript ready'); }
+      else this.setState({ pct: p });
+    }, 80);
+  }
+  line(i) { return clean(TRANSCRIPT[i][1], this.state.set.fillers); }
+  send(text) {
+    const s = this.state;
+    text = (text ?? s.draft).trim();
+    if (!text || s.stream) return;
+    const at = s.attachTime ? fmt(s.t) : null;
+    const quote = s.quote != null ? { time: fmt(TRANSCRIPT[s.quote][0]), text: this.line(s.quote) } : null;
+    const r = REPLIES[text] || FALLBACK;
+    this.setState({ messages: [...s.messages, { role: 'user', text, at, quote }], draft: '', attachTime: false, quote: null, stream: { ...r, n: 0 }, menu: null, tab: 'chat' });
+    clearInterval(this.si); clearTimeout(this.st);
+    this.st = setTimeout(() => {
+      this.si = setInterval(() => {
+        const st = this.state.stream;
+        if (!st) { clearInterval(this.si); return; }
+        if (st.n >= st.text.split(' ').length) {
+          clearInterval(this.si);
+          this.setState(x => ({ stream: null, messages: [...x.messages, { role: 'assistant', text: st.text, cites: st.cites, follow: st.follow }] }));
+        } else this.setState({ stream: { ...st, n: st.n + 1 } });
+      }, 45);
+    }, 600);
+  }
+  stop() {
+    clearInterval(this.si); clearTimeout(this.st);
+    const st = this.state.stream; if (!st) return;
+    const partial = st.text.split(' ').slice(0, st.n).join(' ');
+    this.setState(x => ({ stream: null, messages: [...x.messages, { role: 'assistant', text: partial, cites: [], stopped: true }] }));
+  }
+  connect() {
+    const s = this.state, prov = PROVIDERS.find(p => p.id === s.provider);
+    if (s.keyStatus === 'checking') return;
+    if (s.keyStatus === 'valid') { this.setState({ view: 'main', hasKey: true, keyDraft: '', keyStatus: 'idle' }); this.toast('Connected to ' + prov.name); return; }
+    if (!s.keyDraft.trim()) { this.setState({ keyError: true }); return; }
+    this.setState({ keyStatus: 'checking', keyError: false });
+    clearTimeout(this.ct);
+    this.ct = setTimeout(() => this.setState({ keyStatus: this.state.keyDraft.trim().length < 20 ? 'invalid' : 'valid' }), 1100);
+  }
+  setSet(k, v) { this.setState(s => ({ set: { ...s.set, [k]: v }, ...(k === 'follow' ? { follow: v } : {}) })); }
+  renderVals() {
+    const s = this.state, p = this.props, set = s.set;
+    const theme = set.theme === 'youtube' ? (p.theme ?? 'dark') : set.theme;
+    const font = set.font ?? p.font ?? 'youtube';
+    const fs = { s: '13px', m: '14px', l: '16px' }[set.size], lh = { s: '19px', m: '21px', l: '24px' }[set.size];
+    const model = MODELS.find(m => m.id === s.model), style = STYLES.find(x => x.id === s.style), prov = PROVIDERS.find(x => x.id === s.provider);
+    const ai = this.ai(s.t);
+    const menu = id => () => this.setState(st => ({ menu: st.menu === id ? null : id }));
+    const opts = (list, cur, fn) => list.map(o => ({ name: o.name, note: o.note, check: o.id === cur ? 'visible' : 'hidden', pick: () => fn(o.id) }));
+    const main = s.view === 'main';
+    // transcript
+    const q = s.query.trim().toLowerCase();
+    const lines = TRANSCRIPT.map((r, i) => ({ i, sec: r[0], text: clean(r[1], set.fillers) }));
+    const matches = q ? lines.filter(l => l.text.toLowerCase().includes(q)).map(l => l.i) : [];
+    const mi = matches.length ? ((s.matchIdx % matches.length) + matches.length) % matches.length : 0;
+    const cur = matches.length ? matches[mi] : -1;
+    const items = [];
+    lines.forEach(l => {
+      if (CHAPTERS[l.sec] != null) items.push({ isChapter: true, isLine: false, title: CHAPTERS[l.sec], time: fmt(l.sec) });
+      const active = l.i === ai && !q, hovered = s.hover === l.i;
+      let parts = [{ text: l.text, bg: 'transparent', color: 'inherit' }];
+      if (q && l.text.toLowerCase().includes(q)) {
+        parts = []; const low = l.text.toLowerCase(); let i = 0;
+        while (i < l.text.length) {
+          const k = low.indexOf(q, i);
+          if (k < 0) { parts.push({ text: l.text.slice(i), bg: 'transparent', color: 'inherit' }); break; }
+          if (k > i) parts.push({ text: l.text.slice(i, k), bg: 'transparent', color: 'inherit' });
+          parts.push({ text: l.text.slice(k, k + q.length), bg: l.i === cur ? 'var(--warning)' : 'var(--warning-soft)', color: l.i === cur ? '#0f0f0f' : 'var(--fg)' });
+          i = k + q.length;
+        }
+      }
+      items.push({
+        isChapter: false, isLine: true, time: fmt(l.sec), parts, hovered,
+        activeStr: String(active), matchStr: String(l.i === cur),
+        bg: active ? 'var(--bg-overlay)' : hovered ? 'var(--bg-elevated)' : 'transparent',
+        timeColor: active ? 'var(--info)' : 'var(--fg-muted)',
+        textColor: active ? 'var(--fg)' : 'var(--card-foreground)',
+        onClick: () => this.seek(l.sec),
+        onEnter: () => this.setState({ hover: l.i }), onLeave: () => this.setState(st => st.hover === l.i ? { hover: -1 } : null),
+        onAsk: e => { e.stopPropagation(); this.setState({ tab: 'chat', quote: l.i, hover: -1 }); },
+        onCopy: e => { e.stopPropagation(); this.toast('Line copied'); }
+      });
+    });
+    // chat
+    let lastA = -1; s.messages.forEach((m, i) => { if (m.role === 'assistant') lastA = i; });
+    const caret = React.createElement('span', { style: { display: 'inline-block', width: 7, height: 14, marginLeft: 2, verticalAlign: '-2px', background: 'var(--fg-muted)', animation: 'yt-blink 0.9s steps(2) infinite' } });
+    const msgVals = (m, o) => ({
+      isUser: m.role === 'user', isAssistant: m.role === 'assistant', text: m.text,
+      hasAt: !!m.at, at: m.at, hasQuote: !!m.quote, quoteTime: m.quote && m.quote.time, quoteText: m.quote && m.quote.text,
+      waiting: !!o.waiting, hasText: !o.waiting, caret: o.streaming ? caret : null, stopped: !!m.stopped,
+      hasCites: !!(m.cites && m.cites.length), cites: (m.cites || []).map(sec => ({ label: fmt(sec), onClick: () => this.seek(sec) })),
+      showActions: m.role === 'assistant' && !o.streaming,
+      hasFollowups: !!(o.last && m.follow), followups: (o.last && m.follow ? m.follow : []).map(f => ({ text: f, onClick: () => this.send(f) })),
+      onCopy: () => this.toast('Copied'), onRetry: () => this.toast('Regenerating…')
+    });
+    const msgs = s.messages.map((m, i) => msgVals(m, { last: i === lastA && !s.stream }));
+    if (s.stream) msgs.push(msgVals({ role: 'assistant', text: s.stream.text.split(' ').slice(0, s.stream.n).join(' ') }, { streaming: true, waiting: s.stream.n === 0 }));
+    // elements
+    const spinner = React.createElement('i', { className: 'ph ph-circle-notch', style: { fontSize: 14, display: 'inline-block', animation: 'yt-spin 0.8s linear infinite' } });
+    const bar = (w, h, key, mt) => React.createElement('div', { key, style: { width: w, height: h, marginTop: mt || 0, borderRadius: 4, background: 'var(--bg-overlay)', animation: 'yt-shimmer 1.4s infinite cubic-bezier(0.2,0,0,1)' } });
+    const skeleton = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+      bar(72, 10, 'h'), bar('100%', 12, 'a', 6), bar('94%', 12, 'b'), bar('66%', 12, 'c'), bar(96, 10, 'h2', 20),
+      ...[0, 1, 2, 3].map(i => bar(`${90 - i * 8}%`, 12, 'm' + i, 8)));
+    const dots = React.createElement('div', { style: { display: 'flex', gap: 4, alignItems: 'center', height: 21 } },
+      [0, 1, 2].map(i => React.createElement('span', { key: i, style: { width: 6, height: 6, borderRadius: 99, background: 'var(--fg-muted)', animation: `yt-pulse 1s ${i * 0.15}s infinite cubic-bezier(0.2,0,0,1)` } })));
+    const tg = (on, k) => ({ bg: on ? 'var(--info)' : 'var(--muted)', x: on ? '16px' : '0px', onClick: () => this.setSet(k, !on) });
+    const seg = (list, val, k) => list.map(([v, label]) => ({ label, bg: v === val ? 'var(--bg)' : 'transparent', color: v === val ? 'var(--fg)' : 'var(--fg-muted)', onClick: () => this.setSet(k, v) }));
+    const canSend = !!s.draft.trim() && !s.stream;
+    return {
+      rootClass: `yt-${theme} yt-font-${font}`,
+      panelH: s.collapsed ? 'auto' : (p.height ?? '640px'),
+      anyMenu: !!s.menu, closeMenu: () => this.setState({ menu: null }),
+      isMainHead: s.view !== 'settings', isSettingsHead: s.view === 'settings',
+      hasVideo: s.view !== 'novideo',
+      headTitle: s.view === 'novideo' ? 'YouTube AI' : 'Partial Prerendering in Next.js 14 (Preview)',
+      headSub: s.view === 'novideo' ? 'No video open' : 'Lee Robinson',
+      playIcon: (p.playing ?? true) ? 'ph-fill ph-play' : 'ph-fill ph-pause',
+      timeLabel: fmt(s.t),
+      showNewChat: main && !s.collapsed && s.tab === 'chat' && s.hasKey && s.messages.length > 0,
+      newChat: () => { this.stop(); this.setState({ messages: [], stream: null, draft: '', quote: null }); },
+      openSettings: () => this.setState({ view: 'settings', menu: null, collapsed: false }),
+      closeSettings: () => this.setState({ view: 'main' }),
+      openMore: menu('more'), moreMenu: s.menu === 'more',
+      moreItems: [
+        { icon: 'ph ph-link-simple', label: `Copy link at ${fmt(s.t)}`, kbd: '', onClick: () => { this.setState({ menu: null }); this.toast('Link copied'); } },
+        { icon: 'ph ph-arrow-square-out', label: 'Open in side panel', kbd: '', onClick: () => this.setState({ menu: null }) },
+        { icon: 'ph ph-download-simple', label: 'Export as Markdown', kbd: '', onClick: () => { this.setState({ menu: null }); this.toast('Saved summary.md'); } },
+        { icon: 'ph ph-keyboard', label: 'Keyboard shortcuts', kbd: '?', onClick: () => this.setState({ menu: null, view: 'settings' }) },
+        { icon: 'ph ph-chat-teardrop-text', label: 'Send feedback', kbd: '', onClick: () => this.setState({ menu: null }) }
+      ],
+      isCollapsed: s.collapsed && main,
+      collapseIcon: s.collapsed ? 'ph ph-caret-down' : 'ph ph-caret-up', collapseTitle: s.collapsed ? 'Expand' : 'Collapse',
+      toggleCollapse: () => this.setState(st => ({ collapsed: !st.collapsed, menu: null })),
+      expandIfCollapsed: () => { if (this.state.collapsed) this.setState({ collapsed: false }); },
+      showTabs: main && !s.collapsed,
+      showBody: !s.collapsed || !main,
+      tabs: [['summary', 'Summary'], ['transcript', 'Transcript'], ['chat', 'Chat']].map(([id, label]) => ({ label, on: s.tab === id, off: s.tab !== id, onClick: () => this.setState({ tab: id, menu: null }) })),
+      isSummary: main && s.tab === 'summary' && s.hasKey, isTranscript: main && s.tab === 'transcript', isChat: main && s.tab === 'chat' && s.hasKey,
+      isSettings: s.view === 'settings', isOnboarding: s.view === 'onboarding', isNoVideo: s.view === 'novideo',
+      openStyle: menu('style'), openModelS: menu('model-s'), openModelC: menu('model-c'),
+      styleMenu: s.menu === 'style', modelMenuS: s.menu === 'model-s', modelMenuC: s.menu === 'model-c',
+      modelName: model.name, styleName: style.name, providerName: prov.name,
+      modelOpts: opts(MODELS, s.model, id => this.setState({ model: id, menu: null })),
+      styleOpts: opts(STYLES, s.style, id => { this.setState({ style: id }); this.generate(); }),
+      generate: () => this.generate(),
+      copySummary: () => this.toast('Copied as Markdown'),
+      goChat: () => this.setState({ tab: 'chat' }),
+      sumIdle: s.summary === 'idle', sumLoading: s.summary === 'loading', sumError: s.summary === 'error', sumNoCaptions: s.summary === 'nocaptions', sumDone: s.summary === 'done',
+      loadSteps: LOAD_STEPS.map((label, j) => ({ label, done: j < s.loadStep, active: j === s.loadStep, pending: j > s.loadStep, color: j <= s.loadStep ? 'var(--fg)' : 'var(--fg-subtle)' })),
+      spinner, skeleton, dots,
+      showTldr: s.style !== 'moments', showMoments: s.style !== 'tldr', showDetail: s.style === 'detailed',
+      moments: MOMENTS.map(([sec, text], j) => {
+        const on = MOMENTS.reduce((k, m, x) => m[0] <= s.t ? x : k, -1) === j;
+        return { time: fmt(sec), text, onClick: () => this.seek(sec), bg: on ? 'var(--bg-elevated)' : 'transparent', color: on ? 'var(--fg)' : 'var(--card-foreground)' };
+      }),
+      notes: NOTES, fs, lh,
+      fbUp: () => { this.setState({ feedback: 'up' }); this.toast('Thanks — noted'); },
+      fbDown: () => { this.setState({ feedback: 'down' }); this.toast("Thanks. I'll use that to tune the prompt"); },
+      upIcon: s.feedback === 'up' ? 'ph-fill ph-thumbs-up' : 'ph ph-thumbs-up', downIcon: s.feedback === 'down' ? 'ph-fill ph-thumbs-down' : 'ph ph-thumbs-down',
+      upColor: s.feedback === 'up' ? 'var(--fg)' : 'var(--fg-muted)', downColor: s.feedback === 'down' ? 'var(--fg)' : 'var(--fg-muted)',
+      askFollowUp: () => this.setState({ tab: 'chat', draft: 'Explain the Suspense part like I\u2019m new to React' }),
+      summaryMeta: `${model.name} · ${style.name} · ${set.lang === 'Match video' ? 'English' : set.lang}`,
+      tOk: s.transcript === 'ok', tNotOk: s.transcript !== 'ok', tNone: s.transcript === 'none', tTranscribing: s.transcript === 'transcribing',
+      transcribe: () => this.transcribe(), pctLabel: s.pct + '%',
+      query: s.query, hasQuery: !!q, searchPadR: q ? '120px' : '12px',
+      onQuery: e => this.setState({ query: e.target.value, matchIdx: 0 }),
+      onSearchKey: e => {
+        if (e.key === 'Enter') { e.preventDefault(); this.setState(st => ({ matchIdx: st.matchIdx + (e.shiftKey ? -1 : 1) })); }
+        if (e.key === 'Escape') this.setState({ query: '' });
+      },
+      matchLabel: matches.length ? `${mi + 1}/${matches.length}` : '0/0',
+      prevMatch: () => this.setState(st => ({ matchIdx: st.matchIdx - 1 })), nextMatch: () => this.setState(st => ({ matchIdx: st.matchIdx + 1 })),
+      clearQuery: () => this.setState({ query: '' }),
+      follow: s.follow, notFollow: !s.follow,
+      toggleFollow: () => this.setState(st => ({ follow: !st.follow })),
+      onTranscriptWheel: () => { if (this.state.follow && !this.state.query) this.setState({ follow: false }); },
+      showJump: !s.follow && !q,
+      jumpNow: () => this.setState({ follow: true }),
+      copyTranscript: () => this.toast('Transcript copied with timestamps'),
+      items, noMatches: !!q && matches.length === 0,
+      tRef: this.tRef, cRef: this.cRef,
+      chatEmpty: s.messages.length === 0 && !s.stream,
+      suggestions: SUGGEST.map(text => ({ text, onClick: () => this.send(text) })),
+      msgs,
+      hasQuote: s.quote != null, quoteTime: s.quote != null ? fmt(TRANSCRIPT[s.quote][0]) : '', quoteText: s.quote != null ? this.line(s.quote) : '',
+      clearQuote: () => this.setState({ quote: null }),
+      draft: s.draft, onDraft: e => this.setState({ draft: e.target.value }),
+      onKey: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.send(); } },
+      sendDraft: () => this.send(), stop: () => this.stop(),
+      isStreaming: !!s.stream, canSend, sendDisabled: !canSend && !s.stream,
+      attachTime: s.attachTime, noAttach: !s.attachTime, toggleAttach: () => this.setState(st => ({ attachTime: !st.attachTime })),
+      provider: s.provider, model: s.model, styleId: s.style, lang: set.lang,
+      providerSel: PROVIDERS.map(x => ({ value: x.id, label: x.name })),
+      modelSel: MODELS.map(x => ({ value: x.id, label: x.name })),
+      styleSel: STYLES.map(x => ({ value: x.id, label: x.name })),
+      langSel: LANGS.map(x => ({ value: x, label: x })),
+      onProvider: e => this.setState({ provider: e.target.value }),
+      onModel: e => this.setState({ model: e.target.value }),
+      onStyle: e => this.setState({ style: e.target.value }),
+      onLang: e => this.setSet('lang', e.target.value),
+      keyMask: { openai: 'sk-…4f2a', anthropic: 'sk-ant-…91cd', google: 'AIza…x7Qe', openrouter: 'sk-or-…b03e' }[s.provider],
+      replaceKey: () => this.setState({ view: 'onboarding' }),
+      tgAutoSum: tg(set.autoSum, 'autoSum'), tgFollow: tg(set.follow, 'follow'), tgFillers: tg(set.fillers, 'fillers'),
+      themeSeg: seg([['youtube', 'Match YouTube'], ['dark', 'Dark'], ['light', 'Light']], set.theme, 'theme'),
+      sizeSeg: seg([['s', 'S'], ['m', 'M'], ['l', 'L']], set.size, 'size'),
+      fontSeg: seg([['youtube', 'Roboto'], ['geist', 'Geist']], font, 'font'),
+      shortcuts: SHORTCUTS.map(([label, keys]) => ({ label, keys })),
+      exportChats: () => this.toast('Exported 12 chats'),
+      clearHistory: () => { this.setState({ messages: [] }); this.toast('Chat history cleared'); },
+      providerOpts: PROVIDERS.map(x => ({ name: x.name, models: x.models, tag: x.tag, bg: x.id === s.provider ? 'var(--bg-overlay)' : 'var(--bg-elevated)', ring: x.id === s.provider ? '5px solid var(--fg)' : '1.5px solid var(--fg-subtle)', onClick: () => this.setState({ provider: x.id, keyStatus: 'idle' }) })),
+      keyDraft: s.keyDraft, onKeyDraft: e => this.setState({ keyDraft: e.target.value, keyError: false, keyStatus: 'idle' }),
+      keyPlaceholder: 'Paste your key (' + prov.hint + ')', keyError: s.keyError, keyBorder: (s.keyError || s.keyStatus === 'invalid') ? 'var(--danger)' : s.keyStatus === 'valid' ? 'var(--success)' : 'var(--border-strong)',
+      connect: () => this.connect(), connectOpacity: s.keyStatus === 'checking' ? '0.5' : '1',
+      connectLabel: { idle: 'Test key', checking: 'Checking…', invalid: 'Test again', valid: 'Save and continue' }[s.keyStatus],
+      keyChecking: s.keyStatus === 'checking', keyInvalid: s.keyStatus === 'invalid', keyValid: s.keyStatus === 'valid',
+      foundModels: prov.found.map(name => ({ name })), foundCount: prov.found.length,
+      keyType: s.showKey ? 'text' : 'password', eyeIcon: s.showKey ? 'ph ph-eye-slash' : 'ph ph-eye',
+      toggleShowKey: () => this.setState(st => ({ showKey: !st.showKey })),
+      pasteKey: () => this.setState({ keyDraft: 'sk-proj-8f2kQ7vLx0aN4f2a', keyError: false, keyStatus: 'idle' }),
+      privacyRows: [{ icon: 'ph ph-hard-drives', text: 'Stored in chrome.storage on this device' }, { icon: 'ph ph-lock-simple', text: 'Never sent to my server — there isn\u2019t one' }, { icon: 'ph ph-trash', text: 'Remove it anytime in settings' }],
+      showProgress: s.view === 'main',
+      segs: CH.map((c, j) => { const end = j < CH.length - 1 ? CH[j + 1] : DUR, len = end - c, fr = Math.max(0, Math.min(1, (s.t - c) / len)); return { w: String(len), fill: (fr * 100).toFixed(1) + '%', title: CHAPTERS[c] + ' · ' + fmt(c), onClick: () => this.seek(c) }; }),
+      isSummaryTab: main && !s.collapsed && s.tab === 'summary' && s.hasKey,
+      openOpts: menu('opts'), optsMenu: s.menu === 'opts',
+      leadFs: { s: '14px', m: '15px', l: '17px' }[set.size], leadLh: { s: '21px', m: '23px', l: '26px' }[set.size],
+      isGate: main && s.tab !== 'transcript' && !s.hasKey,
+      gateVerb: s.tab === 'chat' ? 'chat with videos' : 'summarize videos',
+      gateRows: [{ icon: 'ph ph-coins', title: 'About $0.002 per summary', note: '4-minute video on GPT-5 mini' }, { icon: 'ph ph-lock-simple', title: 'Stays on this device', note: 'Sent only to the provider you pick' }, { icon: 'ph ph-closed-captioning', title: 'Transcript works without one', note: 'Search, follow and jump are free' }],
+      openOnboarding: () => this.setState({ view: 'onboarding', menu: null }),
+      goTranscript: () => this.setState({ tab: 'transcript' }),
+      nowChapter: CHAPTERS[CH.filter(c => c <= s.t).pop()],
+      nowLine: this.line(ai),
+      explainNow: () => this.setState({ quote: ai }, () => this.send('Explain what he means here')),
+      quoteNow: () => this.setState({ quote: ai }),
+      quickActions: QUICK.filter(q => !q.draft).map(q => ({ icon: q.icon, label: q.label, note: q.note, onClick: () => q.draft ? this.setState({ draft: q.draft }) : this.send(q.prompt) })),
+      hasHistory: true,
+      history: [{ text: 'How is this different from ISR?', when: 'Yesterday', onClick: () => this.setState({ messages: HIST() }) }],
+      usagePct: s.limit ? Math.min(100, 0.41 / s.limit * 100).toFixed(1) + '%' : '0%',
+      limitLabel: s.limit ? '$0.41 of $' + s.limit + ' limit' : 'No limit set',
+      limitSeg: [[1, '$1'], [5, '$5'], [20, '$20'], [0, 'Off']].map(([v, label]) => ({ label, bg: v === s.limit ? 'var(--bg)' : 'transparent', color: v === s.limit ? 'var(--fg)' : 'var(--fg-muted)', onClick: () => this.setState({ limit: v }) })),
+      hasToast: !!s.toast, toast: s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

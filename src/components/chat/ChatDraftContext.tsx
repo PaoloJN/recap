@@ -1,0 +1,88 @@
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react"
+
+export interface ChatQuote {
+  seconds: number
+  text: string
+}
+
+export interface ChatDraft {
+  draft: string
+  setDraft(v: string): void
+  quote: ChatQuote | null
+  setQuote(q: ChatQuote | null): void
+  attachTime: boolean
+  setAttachTime(v: boolean): void
+  /**
+   * Set by `requestFocus`; the composer focuses and calls `consumeFocus` once it is mounted and
+   * visible, so a request made before the chat view exists is not lost. Cleared by `reset`.
+   */
+  focusPending: boolean
+  requestFocus(): void
+  consumeFocus(): void
+  /** Whether the open chat thread has messages; drives the tab row's "New" button. */
+  hasMessages: boolean
+  setHasMessages(v: boolean): void
+  /** Bumped by `requestNewChat`; the chat panel clears its thread when it changes. */
+  newChatToken: number
+  requestNewChat(): void
+  /** Clears draft, quote, attachTime and a pending focus request (on video change). */
+  reset(): void
+}
+
+const ChatDraftContext = createContext<ChatDraft | null>(null)
+
+export function ChatDraftProvider({ children }: { children: ReactNode }) {
+  const [draft, setDraft] = useState("")
+  const [quote, setQuote] = useState<ChatQuote | null>(null)
+  const [attachTime, setAttachTime] = useState(false)
+  const [focusPending, setFocusPending] = useState(false)
+  const requestFocus = useCallback(() => setFocusPending(true), [])
+  const consumeFocus = useCallback(() => setFocusPending(false), [])
+  const [hasMessages, setHasMessages] = useState(false)
+  const [newChatToken, setNewChatToken] = useState(0)
+  const requestNewChat = useCallback(() => setNewChatToken((t) => t + 1), [])
+  const reset = useCallback(() => {
+    setDraft("")
+    setQuote(null)
+    setAttachTime(false)
+    setFocusPending(false)
+  }, [])
+
+  const value = useMemo<ChatDraft>(
+    () => ({
+      draft,
+      setDraft,
+      quote,
+      setQuote,
+      attachTime,
+      setAttachTime,
+      focusPending,
+      requestFocus,
+      consumeFocus,
+      hasMessages,
+      setHasMessages,
+      newChatToken,
+      requestNewChat,
+      reset,
+    }),
+    [
+      draft,
+      quote,
+      attachTime,
+      focusPending,
+      requestFocus,
+      consumeFocus,
+      hasMessages,
+      newChatToken,
+      requestNewChat,
+      reset,
+    ],
+  )
+  return <ChatDraftContext.Provider value={value}>{children}</ChatDraftContext.Provider>
+}
+
+export function useChatDraft(): ChatDraft {
+  const value = useContext(ChatDraftContext)
+  if (!value) throw new Error("useChatDraft must be used inside a ChatDraftProvider")
+  return value
+}
