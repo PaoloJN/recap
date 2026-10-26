@@ -3,7 +3,7 @@
 import * as React from "react"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
-import { usePortalContainer } from "@/components/shell/PortalContainer"
+import { useDialogContainer, usePortalContainer } from "@/components/shell/PortalContainer"
 import { cn } from "@/lib/utils"
 
 /** 32px, 13px label, radius 8 (v3 buttons). */
@@ -22,7 +22,7 @@ const AlertDialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "absolute inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -35,14 +35,17 @@ const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
 >(({ className, ...props }, ref) => {
-  const container = usePortalContainer()
+  // Scoped to the panel card (absolute, clipped by its rounded overflow) when available.
+  const card = useDialogContainer()
+  const shadow = usePortalContainer()
+  const container = card ?? shadow
   return (
   <AlertDialogPortal container={container ?? undefined}>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-32px)] max-w-[340px] translate-x-[-50%] translate-y-[-50%] gap-[16px] rounded-[12px] border bg-popover p-[20px] text-popover-foreground shadow-pop duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+        "absolute left-[50%] top-[50%] z-50 grid w-[calc(100%-32px)] max-w-[340px] translate-x-[-50%] translate-y-[-50%] gap-[16px] rounded-[12px] border bg-popover p-[20px] text-popover-foreground shadow-pop duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className
       )}
       {...props}

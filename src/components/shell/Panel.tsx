@@ -1,5 +1,5 @@
 import { WarningCircle } from "@phosphor-icons/react"
-import { type ReactNode, useEffect, useMemo, useRef } from "react"
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useChatDraft } from "@/components/chat/ChatDraftContext"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { NewChatButton } from "@/components/chat/NewChatButton"
@@ -29,7 +29,7 @@ import { EmptyState } from "./EmptyState"
 import { Header } from "./Header"
 import { MoreMenu } from "./MoreMenu"
 import { usePanelNav } from "./NavigationContext"
-import { usePortalContainer } from "./PortalContainer"
+import { DialogContainerContext, usePortalContainer } from "./PortalContainer"
 import { SettingsVersion, SettingsView } from "./SettingsView"
 import { SubHeader } from "./SubHeader"
 import { TabRow } from "./TabRow"
@@ -147,13 +147,18 @@ function Body({ tab, hasKey, video }: BodyProps) {
 
 export function Panel() {
   const nav = usePanelNav()
-  const { open, setOpen, tab, view, setView } = nav
+  const { open, setOpen, tab, view, setView, goBack } = nav
   const [storedSettings] = useSettings()
   const [apiKeys] = useStorageItem(apiKeysItem)
   const youtubeTheme = useTheme()
   const toast = useToast()
   const container = usePortalContainer()
-  const cardRef = useRef<HTMLDivElement>(null)
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  const [card, setCard] = useState<HTMLDivElement | null>(null)
+  const setCardRef = useCallback((el: HTMLDivElement | null) => {
+    cardRef.current = el
+    setCard(el)
+  }, [])
   const video = useVideo(open)
   const { hasMessages, reset: resetChatDraft } = useChatDraft()
   // A draft, quote or "current moment" belongs to the video it was written for.
@@ -234,66 +239,68 @@ export function Panel() {
 
   return (
     <SummaryProvider value={summary}>
-      <div
-        ref={cardRef}
-        className={cn(
-          "flex flex-col overflow-hidden rounded-[12px] border bg-background font-sans text-body text-foreground antialiased",
-          open ? "h-[640px]" : "h-auto",
-          TEXT_SIZE_CLASS[settings.textSize],
-          dark && "dark",
-        )}
-      >
-        {open && view !== "main" ? (
-          <SubHeader
-            title={view === "settings" ? "Settings" : "Add API key"}
-            onBack={() => setView("main")}
-            right={view === "settings" ? <SettingsVersion /> : null}
-          />
-        ) : (
-          <Header
-            title={page?.metadata.title ?? "YouTube AI"}
-            author={author}
-            hasVideo={page !== null}
-            open={open}
-            onToggleOpen={() => setOpen(!open)}
-            onOpenSettings={openSettings}
-            moreMenu={
-              <MoreMenu videoId={videoId} onExport={exportMarkdown} onShortcuts={showShortcuts} />
-            }
-          />
-        )}
-        {page && page.metadata.durationSeconds > 0 && (view === "main" || !open) ? (
-          <LiveChapterBar
-            chapters={page.chapters}
-            durationSeconds={page.metadata.durationSeconds}
-          />
-        ) : null}
-        {open ? null : <CollapsedRow status={status} onExpand={() => setOpen(true)} />}
-        {open && view === "onboarding" && storedSettings ? (
-          <ConnectView key={storedSettings.provider} initialProvider={storedSettings.provider} />
-        ) : null}
-        {open && view === "settings" ? <SettingsView /> : null}
-        {/* Kept mounted while collapsed or in settings so streams and panel state survive. */}
-        <div className={showMain ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
-          <TabRow
-            right={
-              !hasKey ? null : tab === "summary" ? (
-                <SummaryActions />
-              ) : tab === "chat" && hasMessages ? (
-                <NewChatButton />
-              ) : null
-            }
-          />
-          <div
-            className={cn(
-              "flex min-h-0 flex-1 flex-col",
-              transcriptScrolls ? "overflow-hidden" : "overflow-auto",
-            )}
-          >
-            <Body tab={tab} hasKey={hasKey} video={video} />
+      <DialogContainerContext.Provider value={card}>
+        <div
+          ref={setCardRef}
+          className={cn(
+            "relative flex flex-col overflow-hidden rounded-[12px] border bg-background font-sans text-body text-foreground antialiased",
+            open ? "h-[640px]" : "h-auto",
+            TEXT_SIZE_CLASS[settings.textSize],
+            dark && "dark",
+          )}
+        >
+          {open && view !== "main" ? (
+            <SubHeader
+              title={view === "settings" ? "Settings" : "Add API key"}
+              onBack={goBack}
+              right={view === "settings" ? <SettingsVersion /> : null}
+            />
+          ) : (
+            <Header
+              title={page?.metadata.title ?? "YouTube AI"}
+              author={author}
+              hasVideo={page !== null}
+              open={open}
+              onToggleOpen={() => setOpen(!open)}
+              onOpenSettings={openSettings}
+              moreMenu={
+                <MoreMenu videoId={videoId} onExport={exportMarkdown} onShortcuts={showShortcuts} />
+              }
+            />
+          )}
+          {page && page.metadata.durationSeconds > 0 && (view === "main" || !open) ? (
+            <LiveChapterBar
+              chapters={page.chapters}
+              durationSeconds={page.metadata.durationSeconds}
+            />
+          ) : null}
+          {open ? null : <CollapsedRow status={status} onExpand={() => setOpen(true)} />}
+          {open && view === "onboarding" && storedSettings ? (
+            <ConnectView key={storedSettings.provider} initialProvider={storedSettings.provider} />
+          ) : null}
+          {open && view === "settings" ? <SettingsView /> : null}
+          {/* Kept mounted while collapsed or in settings so streams and panel state survive. */}
+          <div className={showMain ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
+            <TabRow
+              right={
+                !hasKey ? null : tab === "summary" ? (
+                  <SummaryActions />
+                ) : tab === "chat" && hasMessages ? (
+                  <NewChatButton />
+                ) : null
+              }
+            />
+            <div
+              className={cn(
+                "flex min-h-0 flex-1 flex-col",
+                transcriptScrolls ? "overflow-hidden" : "overflow-auto",
+              )}
+            >
+              <Body tab={tab} hasKey={hasKey} video={video} />
+            </div>
           </div>
         </div>
-      </div>
+      </DialogContainerContext.Provider>
     </SummaryProvider>
   )
 }

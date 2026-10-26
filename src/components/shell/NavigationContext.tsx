@@ -10,6 +10,8 @@ export interface PanelNav {
   selectTab(tab: PanelTab): void
   view: PanelView
   setView(view: PanelView): void
+  /** Sub-header back: the connect view opened from Settings returns there, else to main. */
+  goBack(): void
   optionsOpen: boolean
   setOptionsOpen(v: boolean): void
   /** Bumped by `requestSearchFocus`; the transcript search input focuses when it changes. */
@@ -22,7 +24,20 @@ const NavigationContext = createContext<PanelNav | null>(null)
 /** `open`/`tab` persist in `local:panel`; children render once that has loaded. */
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [panelState, setPanelState] = useStorageItem(panelStateItem)
-  const [view, setView] = useState<PanelView>("main")
+  const [nav, setNav] = useState<{ view: PanelView; back: PanelView }>({
+    view: "main",
+    back: "main",
+  })
+  const view = nav.view
+  const setView = useCallback(
+    (next: PanelView) =>
+      setNav((cur) => ({
+        view: next,
+        back: next === "onboarding" && cur.view === "settings" ? "settings" : "main",
+      })),
+    [],
+  )
+  const goBack = useCallback(() => setNav((cur) => ({ view: cur.back, back: "main" })), [])
   const [optionsOpen, setOptionsOpen] = useState(false)
   const [searchFocusToken, setSearchFocusToken] = useState(0)
 
@@ -38,7 +53,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setView("main")
       void setPanelState({ tab: next, open: true })
     },
-    [setPanelState],
+    [setPanelState, setView],
   )
   const requestSearchFocus = useCallback(() => setSearchFocusToken((t) => t + 1), [])
 
@@ -50,12 +65,24 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       selectTab,
       view,
       setView,
+      goBack,
       optionsOpen,
       setOptionsOpen,
       searchFocusToken,
       requestSearchFocus,
     }),
-    [open, setOpen, tab, selectTab, view, optionsOpen, searchFocusToken, requestSearchFocus],
+    [
+      open,
+      setOpen,
+      tab,
+      selectTab,
+      view,
+      setView,
+      goBack,
+      optionsOpen,
+      searchFocusToken,
+      requestSearchFocus,
+    ],
   )
 
   if (!panelState) return null
