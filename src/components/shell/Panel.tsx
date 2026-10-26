@@ -295,6 +295,10 @@ export function Panel() {
         : "Loading…"
   const showMain = open && view === "main"
   const transcriptScrolls = tab === "transcript" && showMain && video.transcript.state === "ready"
+  // Summary idle / error / no-captions / no-key screens are short: the card hugs them instead
+  // of reserving the full scroll height. Everything that scrolls keeps the fixed 640px.
+  const fitContent =
+    showMain && tab === "summary" && !(summary.status === "streaming" || summary.status === "done")
 
   return (
     <SummaryProvider value={summary}>
@@ -303,7 +307,8 @@ export function Panel() {
           ref={setCardRef}
           className={cn(
             "relative flex flex-col overflow-hidden rounded-[12px] border bg-background font-sans text-body text-foreground antialiased",
-            open ? "h-[640px]" : "h-auto",
+            open && !fitContent ? "h-[640px]" : "h-auto",
+            fitContent && "max-h-[640px]",
             TEXT_SIZE_CLASS[settings.textSize],
             dark && "dark",
           )}
