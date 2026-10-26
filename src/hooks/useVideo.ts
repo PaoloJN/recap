@@ -18,8 +18,9 @@ function errorMessage(err: unknown): string {
 }
 
 /**
- * Fetches the watch page on every video id change (chapters, metadata). The transcript is fetched
- * only while `loadTranscript` is true, once per page; no caption tracks means unavailable.
+ * Fetches the watch page on every video id change (chapters, metadata). No caption tracks means
+ * unavailable as soon as the page loads; otherwise the transcript is fetched only while
+ * `loadTranscript` is true, once per page.
  */
 export function useVideo(loadTranscript: boolean): VideoState {
   const [videoId, setVideoId] = useState<string | null>(null)
@@ -46,7 +47,12 @@ export function useVideo(loadTranscript: boolean): VideoState {
     if (!videoId) return
     fetchWatchPage(videoId).then(
       (next) => {
-        if (isCurrent()) setPage(next)
+        if (!isCurrent()) return
+        setPage(next)
+        if (next.captionTracks.length === 0) {
+          transcriptPageRef.current = next
+          setTranscript({ state: "unavailable" })
+        }
       },
       (err) => {
         if (isCurrent()) setPageError(errorMessage(err))
@@ -63,10 +69,6 @@ export function useVideo(loadTranscript: boolean): VideoState {
     transcriptPageRef.current = page
     const request = ++transcriptRequestRef.current
     const isCurrent = () => request === transcriptRequestRef.current
-    if (page.captionTracks.length === 0) {
-      setTranscript({ state: "unavailable" })
-      return
-    }
     setTranscript({ state: "loading" })
     fetchTranscript(page).then(
       (next) => {
