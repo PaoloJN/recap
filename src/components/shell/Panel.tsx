@@ -160,9 +160,9 @@ export function Panel() {
         // Kept mounted while collapsed so streams and panel state survive; hidden instead.
         <div
           className={cn(
-            "flex max-h-[520px] flex-col rounded-lg border bg-card text-card-foreground",
+            "max-h-[520px] flex-col rounded-lg border bg-card text-card-foreground",
+            panelState.open ? "flex" : "hidden",
             transcriptScrolls ? "overflow-hidden" : "overflow-auto",
-            !panelState.open && "hidden",
           )}
         >
           {video.page ? <VideoStrip metadata={video.page.metadata} /> : null}
