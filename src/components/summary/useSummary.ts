@@ -196,7 +196,10 @@ export function useSummary(
   const restored = active && status === "idle" && stored !== undefined
   const effectiveStatus: SummaryStatus = !active ? "idle" : restored ? "done" : status
   const text = !active ? "" : restored ? (stored?.text ?? "") : liveText
-  const parsed = useMemo(() => parseSummary(text), [text])
+  const parsed = useMemo(
+    () => parseSummary(text, { streaming: effectiveStatus === "streaming" }),
+    [text, effectiveStatus],
+  )
 
   return {
     status: effectiveStatus,

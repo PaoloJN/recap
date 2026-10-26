@@ -45,7 +45,7 @@ describe("parseSummary", () => {
   })
 
   it("ignores moment bullets without a timestamp", () => {
-    expect(parseSummary("## Key moments\n- nope\n- 2:00: Real\n").moments).toEqual([
+    expect(parseSummary("## Key moments\n- nope\n- 2:00: Real").moments).toEqual([
       { seconds: 120, text: "Real" },
     ])
   })
@@ -56,11 +56,20 @@ describe("parseSummary", () => {
     expect(p.lead).toContain("bar")
   })
 
-  it("ignores a moment bullet that is still streaming in", () => {
-    expect(parseSummary("## Key moments\n- 0:14 A\n- 1:02:0").moments).toEqual([
-      { seconds: 14, text: "A" },
+  it("keeps a complete last moment bullet without a trailing newline", () => {
+    expect(parseSummary("## Key moments\n- 12:34 Text").moments).toEqual([
+      { seconds: 754, text: "Text" },
     ])
-    expect(parseSummary("## Key moments\n- 1:02:03 B\n").moments).toEqual([
+    expect(parseSummary("## Key moments\n- 12:34 Text", { streaming: false }).moments).toHaveLength(
+      1,
+    )
+  })
+
+  it("ignores an open last moment line only while streaming", () => {
+    const t = "## Key moments\n- 0:14 A\n- 1:02:0"
+    expect(parseSummary(t, { streaming: true }).moments).toEqual([{ seconds: 14, text: "A" }])
+    expect(parseSummary(t).moments).toHaveLength(2)
+    expect(parseSummary("## Key moments\n- 1:02:03 B\n", { streaming: true }).moments).toEqual([
       { seconds: 3723, text: "B" },
     ])
   })

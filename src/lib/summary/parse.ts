@@ -45,7 +45,7 @@ function paragraphs(lines: string[]): string {
     .trim()
 }
 
-export function parseSummary(text: string): ParsedSummary {
+export function parseSummary(text: string, opts?: { streaming?: boolean }): ParsedSummary {
   const out: ParsedSummary = { lead: "", moments: [], notes: [], plain: "", questions: [] }
   try {
     const lines = text.split("\n")
@@ -57,7 +57,8 @@ export function parseSummary(text: string): ParsedSummary {
       popped = true
     }
     // The final line of unterminated input may still be streaming in.
-    const openIndex = !popped && !text.endsWith("\n") ? lines.length - 1 : -1
+    const openIndex =
+      opts?.streaming === true && !popped && !text.endsWith("\n") ? lines.length - 1 : -1
     const lead: string[] = []
     const plain: string[] = []
     let section: Section = "lead"
