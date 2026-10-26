@@ -7,7 +7,6 @@ import { useSummary } from "@/components/summary/useSummary"
 import { TranscriptPanel } from "@/components/transcript/TranscriptPanel"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { usePlayer } from "@/hooks/usePlayer"
 import { useSettings } from "@/hooks/useSettings"
 import { useStorageItem } from "@/hooks/useStorageItem"
 import { useTheme } from "@/hooks/useTheme"
@@ -23,7 +22,7 @@ import {
 } from "@/lib/storage"
 import type { ModelSelection, PanelTab, TranscriptStatus, VideoContext } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { ChapterBar } from "./ChapterBar"
+import { LiveChapterBar } from "./ChapterBar"
 import { CollapsedRow } from "./CollapsedRow"
 import { collapsedStatus } from "./collapsed-status"
 import { EmptyState } from "./EmptyState"
@@ -59,6 +58,21 @@ function TranscriptGate({
   children: (ready: ReadyTranscript, context: VideoContext) => ReactNode
 }): ReactNode {
   const { transcript } = video
+  if (video.pageError !== null) {
+    return (
+      <EmptyState
+        icon={WarningCircle}
+        iconWeight="fill"
+        title="Couldn't load this video"
+        description={video.pageError}
+        action={
+          <Button size="sm" variant="outline" onClick={video.reload}>
+            Retry
+          </Button>
+        }
+      />
+    )
+  }
   switch (transcript.state) {
     case "loading":
       return <TranscriptSkeleton />
@@ -74,6 +88,7 @@ function TranscriptGate({
       return (
         <EmptyState
           icon={WarningCircle}
+          iconWeight="fill"
           title="Couldn't load the transcript"
           description={transcript.message}
           action={
@@ -116,15 +131,7 @@ function Body({ tab, hasKey, settings, selection, video, onAddKey }: BodyProps) 
   return (
     <>
       <div className={pane("summary")}>
-        {hasKey ? (
-          <TranscriptGate video={video}>
-            {(_, context) => (
-              <SummaryPanel context={context} selection={selection} settings={settings} />
-            )}
-          </TranscriptGate>
-        ) : (
-          noKey
-        )}
+        {hasKey ? <TranscriptGate video={video}>{() => <SummaryPanel />}</TranscriptGate> : noKey}
       </div>
       <div className={pane("transcript")}>
         <TranscriptGate video={video}>
@@ -154,7 +161,6 @@ export function Panel() {
   const [storedSettings] = useSettings()
   const [apiKeys] = useStorageItem(apiKeysItem)
   const youtubeTheme = useTheme()
-  const { ms, paused } = usePlayer()
   const toast = useToast()
   const container = usePortalContainer()
   const cardRef = useRef<HTMLDivElement>(null)
@@ -196,6 +202,7 @@ export function Panel() {
         downloadText(filename, text)
         toast(`Saved ${filename}`)
       },
+      () => toast("Couldn't export"),
     )
   }
 
@@ -214,7 +221,13 @@ export function Panel() {
     momentCount: summary.parsed.moments.length,
   })
 
-  const author = page ? page.metadata.author : video.videoId === null ? "No video open" : "Loading…"
+  const author = page
+    ? page.metadata.author
+    : video.pageError !== null
+      ? "Couldn't load video"
+      : video.videoId === null
+        ? "No video open"
+        : "Loading…"
   const showMain = open && view === "main"
   const transcriptScrolls = tab === "transcript" && showMain && video.transcript.state === "ready"
 
@@ -223,7 +236,7 @@ export function Panel() {
       <div
         ref={cardRef}
         className={cn(
-          "flex flex-col overflow-hidden rounded-[12px] border bg-background text-foreground",
+          "flex flex-col overflow-hidden rounded-[12px] border bg-background font-sans text-body text-foreground antialiased",
           open ? "h-[640px]" : "h-auto",
           TEXT_SIZE_CLASS[settings.textSize],
           dark && "dark",
@@ -233,25 +246,17 @@ export function Panel() {
           title={page?.metadata.title ?? "YouTube AI"}
           author={author}
           hasVideo={page !== null}
-          ms={ms}
-          paused={paused}
           open={open}
           onToggleOpen={() => setOpen(!open)}
           onOpenSettings={openSettings}
           moreMenu={
-            <MoreMenu
-              videoId={videoId}
-              ms={ms}
-              onExport={exportMarkdown}
-              onShortcuts={showShortcuts}
-            />
+            <MoreMenu videoId={videoId} onExport={exportMarkdown} onShortcuts={showShortcuts} />
           }
         />
-        {view === "main" || !open ? (
-          <ChapterBar
-            chapters={page?.chapters ?? []}
-            durationSeconds={page?.metadata.durationSeconds ?? 0}
-            ms={ms}
+        {page && page.metadata.durationSeconds > 0 && (view === "main" || !open) ? (
+          <LiveChapterBar
+            chapters={page.chapters}
+            durationSeconds={page.metadata.durationSeconds}
           />
         ) : null}
         {open ? null : <CollapsedRow status={status} onExpand={() => setOpen(true)} />}

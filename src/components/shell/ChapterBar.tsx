@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { usePlayer } from "@/hooks/usePlayer"
 import { useSeek } from "@/hooks/useSeek"
 import { formatMs } from "@/lib/timestamps"
 import type { Chapter } from "@/lib/types"
@@ -8,6 +9,12 @@ export interface ChapterBarProps {
   chapters: Chapter[]
   durationSeconds: number
   ms: number
+}
+
+/** ChapterBar subscribed to playback itself, so the panel above it doesn't re-render per tick. */
+export function LiveChapterBar(props: Omit<ChapterBarProps, "ms">) {
+  const { ms } = usePlayer()
+  return <ChapterBar {...props} ms={ms} />
 }
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))

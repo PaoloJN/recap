@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { usePlayer } from "@/hooks/usePlayer"
 import { formatMs } from "@/lib/timestamps"
 import { IconButton } from "./IconButton"
 import { useToast } from "./ToastContext"
@@ -21,7 +22,6 @@ const FEEDBACK_URL = "https://github.com/PaoloJN/youtube-ai-extension/issues/new
 export interface MoreMenuProps {
   /** Null until the watch page has loaded; video items are disabled meanwhile. */
   videoId: string | null
-  ms: number
   onExport(): void
   onShortcuts(): void
 }
@@ -40,8 +40,10 @@ function Item(props: { icon: Icon; label: string; disabled?: boolean; onSelect()
   )
 }
 
-export function MoreMenu({ videoId, ms, onExport, onShortcuts }: MoreMenuProps) {
+/** Mounted only while the menu is open, so the player subscription lives only that long. */
+function MoreMenuItems({ videoId, onExport, onShortcuts }: MoreMenuProps) {
   const toast = useToast()
+  const { ms } = usePlayer()
   const noVideo = videoId === null
 
   const copyLink = () => {
@@ -54,6 +56,31 @@ export function MoreMenu({ videoId, ms, onExport, onShortcuts }: MoreMenuProps) 
   }
 
   return (
+    <>
+      <Item
+        icon={LinkSimple}
+        label={`Copy link at ${formatMs(ms)}`}
+        disabled={noVideo}
+        onSelect={copyLink}
+      />
+      <Item
+        icon={DownloadSimple}
+        label="Export as Markdown"
+        disabled={noVideo}
+        onSelect={onExport}
+      />
+      <Item icon={Keyboard} label="Keyboard shortcuts" onSelect={onShortcuts} />
+      <Item
+        icon={ChatTeardropText}
+        label="Send feedback"
+        onSelect={() => window.open(FEEDBACK_URL, "_blank", "noopener")}
+      />
+    </>
+  )
+}
+
+export function MoreMenu(props: MoreMenuProps) {
+  return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <IconButton label="More">
@@ -64,24 +91,7 @@ export function MoreMenu({ videoId, ms, onExport, onShortcuts }: MoreMenuProps) 
         align="end"
         className="w-[244px] rounded-[12px] border bg-popover px-0 py-[8px] shadow-pop"
       >
-        <Item
-          icon={LinkSimple}
-          label={`Copy link at ${formatMs(ms)}`}
-          disabled={noVideo}
-          onSelect={copyLink}
-        />
-        <Item
-          icon={DownloadSimple}
-          label="Export as Markdown"
-          disabled={noVideo}
-          onSelect={onExport}
-        />
-        <Item icon={Keyboard} label="Keyboard shortcuts" onSelect={onShortcuts} />
-        <Item
-          icon={ChatTeardropText}
-          label="Send feedback"
-          onSelect={() => window.open(FEEDBACK_URL, "_blank", "noopener")}
-        />
+        <MoreMenuItems {...props} />
       </DropdownMenuContent>
     </DropdownMenu>
   )

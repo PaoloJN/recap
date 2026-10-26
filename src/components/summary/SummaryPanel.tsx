@@ -1,19 +1,11 @@
 import { Square } from "@phosphor-icons/react"
 import { Markdown } from "@/components/markdown/Markdown"
 import { Button } from "@/components/ui/button"
-import type { Settings } from "@/lib/storage"
-import type { ModelSelection, VideoContext } from "@/lib/types"
 import { useSummaryContext } from "./SummaryContext"
-
-export interface SummaryPanelProps {
-  context: VideoContext
-  selection: ModelSelection
-  settings: Settings
-}
 
 // Placeholder: Task 8 replaces this with the structured summary UI. State comes from the
 // Panel-level `useSummary` (via SummaryProvider) so there is a single summary request per video.
-export function SummaryPanel(_props: SummaryPanelProps) {
+export function SummaryPanel() {
   const { status, text, error, generate, stop } = useSummaryContext()
 
   return (
