@@ -22,6 +22,7 @@ export function TranscriptPanel({ transcript }: TranscriptPanelProps) {
   const { copied, copy } = useCopyToClipboard()
   const playbackMs = usePlaybackMs()
   const rowRefs = useRef(new Map<number, HTMLButtonElement>())
+  const listRef = useRef<HTMLDivElement>(null)
 
   const rows = useMemo(() => chunkSegments(transcript.segments), [transcript.segments])
   const visible = useMemo(() => filterSegments(rows, query), [rows, query])
@@ -29,7 +30,13 @@ export function TranscriptPanel({ transcript }: TranscriptPanelProps) {
   const searching = query.trim() !== ""
 
   const scrollToActive = useCallback(() => {
-    rowRefs.current.get(activeIndex)?.scrollIntoView({ block: "center", behavior: "smooth" })
+    const list = listRef.current
+    const el = rowRefs.current.get(activeIndex)
+    if (!list || !el) return
+    list.scrollTo({
+      top: el.offsetTop - list.clientHeight / 2 + el.clientHeight / 2,
+      behavior: "smooth",
+    })
   }, [activeIndex])
 
   useEffect(() => {
@@ -80,7 +87,8 @@ export function TranscriptPanel({ transcript }: TranscriptPanelProps) {
       </div>
       <div className="relative min-h-0 flex-1">
         <div
-          className="max-h-[440px] overflow-y-auto p-1"
+          ref={listRef}
+          className="relative max-h-[440px] overflow-y-auto p-1"
           onWheel={stopFollowing}
           onTouchMove={stopFollowing}
         >

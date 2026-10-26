@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { createTrailingThrottle } from "@/lib/throttle"
 import { onTimeUpdate } from "@/lib/youtube/player"
 
 const THROTTLE_MS = 250
@@ -7,13 +8,12 @@ export function usePlaybackMs(): number {
   const [ms, setMs] = useState(0)
 
   useEffect(() => {
-    let last = Number.NEGATIVE_INFINITY
-    return onTimeUpdate((value) => {
-      const now = performance.now()
-      if (now - last < THROTTLE_MS) return
-      last = now
-      setMs(value)
-    })
+    const throttled = createTrailingThrottle(setMs, THROTTLE_MS)
+    const off = onTimeUpdate(throttled)
+    return () => {
+      off()
+      throttled.cancel()
+    }
   }, [])
 
   return ms
