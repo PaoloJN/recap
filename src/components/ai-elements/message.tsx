@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalContainer } from "@/components/shell/PortalContainer";
 import { Button } from "@/components/ui/button";
 import {
   ButtonGroup,
@@ -320,17 +321,26 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 const streamdownPlugins = { cjk };
 
+// Link safety off: it renders links as hrefless buttons behind a modal, which breaks
+// timestamp anchors. Overlays portal into the shadow-root container, not document.body.
+const streamdownLinkSafety = { enabled: false };
+
 export const MessageResponse = memo(
-  ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown
-      className={cn(
-        "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        className
-      )}
-      plugins={streamdownPlugins}
-      {...props}
-    />
-  ),
+  ({ className, ...props }: MessageResponseProps) => {
+    const portalContainer = usePortalContainer();
+    return (
+      <Streamdown
+        className={cn(
+          "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+          className
+        )}
+        linkSafety={streamdownLinkSafety}
+        plugins={streamdownPlugins}
+        portal={portalContainer ?? undefined}
+        {...props}
+      />
+    );
+  },
   (prevProps, nextProps) =>
     prevProps.children === nextProps.children &&
     nextProps.isAnimating === prevProps.isAnimating
