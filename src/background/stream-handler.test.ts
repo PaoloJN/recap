@@ -75,6 +75,28 @@ describe("runStreamRequest", () => {
     expect(messages.some((m) => m.type === "error")).toBe(false)
   })
 
+  it("sends expanded quote text to the model", async () => {
+    const { post } = collect()
+    const model = helloModel()
+    const req: StreamRequest = {
+      kind: "chat",
+      messages: [
+        {
+          id: "1",
+          role: "user",
+          parts: [{ type: "text", text: "Why?" }],
+          metadata: { quote: { seconds: 14, text: "Static" }, at: 108 },
+        },
+      ],
+      context,
+      selection,
+      language: "match",
+    }
+    await runStreamRequest(req, { model, post, signal: new AbortController().signal })
+    const prompt = JSON.stringify(model.doStreamCalls[0]?.prompt)
+    expect(prompt).toContain("> [0:14] Static\\n\\nWhy?\\n\\n(asked at 1:48)")
+  })
+
   it("posts a single error and no done on a 401", async () => {
     const { messages, post } = collect()
     const model = new MockLanguageModelV3({

@@ -8,6 +8,7 @@ import {
 } from "ai"
 import { browser } from "wxt/browser"
 import { STREAM_PORT_NAME, type StreamPortMessage, type StreamRequest } from "../lib/port-protocol"
+import { expandUserMessages } from "../lib/prompts/chat-messages"
 import { buildSummaryPrompt } from "../lib/prompts/summary"
 import { buildChatSystemPrompt } from "../lib/prompts/system"
 import { createModel, PROVIDERS } from "../lib/providers"
@@ -86,7 +87,7 @@ export async function runStreamRequest(req: StreamRequest, deps: StreamDeps): Pr
         ? streamText({
             model,
             system: buildChatSystemPrompt(req.context, req.language),
-            messages: await convertToModelMessages(req.messages),
+            messages: await convertToModelMessages(expandUserMessages(req.messages)),
             abortSignal: signal,
             maxRetries: MAX_RETRIES,
             onError,
