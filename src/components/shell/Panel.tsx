@@ -1,8 +1,10 @@
-import { Key, WarningCircle } from "@phosphor-icons/react"
+import { WarningCircle } from "@phosphor-icons/react"
 import { type ReactNode, useEffect, useMemo, useRef } from "react"
 import { useChatDraft } from "@/components/chat/ChatDraftContext"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { NewChatButton } from "@/components/chat/NewChatButton"
+import { ConnectView } from "@/components/onboarding/ConnectView"
+import { NoKeyGate } from "@/components/onboarding/NoKeyGate"
 import { NoCaptions } from "@/components/summary/NoCaptions"
 import { SummaryActions } from "@/components/summary/SummaryActions"
 import { SummaryProvider } from "@/components/summary/SummaryContext"
@@ -105,22 +107,9 @@ interface BodyProps {
   tab: PanelTab
   hasKey: boolean
   video: VideoState
-  onAddKey(): void
 }
 
-function Body({ tab, hasKey, video, onAddKey }: BodyProps) {
-  const noKey = (
-    <EmptyState
-      icon={Key}
-      title="Add a key to get started"
-      description="Your key is stored locally in this extension and sent only to the provider you choose."
-      action={
-        <Button size="sm" onClick={onAddKey}>
-          Add API key
-        </Button>
-      }
-    />
-  )
+function Body({ tab, hasKey, video }: BodyProps) {
   // All three stay mounted so in-flight chat streams and transcript search/scroll survive tab
   // switches; inactive ones are hidden (a class, since the panels set their own display).
   const pane = (name: PanelTab) => (tab === name ? "contents" : "hidden")
@@ -129,7 +118,7 @@ function Body({ tab, hasKey, video, onAddKey }: BodyProps) {
       <div className={pane("summary")}>
         {/* SummaryPanel handles transcript loading, no captions and errors itself. */}
         {!hasKey ? (
-          noKey
+          <NoKeyGate verb="summarize videos" />
         ) : video.pageError !== null ? (
           <PageError video={video} />
         ) : (
@@ -148,7 +137,7 @@ function Body({ tab, hasKey, video, onAddKey }: BodyProps) {
         {hasKey ? (
           <TranscriptGate video={video}>{() => <ChatPanel video={video} />}</TranscriptGate>
         ) : (
-          noKey
+          <NoKeyGate verb="chat with videos" />
         )}
       </div>
     </>
@@ -266,8 +255,11 @@ export function Panel() {
           />
         ) : null}
         {open ? null : <CollapsedRow status={status} onExpand={() => setOpen(true)} />}
-        {open && view !== "main" && storedSettings && apiKeys ? (
-          // Tasks 11–12 replace this with ConnectView (onboarding) and the v3 SettingsView.
+        {open && view === "onboarding" && storedSettings ? (
+          <ConnectView key={storedSettings.provider} initialProvider={storedSettings.provider} />
+        ) : null}
+        {open && view === "settings" && storedSettings && apiKeys ? (
+          // Task 12 replaces this with the v3 SettingsView.
           <div className="min-h-0 flex-1 overflow-auto">
             <SettingsView
               settings={storedSettings}
@@ -293,7 +285,7 @@ export function Panel() {
               transcriptScrolls ? "overflow-hidden" : "overflow-auto",
             )}
           >
-            <Body tab={tab} hasKey={hasKey} video={video} onAddKey={() => setView("onboarding")} />
+            <Body tab={tab} hasKey={hasKey} video={video} />
           </div>
         </div>
       </div>
