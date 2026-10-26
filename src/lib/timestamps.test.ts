@@ -42,6 +42,9 @@ describe("linkifyTimestamps", () => {
   it("links several timestamps", () => {
     expect(linkifyTimestamps("1:02:03 then 0:05")).toBe("[1:02:03](#t=3723) then [0:05](#t=5)")
   })
+  it("leaves a year followed by a colon untouched", () => {
+    expect(linkifyTimestamps("in 2024: things")).toBe("in 2024: things")
+  })
   it("leaves ratios and existing links untouched", () => {
     const input = "ratio 16:9 and [12:34](#t=754)"
     expect(linkifyTimestamps(input)).toBe(input)
