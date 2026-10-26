@@ -51,7 +51,7 @@ export function AssistantMessage({
       <div className="flex min-w-0 flex-col gap-[8px] pt-[2px]">
         {streaming && !text ? (
           <Dots />
-        ) : (
+        ) : !text ? null : (
           <Markdown caret={streaming} className="text-body text-pretty text-card-foreground">
             {text}
           </Markdown>
@@ -59,9 +59,11 @@ export function AssistantMessage({
         {stopped ? <span className="text-[12px] text-subtle-foreground">Stopped.</span> : null}
         {streaming ? null : (
           <div className="-ml-[8px] flex">
-            <IconButton label="Copy" className={ACTION} onClick={onCopy}>
-              <Copy />
-            </IconButton>
+            {text ? (
+              <IconButton label="Copy" className={ACTION} onClick={onCopy}>
+                <Copy />
+              </IconButton>
+            ) : null}
             {isLast ? (
               <IconButton
                 label="Regenerate"
@@ -72,15 +74,17 @@ export function AssistantMessage({
                 <ArrowClockwise />
               </IconButton>
             ) : null}
-            <IconButton
-              label="Good answer"
-              aria-pressed={feedback}
-              className={ACTION}
-              disabled={busy}
-              onClick={onFeedback}
-            >
-              <ThumbsUp weight={feedback ? "fill" : "regular"} />
-            </IconButton>
+            {text ? (
+              <IconButton
+                label="Good answer"
+                aria-pressed={feedback}
+                className={ACTION}
+                disabled={busy}
+                onClick={onFeedback}
+              >
+                <ThumbsUp weight={feedback ? "fill" : "regular"} />
+              </IconButton>
+            ) : null}
           </div>
         )}
       </div>

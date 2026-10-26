@@ -21,6 +21,8 @@ export interface ChatDraft {
   /** Bumped by `requestNewChat`; the chat panel clears its thread when it changes. */
   newChatToken: number
   requestNewChat(): void
+  /** Clears draft, quote and attachTime (on video change). */
+  reset(): void
 }
 
 const ChatDraftContext = createContext<ChatDraft | null>(null)
@@ -34,6 +36,11 @@ export function ChatDraftProvider({ children }: { children: ReactNode }) {
   const [hasMessages, setHasMessages] = useState(false)
   const [newChatToken, setNewChatToken] = useState(0)
   const requestNewChat = useCallback(() => setNewChatToken((t) => t + 1), [])
+  const reset = useCallback(() => {
+    setDraft("")
+    setQuote(null)
+    setAttachTime(false)
+  }, [])
 
   const value = useMemo<ChatDraft>(
     () => ({
@@ -49,8 +56,19 @@ export function ChatDraftProvider({ children }: { children: ReactNode }) {
       setHasMessages,
       newChatToken,
       requestNewChat,
+      reset,
     }),
-    [draft, quote, attachTime, focusToken, requestFocus, hasMessages, newChatToken, requestNewChat],
+    [
+      draft,
+      quote,
+      attachTime,
+      focusToken,
+      requestFocus,
+      hasMessages,
+      newChatToken,
+      requestNewChat,
+      reset,
+    ],
   )
   return <ChatDraftContext.Provider value={value}>{children}</ChatDraftContext.Provider>
 }

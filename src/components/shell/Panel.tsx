@@ -165,7 +165,12 @@ export function Panel() {
   const container = usePortalContainer()
   const cardRef = useRef<HTMLDivElement>(null)
   const video = useVideo(open)
-  const { hasMessages } = useChatDraft()
+  const { hasMessages, reset: resetChatDraft } = useChatDraft()
+  // A draft, quote or "current moment" belongs to the video it was written for.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the video id changes
+  useEffect(() => {
+    resetChatDraft()
+  }, [video.videoId])
 
   const settings = storedSettings ?? DEFAULT_SETTINGS
   const provider = settings.provider

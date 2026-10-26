@@ -17,6 +17,14 @@ function expand(m: UIMessage): UIMessage {
   return { ...m, parts }
 }
 
+function isEmptyReply(m: UIMessage): boolean {
+  return m.role === "assistant" && !m.parts.some((p) => p.type === "text" && p.text.trim() !== "")
+}
+
+/**
+ * Expands user quote/at metadata into the text and drops empty assistant replies (a reply stopped
+ * before its first token), which providers reject.
+ */
 export function expandUserMessages(messages: UIMessage[]): UIMessage[] {
-  return messages.map(expand)
+  return messages.filter((m) => !isEmptyReply(m)).map(expand)
 }

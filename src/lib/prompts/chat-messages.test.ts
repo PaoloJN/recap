@@ -38,4 +38,10 @@ describe("expandUserMessages", () => {
     expect(out[1]).toBe(assistant)
     expect(out[2]?.parts[0]).toEqual({ type: "text", text: "f" })
   })
+
+  it("drops empty assistant replies", () => {
+    const empty: UIMessage = { id: "a", role: "assistant", parts: [], metadata: { stopped: true } }
+    const next = user("Again")
+    expect(expandUserMessages([user("Hi"), empty, next])).toHaveLength(2)
+  })
 })

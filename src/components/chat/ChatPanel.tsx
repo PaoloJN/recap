@@ -18,8 +18,10 @@ import { ChatEmptyState, pickSuggestions } from "./ChatEmptyState"
 import { Composer } from "./Composer"
 import { MessageList, messageMeta } from "./MessageList"
 import { ModelPicker } from "./ModelPicker"
+import { markStopped, shouldClearDraft, withMetadata } from "./thread"
 import { useChatHistory } from "./useChatHistory"
 
+const newMessageId = () => crypto.randomUUID()
 const EXPLAIN_NOW_PROMPT = "Explain what's happening here."
 /** Within this distance of the bottom, new content keeps the list pinned to the bottom. */
 const STICK_PX = 40
@@ -63,21 +65,6 @@ interface ChatViewProps {
   clear(): Promise<void>
 }
 
-function withMetadata(m: UIMessage, patch: Partial<ChatMessageMetadata>): UIMessage {
-  const metadata: ChatMessageMetadata = { ...messageMeta(m), ...patch }
-  for (const key of Object.keys(metadata) as (keyof ChatMessageMetadata)[]) {
-    if (metadata[key] === undefined) delete metadata[key]
-  }
-  return { ...m, metadata }
-}
-
-/** Marks the last message "Stopped." if it is an assistant reply. */
-function markStopped(messages: UIMessage[]): UIMessage[] {
-  const last = messages.at(-1)
-  if (last?.role !== "assistant") return messages
-  return [...messages.slice(0, -1), withMetadata(last, { stopped: true })]
-}
-
 function ChatView({ context, title, initialMessages, save, clear }: ChatViewProps) {
   const [stored] = useSettings()
   const settings = stored ?? DEFAULT_SETTINGS
@@ -118,6 +105,8 @@ function ChatView({ context, title, initialMessages, save, clear }: ChatViewProp
   const clearingRef = useRef(false)
   // Set while Stop is in flight so onFinish marks the partial reply "Stopped.".
   const stoppingRef = useRef(false)
+  // Set once a Stop has been marked, so the fallback after `stop()` doesn't mark twice.
+  const stopMarkedRef = useRef(false)
 
   const { messages, sendMessage, status, stop, setMessages, error, regenerate, clearError } =
     useChat({
@@ -128,7 +117,8 @@ function ChatView({ context, title, initialMessages, save, clear }: ChatViewProp
         if (isError || clearingRef.current) return
         let next = finished
         if (isAbort || stoppingRef.current) {
-          next = markStopped(finished)
+          next = markStopped(finished, newMessageId)
+          stopMarkedRef.current = true
           setMessages(next)
         }
         save(next, latest.current.title).catch((e: unknown) =>
@@ -177,11 +167,11 @@ function ChatView({ context, title, initialMessages, save, clear }: ChatViewProp
       if (sendQuote) metadata.quote = sendQuote
       pinnedRef.current = true
       void sendMessage({ text, metadata })
-      setDraft("")
+      if (shouldClearDraft(text, draft)) setDraft("")
       setQuote(null)
       setAttachTime(false)
     },
-    [attachTime, sendMessage, setDraft, setQuote, setAttachTime],
+    [attachTime, draft, sendMessage, setDraft, setQuote, setAttachTime],
   )
 
   const ask = useCallback((text: string) => send(text, quote), [send, quote])
@@ -198,13 +188,22 @@ function ChatView({ context, title, initialMessages, save, clear }: ChatViewProp
     send(EXPLAIN_NOW_PROMPT, nowQuote)
   }
 
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
   const onStop = async () => {
     stoppingRef.current = true
+    stopMarkedRef.current = false
     try {
       await stop()
     } finally {
       stoppingRef.current = false
     }
+    // Stopped before the request produced anything, so onFinish never ran: mark it here.
+    if (stopMarkedRef.current || clearingRef.current) return
+    const next = markStopped(messagesRef.current, newMessageId)
+    if (next === messagesRef.current) return
+    setMessages(next)
+    save(next, latest.current.title).catch((e: unknown) => console.error("Failed to save chat", e))
   }
 
   const onFeedback = (id: string) => {
@@ -236,6 +235,7 @@ function ChatView({ context, title, initialMessages, save, clear }: ChatViewProp
     setMessages([])
     setDraft("")
     setQuote(null)
+    setAttachTime(false)
     clear()
       .catch((e: unknown) => console.error("Failed to clear chat", e))
       .finally(() => {
