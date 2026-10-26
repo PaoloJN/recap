@@ -9,10 +9,11 @@ import {
   Settings,
   Sparkles,
 } from "lucide-react"
-import { type ReactNode, useEffect, useRef, useState } from "react"
+import type { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import type { PanelTab } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -21,8 +22,6 @@ const TABS: { id: PanelTab; label: string; icon: LucideIcon }[] = [
   { id: "transcript", label: "Transcript", icon: ListOrdered },
   { id: "chat", label: "Chat", icon: MessageSquare },
 ]
-
-const COPIED_MS = 2000
 
 export interface HeaderProps {
   tab: PanelTab
@@ -54,22 +53,8 @@ export function Header({
   onToggleOpen,
   onOpenSettings,
 }: HeaderProps) {
-  const [copied, setCopied] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-
-  useEffect(() => () => clearTimeout(timerRef.current), [])
-
-  const copyUrl = async () => {
-    try {
-      await navigator.clipboard.writeText(location.href)
-    } catch (err) {
-      console.error("Copy video URL failed", err)
-      return
-    }
-    setCopied(true)
-    clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => setCopied(false), COPIED_MS)
-  }
+  const { copied, copy } = useCopyToClipboard()
+  const copyUrl = () => copy(location.href)
 
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2.5 text-card-foreground">

@@ -15,6 +15,7 @@ import {
   settingsItem,
 } from "@/lib/storage"
 import type { ModelSelection, PanelTab, VideoMetadata } from "@/lib/types"
+import { cn } from "@/lib/utils"
 import { EmptyState } from "./EmptyState"
 import { Header } from "./Header"
 import { SettingsView } from "./SettingsView"
@@ -134,6 +135,9 @@ export function Panel() {
     void setPanelState({ ...panelState, open: !panelState.open })
   }
 
+  const transcriptScrolls =
+    panelState.tab === "transcript" && !showSettings && video.transcript.state === "ready"
+
   return (
     <main className="mb-3 flex w-full flex-col gap-2">
       <Header
@@ -145,7 +149,12 @@ export function Panel() {
         onOpenSettings={openSettings}
       />
       {panelState.open && settings && apiKeys && selection ? (
-        <div className="max-h-[520px] overflow-auto rounded-lg border bg-card text-card-foreground">
+        <div
+          className={cn(
+            "flex max-h-[520px] flex-col rounded-lg border bg-card text-card-foreground",
+            transcriptScrolls ? "overflow-hidden" : "overflow-auto",
+          )}
+        >
           {video.page ? <VideoStrip metadata={video.page.metadata} /> : null}
           {showSettings ? (
             <SettingsView
