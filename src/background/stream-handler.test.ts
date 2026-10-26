@@ -1,4 +1,4 @@
-import { APICallError, simulateReadableStream } from "ai"
+import { APICallError, RetryError, simulateReadableStream } from "ai"
 import { MockLanguageModelV3 } from "ai/test"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { browser } from "wxt/browser"
@@ -136,6 +136,60 @@ describe("mapStreamError", () => {
       statusCode: 429,
     })
     expect(mapStreamError(err)).toContain("Rate limited")
+  })
+  it("unwraps a RetryError around a 429", () => {
+    const last = new APICallError({
+      message: "slow down",
+      url: "https://x",
+      requestBodyValues: {},
+      statusCode: 429,
+      isRetryable: true,
+    })
+    const err = new RetryError({
+      message: "Failed after 2 attempts. Last error: slow down",
+      reason: "maxRetriesExceeded",
+      errors: [last, last],
+    })
+    expect(mapStreamError(err)).toBe("Rate limited by the provider. Try again shortly.")
+  })
+  it("maps auth failures, including Google's 400 for a bad key", () => {
+    const unauthorized = new APICallError({
+      message: "nope",
+      url: "https://x",
+      requestBodyValues: {},
+      statusCode: 401,
+    })
+    expect(mapStreamError(unauthorized)).toBe("Invalid API key. Check it in Settings.")
+    const google = new APICallError({
+      message: "API key not valid. Please pass a valid API key.",
+      url: "https://generativelanguage.googleapis.com/v1beta/models/x:streamGenerateContent",
+      requestBodyValues: {},
+      statusCode: 400,
+    })
+    expect(mapStreamError(google)).toBe("Invalid API key. Check it in Settings.")
+  })
+  it("maps a status-less APICallError (fetch failure) to a network error", () => {
+    const err = new APICallError({
+      message: "Cannot connect to API: Failed to fetch",
+      url: "https://x",
+      requestBodyValues: {},
+      isRetryable: true,
+    })
+    const wrapped = new RetryError({
+      message: "Failed after 2 attempts.",
+      reason: "maxRetriesExceeded",
+      errors: [err, err],
+    })
+    expect(mapStreamError(wrapped)).toBe("Network error reaching the provider.")
+  })
+  it("passes other APICallError messages through", () => {
+    const err = new APICallError({
+      message: "model not found",
+      url: "https://x",
+      requestBodyValues: {},
+      statusCode: 404,
+    })
+    expect(mapStreamError(err)).toBe("model not found")
   })
   it("maps aborts and unknowns", () => {
     expect(mapStreamError(new DOMException("x", "AbortError"))).toBe("Stopped.")

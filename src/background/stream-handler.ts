@@ -2,6 +2,7 @@ import {
   APICallError,
   convertToModelMessages,
   type LanguageModel,
+  RetryError,
   streamText,
   toUIMessageStream,
 } from "ai"
@@ -12,28 +13,50 @@ import { buildChatSystemPrompt } from "../lib/prompts/system"
 import { createModel, PROVIDERS } from "../lib/providers"
 import { apiKeysItem } from "../lib/storage"
 
-export function mapStreamError(err: unknown): string {
+const INVALID_KEY = "Invalid API key. Check it in Settings."
+const RATE_LIMITED = "Rate limited by the provider. Try again shortly."
+const NETWORK = "Network error reaching the provider."
+const STOPPED = "Stopped."
+
+function unwrapRetryError(err: unknown): unknown {
+  if (!RetryError.isInstance(err)) return err
+  return err.lastError ?? err.errors.at(-1) ?? err
+}
+
+function isAbortError(err: unknown): boolean {
+  return typeof err === "object" && err !== null && "name" in err && err.name === "AbortError"
+}
+
+export function mapStreamError(raw: unknown): string {
+  const err = unwrapRetryError(raw)
   if (APICallError.isInstance(err)) {
-    if (err.statusCode === 401 || err.statusCode === 403) {
-      return "Invalid API key. Check it in Settings."
+    const { statusCode, message } = err
+    if (statusCode === 401 || statusCode === 403) return INVALID_KEY
+    if (statusCode === 429) return RATE_LIMITED
+    // Google answers a bad key with 400 rather than 401.
+    if (
+      statusCode === 400 &&
+      (message.includes("API key not valid") || message.includes("API_KEY_INVALID"))
+    ) {
+      return INVALID_KEY
     }
-    if (err.statusCode === 429) return "Rate limited by the provider. Try again shortly."
+    // provider-utils wraps fetch failures as an APICallError with no status code.
+    if (statusCode === undefined) return NETWORK
   }
-  if (err instanceof Error) {
-    if (err.name === "AbortError") return "Stopped."
-    if (err.name === "TypeError" || err.message.includes("fetch")) {
-      return "Network error reaching the provider."
-    }
-  } else if (
-    typeof err === "object" &&
-    err !== null &&
-    "name" in err &&
-    err.name === "AbortError"
+  const abort = isAbortError(err)
+  if (
+    !abort &&
+    err instanceof Error &&
+    (err.name === "TypeError" || err.message.includes("fetch"))
   ) {
-    return "Stopped."
+    return NETWORK
   }
+  if (abort) return STOPPED
   return err instanceof Error && err.message ? err.message : "Something went wrong."
 }
+
+// Interactive UI: one quick retry, not the SDK's default of two with long backoff.
+const MAX_RETRIES = 1
 
 interface StreamDeps {
   model: LanguageModel
@@ -55,11 +78,19 @@ export async function runStreamRequest(req: StreamRequest, deps: StreamDeps): Pr
             system: buildChatSystemPrompt(req.context),
             messages: await convertToModelMessages(req.messages),
             abortSignal: signal,
+            maxRetries: MAX_RETRIES,
             onError,
           })
         : (() => {
             const { system, user } = buildSummaryPrompt(req.preset, req.context)
-            return streamText({ model, system, prompt: user, abortSignal: signal, onError })
+            return streamText({
+              model,
+              system,
+              prompt: user,
+              abortSignal: signal,
+              maxRetries: MAX_RETRIES,
+              onError,
+            })
           })()
     for await (const chunk of toUIMessageStream({ stream: result.stream })) {
       if (chunk.type === "error") {
