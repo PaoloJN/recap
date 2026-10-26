@@ -1,7 +1,7 @@
 {
   "name": "youtube-ai",
   "displayName": "YouTube AI",
-  "description": "Chat with YouTube videos. Summaries, searchable transcripts and Q&A in the sidebar, powered by your own OpenAI, Anthropic or Google key.",
+  "description": "Chat with YouTube videos. Summaries, searchable transcripts and Q&A in the sidebar, powered by your own OpenAI, Anthropic, Google or OpenRouter key.",
   "author": "Paolo Nessim",
   "repository": {
     "type": "git",
