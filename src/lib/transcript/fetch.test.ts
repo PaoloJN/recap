@@ -13,6 +13,7 @@ const page = (captionTracks: WatchPageData["captionTracks"]): WatchPageData => (
 const tracks = [{ languageCode: "en", name: "English" }]
 const json = (body: unknown) => new Response(JSON.stringify(body))
 const asFetch = (fn: unknown) => fn as typeof fetch
+const visible = () => true
 const emptyDoc = () => document.implementation.createHTMLDocument("x")
 
 describe("fetchTranscriptViaInnertube", () => {
@@ -77,6 +78,23 @@ describe("loadTranscript", () => {
       state: "unavailable",
     })
   })
+  it("error when the real DOM reader throws inside the panel", async () => {
+    const fetchFn = vi.fn(async () => {
+      throw new Error("net")
+    })
+    const doc = emptyDoc()
+    doc.body.innerHTML = `
+      <button aria-label="Show transcript"></button>
+      <ytd-engagement-panel-section-list-renderer target-id="engagement-panel-searchable-transcript"></ytd-engagement-panel-section-list-renderer>`
+    const panel = doc.querySelector("ytd-engagement-panel-section-list-renderer") as Element
+    panel.querySelectorAll = () => {
+      throw new Error("panel exploded")
+    }
+    const res = await loadTranscript(page(tracks), asFetch(fetchFn), doc, (d) =>
+      readTranscriptFromDomPanel(d, visible),
+    )
+    expect(res).toEqual({ state: "error", message: "panel exploded" })
+  })
   it("error when fetch throws and DOM read throws", async () => {
     const fetchFn = vi.fn(async () => {
       throw new Error("net")
@@ -110,11 +128,59 @@ describe("readTranscriptFromDomPanel", () => {
     const close = doc.querySelector('button[aria-label="Close"]') as HTMLElement
     const onClose = vi.fn()
     close.addEventListener("click", onClose)
-    const segs = await readTranscriptFromDomPanel(doc)
+    const segs = await readTranscriptFromDomPanel(doc, visible)
     expect(segs).toEqual([
       { text: "hello", startMs: 1000, endMs: 5000 },
       { text: "world", startMs: 5000, endMs: 10000 },
     ])
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+  it("reads modern rows and clicks Close", async () => {
+    const doc = emptyDoc()
+    doc.body.innerHTML = `
+      <button aria-label="Show transcript">Show transcript</button>
+      <ytd-engagement-panel-section-list-renderer target-id="PAmodern_transcript_view">
+        <div id="visibility-button"><button aria-label="Close"></button></div>
+        <transcript-segment-view-model><div class="ytwTranscriptSegmentViewModelTimestamp">0:02</div><span role="text"> first </span></transcript-segment-view-model>
+        <transcript-segment-view-model><div class="ytwTranscriptSegmentViewModelTimestamp">0:07</div><span role="text">second</span></transcript-segment-view-model>
+      </ytd-engagement-panel-section-list-renderer>`
+    const onClose = vi.fn()
+    doc.querySelector('button[aria-label="Close"]')?.addEventListener("click", onClose)
+    expect(await readTranscriptFromDomPanel(doc, visible)).toEqual([
+      { text: "first", startMs: 2000, endMs: 7000 },
+      { text: "second", startMs: 7000, endMs: 12000 },
+    ])
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+  it("returns [] when the Show transcript button is not visible", async () => {
+    const doc = emptyDoc()
+    doc.body.innerHTML = '<button aria-label="Show transcript"></button>'
+    expect(await readTranscriptFromDomPanel(doc, () => false)).toEqual([])
+  })
+  it("clicks expand, then waits for the button to become visible", async () => {
+    const doc = emptyDoc()
+    doc.body.innerHTML = `
+      <div id="description-inline-expander"><button id="expand"></button></div>
+      <button aria-label="Show transcript" hidden></button>
+      <ytd-engagement-panel-section-list-renderer target-id="engagement-panel-searchable-transcript">
+        <ytd-transcript-segment-renderer><div class="segment-timestamp">0:01</div><div class="segment-text">hi</div></ytd-transcript-segment-renderer>
+      </ytd-engagement-panel-section-list-renderer>`
+    const btn = doc.querySelector<HTMLElement>('button[aria-label="Show transcript"]')
+    doc.querySelector("#expand")?.addEventListener("click", () => {
+      setTimeout(() => btn?.removeAttribute("hidden"), 250)
+    })
+    const segs = await readTranscriptFromDomPanel(doc, (el) => !el.hasAttribute("hidden"))
+    expect(segs).toEqual([{ text: "hi", startMs: 1000, endMs: 6000 }])
+  })
+  it("propagates unexpected errors from inside the panel", async () => {
+    const doc = emptyDoc()
+    doc.body.innerHTML = `
+      <button aria-label="Show transcript"></button>
+      <ytd-engagement-panel-section-list-renderer target-id="engagement-panel-searchable-transcript"></ytd-engagement-panel-section-list-renderer>`
+    const panel = doc.querySelector("ytd-engagement-panel-section-list-renderer") as Element
+    panel.querySelectorAll = () => {
+      throw new Error("panel exploded")
+    }
+    await expect(readTranscriptFromDomPanel(doc, visible)).rejects.toThrow("panel exploded")
   })
 })

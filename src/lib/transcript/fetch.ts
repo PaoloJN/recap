@@ -26,6 +26,7 @@ export const SEL_PANEL_CLOSE = '#visibility-button button, button[aria-label="Cl
 
 const POLL_INTERVAL_MS = 100
 const POLL_TIMEOUT_MS = 3000
+const EXPAND_TIMEOUT_MS = 1000
 const LAST_SEGMENT_MS = 5000
 
 export async function fetchTranscriptViaInnertube(
@@ -48,13 +49,13 @@ export async function fetchTranscriptViaInnertube(
   return parseGetPanelResponse(await res.json(), durationMs)
 }
 
-function isVisible(el: HTMLElement): boolean {
-  return el.offsetParent !== null
-}
+export type VisibilityCheck = (el: HTMLElement) => boolean
 
-function pickButton(doc: Document, selector: string): HTMLElement | null {
-  const all = Array.from(doc.querySelectorAll<HTMLElement>(selector))
-  return all.find(isVisible) ?? all[0] ?? null
+// jsdom has no layout (offsetParent is always null), so tests inject their own check.
+const defaultIsVisible: VisibilityCheck = (el) => el.offsetParent !== null
+
+function findVisible(doc: Document, selector: string, isVisible: VisibilityCheck) {
+  return Array.from(doc.querySelectorAll<HTMLElement>(selector)).find(isVisible) ?? null
 }
 
 function findPanel(doc: Document): Element | null {
@@ -86,40 +87,44 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 export async function readTranscriptFromDomPanel(
   doc: Document = document,
+  isVisible: VisibilityCheck = defaultIsVisible,
 ): Promise<TranscriptSegment[]> {
-  try {
-    const expand = pickButton(doc, SEL_DESCRIPTION_EXPAND)
-    if (expand && isVisible(expand)) expand.click()
-    const button = pickButton(doc, SEL_SHOW_TRANSCRIPT)
-    if (!button) return []
-    button.click()
+  // Returns [] only when the transcript affordance is absent; unexpected errors propagate.
+  const expand = findVisible(doc, SEL_DESCRIPTION_EXPAND, isVisible)
+  if (expand) expand.click()
+  const expandedWaitMs = expand ? EXPAND_TIMEOUT_MS : 0
 
-    let panel: Element | null = null
-    let rows: ReturnType<typeof findRows> = []
-    for (let waited = 0; ; waited += POLL_INTERVAL_MS) {
-      panel = findPanel(doc)
-      rows = panel ? findRows(panel) : []
-      if (rows.length > 0 || waited >= POLL_TIMEOUT_MS) break
-      await sleep(POLL_INTERVAL_MS)
-    }
-    if (!panel || rows.length === 0) return []
-
-    const starts: { text: string; startMs: number }[] = []
-    for (const r of rows) {
-      const sec = parseTimestamp(r.time)
-      if (sec === null || !r.text) continue
-      starts.push({ text: r.text, startMs: sec * 1000 })
-    }
-    const segments = starts.map((s, i) => ({
-      text: s.text,
-      startMs: s.startMs,
-      endMs: starts[i + 1]?.startMs ?? s.startMs + LAST_SEGMENT_MS,
-    }))
-    panel.querySelector<HTMLElement>(SEL_PANEL_CLOSE)?.click()
-    return segments
-  } catch {
-    return []
+  let button = findVisible(doc, SEL_SHOW_TRANSCRIPT, isVisible)
+  for (let waited = 0; !button && waited < expandedWaitMs; waited += POLL_INTERVAL_MS) {
+    await sleep(POLL_INTERVAL_MS)
+    button = findVisible(doc, SEL_SHOW_TRANSCRIPT, isVisible)
   }
+  if (!button) return []
+  button.click()
+
+  let panel: Element | null = null
+  let rows: ReturnType<typeof findRows> = []
+  for (let waited = 0; ; waited += POLL_INTERVAL_MS) {
+    panel = findPanel(doc)
+    rows = panel ? findRows(panel) : []
+    if (rows.length > 0 || waited >= POLL_TIMEOUT_MS) break
+    await sleep(POLL_INTERVAL_MS)
+  }
+  if (!panel || rows.length === 0) return []
+
+  const starts: { text: string; startMs: number }[] = []
+  for (const r of rows) {
+    const sec = parseTimestamp(r.time)
+    if (sec === null || !r.text) continue
+    starts.push({ text: r.text, startMs: sec * 1000 })
+  }
+  const segments = starts.map((s, i) => ({
+    text: s.text,
+    startMs: s.startMs,
+    endMs: starts[i + 1]?.startMs ?? s.startMs + LAST_SEGMENT_MS,
+  }))
+  panel.querySelector<HTMLElement>(SEL_PANEL_CLOSE)?.click()
+  return segments
 }
 
 export async function loadTranscript(
