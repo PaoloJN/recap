@@ -1,6 +1,6 @@
 import { CircleNotch, HardDrives, LockSimple, Trash } from "@phosphor-icons/react"
 import { RadioGroup } from "radix-ui"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { largeButton, primaryButton } from "@/components/summary/buttons"
@@ -33,16 +33,30 @@ export function ConnectView({ initialProvider }: { initialProvider: ProviderId }
     if (status !== "idle" || error) reset()
   }
 
+  const [saving, setSaving] = useState(false)
+  // The ref guards against a second Enter/click landing before `saving` re-renders.
+  const savingRef = useRef(false)
   const save = async () => {
-    const keys = await apiKeysItem.getValue()
-    await apiKeysItem.setValue({ ...keys, [provider]: key.trim() })
-    await updateSettings({ provider })
-    setView("main")
-    toast(`Connected to ${info.label}`)
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
+    try {
+      const keys = await apiKeysItem.getValue()
+      await apiKeysItem.setValue({ ...keys, [provider]: key.trim() })
+      await updateSettings({ provider })
+      setView("main")
+      toast(`Connected to ${info.label}`)
+    } catch (e) {
+      console.error("Failed to save the API key", e)
+      toast("Couldn't save the key")
+    } finally {
+      savingRef.current = false
+      setSaving(false)
+    }
   }
 
   const submit = () => {
-    if (status === "checking") return
+    if (status === "checking" || saving) return
     if (status === "valid") void save()
     else void check(provider, key)
   }
@@ -51,12 +65,14 @@ export function ConnectView({ initialProvider }: { initialProvider: ProviderId }
   const models = result?.ok ? result.models : []
   const matched = info.models.filter((m) => models.includes(m.id))
   const chips = matched.length > 0 ? matched : info.models
-  const buttonLabel = {
-    idle: "Test key",
-    checking: "Checking…",
-    invalid: "Test again",
-    valid: "Save and continue",
-  }[status]
+  const buttonLabel = saving
+    ? "Saving…"
+    : {
+        idle: "Test key",
+        checking: "Checking…",
+        invalid: "Test again",
+        valid: "Save and continue",
+      }[status]
 
   return (
     <div className="min-h-0 flex-1 overflow-auto">
@@ -184,7 +200,7 @@ export function ConnectView({ initialProvider }: { initialProvider: ProviderId }
 
         <button
           type="button"
-          disabled={status === "checking"}
+          disabled={status === "checking" || saving}
           onClick={submit}
           className={cn(primaryButton, largeButton, "h-[40px] w-full")}
         >

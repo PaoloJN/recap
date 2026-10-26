@@ -4,5 +4,6 @@ export function downloadText(filename: string, text: string, doc: Document = doc
   a.href = url
   a.download = filename
   a.click()
-  URL.revokeObjectURL(url)
+  // Revoking synchronously can cancel the download before the browser has read the blob.
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }
