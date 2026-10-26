@@ -22,8 +22,7 @@ export interface CaptionTrack {
 }
 
 export interface InnertubeConfig {
-  apiKey: string
-  context: Record<string, unknown>
+  client: { clientName: string; clientVersion: string; hl: string; gl: string }
 }
 
 export interface WatchPageData {
