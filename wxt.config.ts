@@ -44,13 +44,12 @@ export default defineConfig({
     },
   },
   hooks: {
-    // WXT adds the `cssInjectionMode: "ui"` stylesheet as its own entry with
-    // `use_dynamic_url: true`; Chrome then rejects the fetch from youtube.com ("Domains,
-    // protocols and ports must match"). Replace every entry with a single static one.
+    // Only the bundled fonts need to be web accessible; the stylesheet is inlined into the
+    // content script (see src/entrypoints/youtube.content/index.tsx).
     "build:manifestGenerated": (_wxt, manifest) => {
       manifest.web_accessible_resources = [
         {
-          resources: ["fonts/*", "content-scripts/youtube.css"],
+          resources: ["fonts/*"],
           matches: YOUTUBE_MATCHES,
           use_dynamic_url: false,
         },

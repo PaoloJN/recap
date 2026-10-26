@@ -1,7 +1,10 @@
-import "@/assets/tailwind.css"
+// Inlined so the shadow root never fetches a chrome-extension:// stylesheet at runtime
+// (Chrome rejects that fetch from an orphaned content script after an extension reload).
+
 import { createRoot, type Root } from "react-dom/client"
 import { browser } from "wxt/browser"
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root"
+import css from "@/assets/tailwind.css?inline"
 import { App } from "@/components/shell/App"
 import { injectFontFaces } from "@/lib/fonts"
 import type { ToggleMessage } from "@/lib/port-protocol"
@@ -13,12 +16,13 @@ function isToggleMessage(msg: unknown): msg is ToggleMessage {
 
 export default defineContentScript({
   matches: ["*://www.youtube.com/*"],
-  cssInjectionMode: "ui",
+  cssInjectionMode: "manual",
   runAt: "document_idle",
   async main(ctx) {
     injectFontFaces()
     const ui = await createShadowRootUi<Root>(ctx, {
       name: "youtube-ai-panel",
+      css,
       position: "inline",
       anchor: "#secondary-inner",
       append: "first",
