@@ -83,15 +83,19 @@ function ChatView({ videoId, context, selection, initialMessages, save, clear }:
     [],
   )
 
-  const { messages, sendMessage, status, stop, setMessages, error, regenerate } = useChat({
-    id: videoId,
-    messages: initialMessages,
-    transport,
-    onFinish: ({ messages: finished, isError }) => {
-      if (isError) return
-      save(finished).catch((e: unknown) => console.error("Failed to save chat", e))
-    },
-  })
+  // Set while Clear is in flight so the abort-triggered onFinish cannot re-save the cleared chat.
+  const clearingRef = useRef(false)
+
+  const { messages, sendMessage, status, stop, setMessages, error, regenerate, clearError } =
+    useChat({
+      id: videoId,
+      messages: initialMessages,
+      transport,
+      onFinish: ({ messages: finished, isError }) => {
+        if (isError || clearingRef.current) return
+        save(finished).catch((e: unknown) => console.error("Failed to save chat", e))
+      },
+    })
 
   const controller = usePromptInputController()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -124,9 +128,15 @@ function ChatView({ videoId, context, selection, initialMessages, save, clear }:
   }
 
   const onClear = () => {
-    if (busy) stop()
+    clearingRef.current = true
+    if (busy) void stop()
+    clearError()
     setMessages([])
-    clear().catch((e: unknown) => console.error("Failed to clear chat", e))
+    clear()
+      .catch((e: unknown) => console.error("Failed to clear chat", e))
+      .finally(() => {
+        clearingRef.current = false
+      })
   }
 
   return (
