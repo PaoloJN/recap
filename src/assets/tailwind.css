@@ -150,6 +150,9 @@
 }
 
 @layer base {
+  :host {
+    font-family: var(--font-sans);
+  }
   * {
     @apply border-border outline-ring/50;
   }

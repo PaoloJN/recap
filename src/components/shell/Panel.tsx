@@ -38,6 +38,8 @@ import { useToast } from "./ToastContext"
 
 type ReadyTranscript = Extract<TranscriptStatus, { state: "ready" }>
 
+const PORTAL_CLASSES = ["font-sans", "antialiased", "text-foreground"]
+
 const TEXT_SIZE_CLASS = { s: "text-size-s", m: "text-size-m", l: "text-size-l" } as const
 
 function TranscriptSkeleton() {
@@ -225,7 +227,13 @@ export function Panel() {
   })
 
   const dark = settings.theme === "youtube" ? youtubeTheme === "dark" : settings.theme === "dark"
-  // Portaled menus/tooltips render into the shadow container, outside the card.
+  // Portaled menus/tooltips render into the shadow container, outside the card, so the
+  // container carries the card's typography and theme too (else they inherit YouTube's font).
+  useEffect(() => {
+    if (!container) return
+    container.classList.add(...PORTAL_CLASSES)
+    return () => container.classList.remove(...PORTAL_CLASSES)
+  }, [container])
   useEffect(() => {
     container?.classList.toggle("dark", dark)
     return () => container?.classList.remove("dark")
