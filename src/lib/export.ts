@@ -16,7 +16,7 @@ function formatMessage(m: UIMessage): string {
     const head = quote ? `> [${formatMs(quote.seconds * 1000)}] ${quote.text}\n` : ""
     return `${head}**You:** ${text}`
   }
-  return `**Recap:** ${text}`
+  return `**Recap AI:** ${text}`
 }
 
 function formatMessages(messages: UIMessage[]): string {
@@ -38,7 +38,7 @@ export function exportVideoMarkdown(
 }
 
 export function exportAllChats(store: ChatStore): string {
-  const sections = ["# Recap chats"]
+  const sections = ["# Recap AI chats"]
   const entries = Object.entries(store).sort(([, a], [, b]) => b.updatedAt - a.updatedAt)
   for (const [videoId, chat] of entries) {
     sections.push(

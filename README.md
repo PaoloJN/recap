@@ -1,6 +1,6 @@
-# Recap
+# Recap AI
 
-Recap for YouTube: summaries, a searchable transcript and chat about the video, in the sidebar, powered by your own OpenAI, Anthropic, Google or OpenRouter key.
+Recap AI for YouTube: summaries, a searchable transcript and chat about the video, in the sidebar, powered by your own OpenAI, Anthropic, Google or OpenRouter key.
 
 ![Screenshot](assets/screenshot.png)
 

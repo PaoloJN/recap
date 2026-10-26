@@ -20,7 +20,7 @@ export default defineConfig({
   srcDir: "src",
   modules: ["@wxt-dev/module-react"],
   manifest: {
-    name: "Recap for YouTube",
+    name: "Recap AI",
     version: "2.0.0",
     permissions: ["storage"],
     host_permissions: [
