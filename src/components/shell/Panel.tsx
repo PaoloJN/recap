@@ -1,6 +1,7 @@
 import { ClosedCaptioning, Key, WarningCircle } from "@phosphor-icons/react"
 import { type ReactNode, useEffect, useMemo, useRef } from "react"
 import { ChatPanel } from "@/components/chat/ChatPanel"
+import { SummaryActions } from "@/components/summary/SummaryActions"
 import { SummaryProvider } from "@/components/summary/SummaryContext"
 import { SummaryPanel } from "@/components/summary/SummaryPanel"
 import { useSummary } from "@/components/summary/useSummary"
@@ -49,6 +50,22 @@ function TranscriptSkeleton() {
   )
 }
 
+function PageError({ video }: { video: VideoState }) {
+  return (
+    <EmptyState
+      icon={WarningCircle}
+      iconWeight="fill"
+      title="Couldn't load this video"
+      description={video.pageError ?? undefined}
+      action={
+        <Button size="sm" variant="outline" onClick={video.reload}>
+          Retry
+        </Button>
+      }
+    />
+  )
+}
+
 /** Loading / no captions / error states until the transcript and context are ready. */
 function TranscriptGate({
   video,
@@ -58,21 +75,7 @@ function TranscriptGate({
   children: (ready: ReadyTranscript, context: VideoContext) => ReactNode
 }): ReactNode {
   const { transcript } = video
-  if (video.pageError !== null) {
-    return (
-      <EmptyState
-        icon={WarningCircle}
-        iconWeight="fill"
-        title="Couldn't load this video"
-        description={video.pageError}
-        action={
-          <Button size="sm" variant="outline" onClick={video.reload}>
-            Retry
-          </Button>
-        }
-      />
-    )
-  }
+  if (video.pageError !== null) return <PageError video={video} />
   switch (transcript.state) {
     case "loading":
       return <TranscriptSkeleton />
@@ -131,7 +134,14 @@ function Body({ tab, hasKey, settings, selection, video, onAddKey }: BodyProps) 
   return (
     <>
       <div className={pane("summary")}>
-        {hasKey ? <TranscriptGate video={video}>{() => <SummaryPanel />}</TranscriptGate> : noKey}
+        {/* SummaryPanel handles transcript loading, no captions and errors itself. */}
+        {!hasKey ? (
+          noKey
+        ) : video.pageError !== null ? (
+          <PageError video={video} />
+        ) : (
+          <SummaryPanel video={video} />
+        )}
       </div>
       <div className={pane("transcript")}>
         <TranscriptGate video={video}>
@@ -272,7 +282,7 @@ export function Panel() {
         ) : null}
         {/* Kept mounted while collapsed or in settings so streams and panel state survive. */}
         <div className={showMain ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
-          <TabRow />
+          <TabRow right={tab === "summary" && hasKey ? <SummaryActions /> : null} />
           <div
             className={cn(
               "flex min-h-0 flex-1 flex-col",
