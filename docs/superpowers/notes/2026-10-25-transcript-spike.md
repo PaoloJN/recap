@@ -115,7 +115,18 @@ The 2023 caption `baseUrl` is dead: `captionTracks[0].baseUrl` (host `https://ww
 
 `get_panel` only needs `clientName`, `clientVersion`, `hl`, `gl`, so the fetcher can read them from `window.ytcfg.data_.INNERTUBE_CONTEXT.client` (page world) or regex them out of the HTML. Structure of the real page (fixture `src/lib/youtube/__fixtures__/watch-page.html` mirrors it):
 
-- `<script nonce="...">(function ytBootstrapConfig() {window.ytplayer={};\nytcfg.set({...});window.ytcfg.obfuscatedData_ = [];...` : one huge script (about 760 KB) holding `ytcfg.set({...})` with `"INNERTUBE_API_KEY":"..."` and `"INNERTUBE_CONTEXT":{"client":{...}}` (`client` has 26 keys incl. `visitorData`, never store it). A second tiny `ytcfg.set({...})` (about 100 chars, `yt_ad` flags) comes later in the page: match the first one, or search for `"INNERTUBE_CONTEXT"` directly.
+- `<script nonce="...">(function ytBootstrapConfig() {window.ytplayer={};\nytcfg.set({...});window.ytcfg.obfuscatedData_ = [];...` : one huge script (about 760 KB) holding `ytcfg.set({...})` with `"INNERTUBE_API_KEY":"..."` and `"INNERTUBE_CONTEXT":{"client":{...}}` (`client` has 26 keys incl. `visitorData`, never store it). A second tiny `ytcfg.set({...})` (about 100 chars, `yt_ad` flags) comes later in the page.
+
+Regex for the client context (verified against the fixture only; on the real page I verified the structure by brace-matching, not this regex):
+
+```ts
+const m = /ytcfg\.set\((\{.+?\})\);/s.exec(html)
+const cfg = m && JSON.parse(m[1])   // cfg.INNERTUBE_CONTEXT.client.{clientName,clientVersion,hl,gl}
+```
+
+The FIRST `ytcfg.set` match is the one holding `INNERTUBE_CONTEXT`; confirm by checking that `m[1]` contains `"INNERTUBE_CONTEXT"` (the second, tiny `ytcfg.set` does not), and fall back to the next match or to brace-matching from the `{` if `JSON.parse` throws (a lazy `.+?` could stop early on a `});` inside a string on the real 760 KB object).
+
+Alternative: if a MAIN-world script is used, read `window.ytcfg.data_.INNERTUBE_CONTEXT.client` directly instead of parsing HTML.
 - `<script nonce="...">var ytInitialPlayerResponse = {...};var meta = document.createElement('meta'); ...` : regex `/var ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*var\s/s` works on both the real page and the fixture. Contains `videoDetails` (`videoId`, `title`, `lengthSeconds` string, `author`, ...), `captions.playerCaptionsTracklistRenderer.captionTracks[]` (`baseUrl`, `name.simpleText`, `vssId`, `languageCode`, `kind` = `"asr"` or undefined for manual, `isTranslatable`), `playabilityStatus.status`.
 - A page fetched via `fetch('/watch?v=...')` is about 2.4 MB.
 
