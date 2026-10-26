@@ -22,7 +22,7 @@ Recap AI for YouTube: summaries, a searchable transcript and chat about the vide
 
 From a release:
 
-1. Download the zip from the [latest GitHub Release](https://github.com/PaoloJN/youtube-ai-extension/releases/latest).
+1. Download the zip from the [latest GitHub Release](https://github.com/PaoloJN/recap/releases/latest).
 2. Unzip it.
 3. Open `chrome://extensions` and turn on Developer mode.
 4. Click Load unpacked and select the unzipped folder.

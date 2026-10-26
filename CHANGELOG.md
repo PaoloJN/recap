@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 — unreleased
+## 2.0.0 — 2026-10-26
 
 - Ground-up rebuild on WXT, React 19, TypeScript and the Vercel AI SDK.
 - Redesigned panel from the v3 design handoff: new shell, header, tabs, settings and icons, in dark and light.

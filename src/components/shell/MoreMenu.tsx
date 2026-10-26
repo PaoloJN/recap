@@ -17,7 +17,7 @@ import { formatMs } from "@/lib/timestamps"
 import { IconButton } from "./IconButton"
 import { useToast } from "./ToastContext"
 
-const FEEDBACK_URL = "https://github.com/PaoloJN/youtube-ai-extension/issues/new"
+const FEEDBACK_URL = "https://github.com/PaoloJN/recap/issues/new"
 
 export interface MoreMenuProps {
   /** Null until the watch page has loaded; video items are disabled meanwhile. */

@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils"
 import { usePanelNav } from "./NavigationContext"
 import { useToast } from "./ToastContext"
 
-const REPO = "https://github.com/PaoloJN/youtube-ai-extension"
+const REPO = "https://github.com/PaoloJN/recap"
 const FOOTER_LINKS = [
   ["What's new", `${REPO}/blob/main/CHANGELOG.md`],
   ["Send feedback", `${REPO}/issues/new`],
