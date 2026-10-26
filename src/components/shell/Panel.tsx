@@ -144,11 +144,12 @@ function Body({ tab, hasKey, settings, selection, video, onAddKey }: BodyProps) 
         )}
       </div>
       <div className={pane("transcript")}>
-        <TranscriptGate video={video}>
-          {(transcript) => (
-            <TranscriptPanel transcript={transcript} active={tab === "transcript"} />
-          )}
-        </TranscriptGate>
+        {/* Works without a key; TranscriptPanel handles loading, no captions and errors. */}
+        {video.pageError !== null ? (
+          <PageError video={video} />
+        ) : (
+          <TranscriptPanel video={video} active={tab === "transcript"} />
+        )}
       </div>
       <div className={pane("chat")}>
         {hasKey ? (
