@@ -74,26 +74,29 @@ export function useSummary(ctx: VideoContext, selection: ModelSelection): Summar
       setError(null)
 
       void (async () => {
+        let latest = ""
+        // Nothing to show (stopped before any text, or an empty completion): back to idle.
+        const settle = (finalText: string) => {
+          setText(finalText)
+          setStatus(finalText.length > 0 ? "done" : "idle")
+        }
         try {
           const stream = openStream(
             { kind: "summary", preset, context: ctx, selection },
             { signal: controller.signal },
           )
           const full = await readTextFromUIStream(stream, (partial) => {
+            latest = partial
             if (isCurrent()) setText(partial)
           })
           if (!isCurrent()) return
-          if (controller.signal.aborted) {
-            setText(full)
-          } else {
-            summaryCache.set(key, full)
-            setText(full)
-          }
-          setStatus("done")
+          // A stopped (partial) or empty result is never cached.
+          if (!controller.signal.aborted && full.length > 0) summaryCache.set(key, full)
+          settle(full)
         } catch (err) {
           if (!isCurrent()) return
           if (controller.signal.aborted) {
-            setStatus("done")
+            settle(latest)
             return
           }
           setError(errorMessage(err))

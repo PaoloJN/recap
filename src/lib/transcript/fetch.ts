@@ -102,29 +102,32 @@ export async function readTranscriptFromDomPanel(
   if (!button) return []
   button.click()
 
-  let panel: Element | null = null
-  let rows: ReturnType<typeof findRows> = []
-  for (let waited = 0; ; waited += POLL_INTERVAL_MS) {
-    panel = findPanel(doc)
-    rows = panel ? findRows(panel) : []
-    if (rows.length > 0 || waited >= POLL_TIMEOUT_MS) break
-    await sleep(POLL_INTERVAL_MS)
-  }
-  if (!panel || rows.length === 0) return []
+  try {
+    let panel: Element | null = null
+    let rows: ReturnType<typeof findRows> = []
+    for (let waited = 0; ; waited += POLL_INTERVAL_MS) {
+      panel = findPanel(doc)
+      rows = panel ? findRows(panel) : []
+      if (rows.length > 0 || waited >= POLL_TIMEOUT_MS) break
+      await sleep(POLL_INTERVAL_MS)
+    }
+    if (!panel || rows.length === 0) return []
 
-  const starts: { text: string; startMs: number }[] = []
-  for (const r of rows) {
-    const sec = parseTimestamp(r.time)
-    if (sec === null || !r.text) continue
-    starts.push({ text: r.text, startMs: sec * 1000 })
+    const starts: { text: string; startMs: number }[] = []
+    for (const r of rows) {
+      const sec = parseTimestamp(r.time)
+      if (sec === null || !r.text) continue
+      starts.push({ text: r.text, startMs: sec * 1000 })
+    }
+    return starts.map((s, i) => ({
+      text: s.text,
+      startMs: s.startMs,
+      endMs: starts[i + 1]?.startMs ?? s.startMs + LAST_SEGMENT_MS,
+    }))
+  } finally {
+    // We opened YouTube's transcript panel, so close it on every path (no-op if it never appeared).
+    findPanel(doc)?.querySelector<HTMLElement>(SEL_PANEL_CLOSE)?.click()
   }
-  const segments = starts.map((s, i) => ({
-    text: s.text,
-    startMs: s.startMs,
-    endMs: starts[i + 1]?.startMs ?? s.startMs + LAST_SEGMENT_MS,
-  }))
-  panel.querySelector<HTMLElement>(SEL_PANEL_CLOSE)?.click()
-  return segments
 }
 
 export async function loadTranscript(

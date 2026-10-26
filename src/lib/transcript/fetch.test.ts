@@ -172,15 +172,39 @@ describe("readTranscriptFromDomPanel", () => {
     const segs = await readTranscriptFromDomPanel(doc, (el) => !el.hasAttribute("hidden"))
     expect(segs).toEqual([{ text: "hi", startMs: 1000, endMs: 6000 }])
   })
-  it("propagates unexpected errors from inside the panel", async () => {
+  it("propagates unexpected errors from inside the panel and still clicks Close", async () => {
     const doc = emptyDoc()
     doc.body.innerHTML = `
       <button aria-label="Show transcript"></button>
-      <ytd-engagement-panel-section-list-renderer target-id="engagement-panel-searchable-transcript"></ytd-engagement-panel-section-list-renderer>`
+      <ytd-engagement-panel-section-list-renderer target-id="engagement-panel-searchable-transcript">
+        <div id="visibility-button"><button aria-label="Close"></button></div>
+      </ytd-engagement-panel-section-list-renderer>`
+    const onClose = vi.fn()
+    doc.querySelector('button[aria-label="Close"]')?.addEventListener("click", onClose)
     const panel = doc.querySelector("ytd-engagement-panel-section-list-renderer") as Element
     panel.querySelectorAll = () => {
       throw new Error("panel exploded")
     }
     await expect(readTranscriptFromDomPanel(doc, visible)).rejects.toThrow("panel exploded")
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+  it("clicks Close when the panel opens but never shows rows", async () => {
+    vi.useFakeTimers()
+    try {
+      const doc = emptyDoc()
+      doc.body.innerHTML = `
+        <button aria-label="Show transcript"></button>
+        <ytd-engagement-panel-section-list-renderer target-id="engagement-panel-searchable-transcript">
+          <div id="visibility-button"><button aria-label="Close"></button></div>
+        </ytd-engagement-panel-section-list-renderer>`
+      const onClose = vi.fn()
+      doc.querySelector('button[aria-label="Close"]')?.addEventListener("click", onClose)
+      const result = readTranscriptFromDomPanel(doc, visible)
+      await vi.runAllTimersAsync()
+      expect(await result).toEqual([])
+      expect(onClose).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
