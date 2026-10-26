@@ -94,6 +94,79 @@ export function chunkSegments(
   return blocks
 }
 
+export interface ChunkOptions {
+  /** A row may end at a sentence or a pause once it has at least this many characters. */
+  minChars?: number
+  /** Past this length a clause break (`,` `;` `:`) or a caption boundary also ends the row. */
+  targetChars?: number
+  /** Hard cap: the row breaks at the last word boundary before this length. */
+  maxChars?: number
+}
+
+const PAUSE_MS = 2500
+const TAG = /\[[^\]]*\]/g
+const SENTENCE_END = /[.?!…]["'”’)\]]*$/
+const CLAUSE_END = /[,;:]["'”’)\]]*$/
+
+interface Word {
+  text: string
+  ms: number
+  /** Last word of its segment: `pause` is the silence before the next segment starts. */
+  boundary?: { pause: number }
+}
+
+/**
+ * Regroups caption segments into sentence-sized rows. Words get timestamps interpolated across
+ * their segment, so a row that starts mid-segment still seeks to roughly the right moment.
+ * Bracketed tags like `[music]` are dropped.
+ */
+export function chunkBySentences(
+  segments: TranscriptSegment[],
+  { minChars = 60, targetChars = 110, maxChars = 170 }: ChunkOptions = {},
+): TranscriptSegment[] {
+  const words: Word[] = []
+  segments.forEach((seg, i) => {
+    const next = segments[i + 1]
+    // Spread words up to the segment's own end when it has one before the next start.
+    const end = next
+      ? seg.endMs > seg.startMs && seg.endMs <= next.startMs
+        ? seg.endMs
+        : next.startMs
+      : Math.max(seg.endMs, seg.startMs)
+    const parts = seg.text.replace(TAG, " ").split(/\s+/).filter(Boolean)
+    parts.forEach((text, j) => {
+      words.push({ text, ms: Math.round(seg.startMs + ((end - seg.startMs) * j) / parts.length) })
+    })
+    const last = words[words.length - 1]
+    const pause = next && seg.endMs > seg.startMs ? next.startMs - seg.endMs : 0
+    if (parts.length && last) last.boundary = { pause }
+  })
+
+  const rows: TranscriptSegment[] = []
+  let text = ""
+  let startMs = 0
+  const flush = () => {
+    if (text) rows.push({ text, startMs, endMs: startMs })
+    text = ""
+  }
+  for (const word of words) {
+    if (text && text.length + 1 + word.text.length > maxChars) flush()
+    if (!text) startMs = word.ms
+    text = text ? `${text} ${word.text}` : word.text
+    const len = text.length
+    if (len >= minChars && SENTENCE_END.test(text)) flush()
+    else if (len >= minChars && word.boundary && word.boundary.pause >= PAUSE_MS) flush()
+    else if (len >= targetChars && (word.boundary || CLAUSE_END.test(text))) flush()
+  }
+  flush()
+
+  const lastSeg = segments[segments.length - 1]
+  rows.forEach((row, i) => {
+    row.endMs = rows[i + 1]?.startMs ?? Math.max(lastSeg?.endMs ?? row.startMs, row.startMs)
+  })
+  return rows
+}
+
 export function filterSegments(segments: TranscriptSegment[], query: string): TranscriptSegment[] {
   const q = query.trim().toLowerCase()
   if (!q) return segments

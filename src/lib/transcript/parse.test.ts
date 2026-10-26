@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest"
 import type { TranscriptSegment } from "@/lib/types"
 import en from "./__fixtures__/get-panel.en.json"
 import ja from "./__fixtures__/get-panel.ja.json"
-import { chunkSegments, filterSegments, findActiveIndex, parseGetPanelResponse } from "./parse"
+import {
+  chunkBySentences,
+  chunkSegments,
+  filterSegments,
+  findActiveIndex,
+  parseGetPanelResponse,
+} from "./parse"
 
 const seg = (text: string, startMs: number, endMs: number): TranscriptSegment => ({
   text,
@@ -123,5 +129,74 @@ describe("findActiveIndex", () => {
   it("returns -1 before the first", () => {
     expect(findActiveIndex(segs, -1)).toBe(-1)
     expect(findActiveIndex([], 100)).toBe(-1)
+  })
+})
+
+describe("chunkBySentences", () => {
+  const sentenceA = "The first idea is that rivers carve canyons over very long spans of time."
+  const sentenceB = "The second idea is that wind and ice finish the job the water started."
+
+  it("ends rows at sentence boundaries with interpolated, increasing starts", () => {
+    const segments = [
+      seg(`${sentenceA} ${sentenceB}`, 0, 15_000),
+      seg(`${sentenceA} ${sentenceB}`, 15_000, 30_000),
+      seg(`${sentenceA} ${sentenceB}`, 30_000, 45_000),
+    ]
+    const rows = chunkBySentences(segments)
+    expect(rows.map((r) => r.text)).toEqual([
+      sentenceA,
+      sentenceB,
+      sentenceA,
+      sentenceB,
+      sentenceA,
+      sentenceB,
+    ])
+    for (let i = 1; i < rows.length; i++) {
+      expect(rows[i]?.startMs).toBeGreaterThan(rows[i - 1]?.startMs ?? Number.POSITIVE_INFINITY)
+      expect(rows[i - 1]?.endMs).toBe(rows[i]?.startMs)
+    }
+    expect(rows[0]?.startMs).toBe(0)
+    expect(rows[1]?.startMs).toBeGreaterThan(0)
+    expect(rows[1]?.startMs).toBeLessThan(15_000)
+    expect(rows[rows.length - 1]?.endMs).toBe(45_000)
+  })
+
+  it("hard-breaks unpunctuated runs on word boundaries within maxChars", () => {
+    const words = Array.from({ length: 120 }, (_, i) => `word${i}`)
+    const segments = [seg(words.join(" "), 0, 60_000)]
+    const rows = chunkBySentences(segments, { maxChars: 170 })
+    expect(rows.length).toBeGreaterThan(1)
+    for (const row of rows) expect(row.text.length).toBeLessThanOrEqual(170)
+    expect(rows.flatMap((r) => r.text.split(" "))).toEqual(words)
+  })
+
+  it("drops bracketed tags like [music]", () => {
+    const rows = chunkBySentences([
+      seg("[music]", 0, 2000),
+      seg("hello there [Applause] everyone, welcome back", 2000, 5000),
+    ])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.text).toBe("hello there everyone, welcome back")
+    expect(rows[0]?.startMs).toBe(2000)
+  })
+
+  it("never exceeds maxChars plus the longest word", () => {
+    const long = "supercalifragilisticexpialidocious"
+    const text = Array.from({ length: 60 }, (_, i) => (i % 7 === 0 ? long : "and")).join(" ")
+    const rows = chunkBySentences([seg(text, 0, 30_000)], { maxChars: 50 })
+    for (const row of rows) expect(row.text.length).toBeLessThanOrEqual(50 + long.length)
+  })
+
+  it("ends a row at a 2.5 s pause once it has minChars", () => {
+    const first = "so this is the part where we talk about the setup and the tools"
+    const rows = chunkBySentences([
+      seg(first, 0, 4000),
+      seg("and then after a pause we continue", 6500, 9000),
+    ])
+    expect(rows.map((r) => r.text)).toEqual([first, "and then after a pause we continue"])
+    expect(rows[1]?.startMs).toBe(6500)
+
+    const short = chunkBySentences([seg("too short", 0, 1000), seg("to split here", 4000, 5000)])
+    expect(short).toHaveLength(1)
   })
 })

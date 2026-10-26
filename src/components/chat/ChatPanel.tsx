@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useSettings } from "@/hooks/useSettings"
 import type { VideoState } from "@/hooks/useVideo"
 import { DEFAULT_SETTINGS } from "@/lib/storage"
-import { chunkSegments, findActiveIndex } from "@/lib/transcript/parse"
+import { chunkBySentences, findActiveIndex } from "@/lib/transcript/parse"
 import { displayText } from "@/lib/transcript/text"
 import { PortChatTransport } from "@/lib/transport"
 import type { ChatMessageMetadata, ModelSelection, VideoContext } from "@/lib/types"
@@ -193,7 +193,7 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
 
   const ask = useCallback((text: string) => send(text, quote), [send, quote])
 
-  const rows = useMemo(() => chunkSegments(context.transcript), [context.transcript])
+  const rows = useMemo(() => chunkBySentences(context.transcript), [context.transcript])
   const explainNow = (ms: number) => {
     const row = rows[Math.max(findActiveIndex(rows, ms), 0)]
     const nowQuote = row

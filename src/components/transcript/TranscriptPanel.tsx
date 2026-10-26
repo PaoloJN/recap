@@ -12,7 +12,7 @@ import { useSeek } from "@/hooks/useSeek"
 import { useSettings } from "@/hooks/useSettings"
 import type { VideoState } from "@/hooks/useVideo"
 import { formatMs } from "@/lib/timestamps"
-import { chunkSegments, findActiveIndex } from "@/lib/transcript/parse"
+import { chunkBySentences, findActiveIndex } from "@/lib/transcript/parse"
 import {
   displayText,
   type TranscriptListItem,
@@ -113,7 +113,7 @@ function TranscriptView({
 
   const rows = useMemo<TranscriptSegment[]>(
     () =>
-      chunkSegments(transcript.segments).map((row) => ({
+      chunkBySentences(transcript.segments).map((row) => ({
         ...row,
         text: displayText(row.text, removeFillers),
       })),
