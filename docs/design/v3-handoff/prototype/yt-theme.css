@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+
+/* YouTube-matched surfaces, Paolo token names */
+.yt-dark {
+  color-scheme: dark;
+  --bg: #0f0f0f;
+  --bg-elevated: #181818;
+  --bg-overlay: #272727;
+  --bg-inset: #121212;
+  --muted: #3f3f3f;
+  --secondary: #3e3e3e;
+  --popover: #282828;
+  --fg: #f1f1f1;
+  --card-foreground: #cfcfcf;
+  --fg-muted: #aaaaaa;
+  --fg-subtle: #717171;
+  --fg-disabled: #4d4d4d;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --accent: #f1f1f1;
+  --accent-hover: #d9d9d9;
+  --accent-fg: #0f0f0f;
+  --info: #3ea6ff;
+  --info-soft: rgba(62, 166, 255, 0.14);
+  --success: #3fbf5a;
+  --success-soft: rgba(63, 191, 90, 0.14);
+  --warning: #f9ab00;
+  --warning-soft: rgba(249, 171, 0, 0.28);
+  --danger: #ff6b61;
+  --danger-soft: rgba(255, 78, 69, 0.12);
+  --ring: #3ea6ff;
+  --shadow-pop: 0 4px 32px rgba(0, 0, 0, 0.45);
+}
+.yt-light {
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg-elevated: #f9f9f9;
+  --bg-overlay: #f2f2f2;
+  --bg-inset: #ffffff;
+  --muted: #e5e5e5;
+  --secondary: #f2f2f2;
+  --popover: #ffffff;
+  --fg: #0f0f0f;
+  --card-foreground: #333333;
+  --fg-muted: #606060;
+  --fg-subtle: #8a8a8a;
+  --fg-disabled: #c4c4c4;
+  --border: rgba(0, 0, 0, 0.1);
+  --border-strong: rgba(0, 0, 0, 0.18);
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --accent: #0f0f0f;
+  --accent-hover: #272727;
+  --accent-fg: #ffffff;
+  --info: #065fd4;
+  --info-soft: rgba(6, 95, 212, 0.08);
+  --success: #1e8e3e;
+  --success-soft: rgba(30, 142, 62, 0.1);
+  --warning: #f9ab00;
+  --warning-soft: rgba(249, 171, 0, 0.3);
+  --danger: #cc0000;
+  --danger-soft: rgba(204, 0, 0, 0.06);
+  --ring: #065fd4;
+  --shadow-pop: 0 4px 32px rgba(0, 0, 0, 0.12);
+}
+.yt-font-youtube { --font-sans: "Roboto", Arial, sans-serif; --font-mono: "Roboto Mono", ui-monospace, monospace; }
+.yt-font-geist { --font-sans: "Geist", "Inter", sans-serif; --font-mono: "Geist Mono", ui-monospace, monospace; }
+
+.yt-dark ::-webkit-scrollbar, .yt-light ::-webkit-scrollbar { width: 8px; }
+.yt-dark ::-webkit-scrollbar-thumb { background: #3f3f3f; border-radius: 8px; }
+.yt-light ::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 8px; }
+.yt-dark ::-webkit-scrollbar-track, .yt-light ::-webkit-scrollbar-track { background: transparent; }
+.yt-dark textarea::placeholder, .yt-dark input::placeholder, .yt-light textarea::placeholder, .yt-light input::placeholder { color: var(--fg-subtle); }
+
+@keyframes yt-pulse { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
+@keyframes yt-shimmer { 0%, 100% { opacity: .45 } 50% { opacity: 1 } }
+@keyframes yt-spin { to { transform: rotate(360deg) } }
+@keyframes yt-blink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }

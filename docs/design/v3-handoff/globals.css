@@ -1,0 +1,107 @@
+/* shadcn/ui (Tailwind v4) theme for the YouTube AI panel.
+   Values match YouTube's own surfaces so the panel blends into the watch page.
+   Scope: apply `.dark` / `.light` on the extension's shadow root host, synced to
+   YouTube's theme via `document.documentElement.hasAttribute('dark')`. */
+
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
+
+:root, .light {
+  --radius: 0.5rem;                 /* 8px: buttons, inputs, chips */
+  --background: #ffffff;            /* panel bg */
+  --foreground: #0f0f0f;            /* titles, primary text */
+  --card: #f9f9f9;                  /* settings rows, info cards */
+  --card-foreground: #333333;       /* body/reading text */
+  --popover: #ffffff;
+  --popover-foreground: #0f0f0f;
+  --primary: #0f0f0f;               /* primary button, active tab chip */
+  --primary-foreground: #ffffff;
+  --secondary: #f2f2f2;             /* secondary button, inactive chip */
+  --secondary-foreground: #0f0f0f;
+  --muted: #e5e5e5;                 /* secondary hover, switch off */
+  --muted-foreground: #606060;      /* meta text */
+  --accent: #f2f2f2;                /* ghost hover, menu item hover */
+  --accent-foreground: #0f0f0f;
+  --destructive: #cc0000;
+  --border: rgb(0 0 0 / 0.10);
+  --input: rgb(0 0 0 / 0.18);
+  --ring: #065fd4;
+  /* extras */
+  --subtle-foreground: #8a8a8a;     /* tertiary text, placeholders */
+  --link: #065fd4;                  /* timestamps, citations, links */
+  --link-soft: rgb(6 95 212 / 0.08);
+  --success: #1e8e3e;  --success-soft: rgb(30 142 62 / 0.10);
+  --warning: #f9ab00;  --warning-soft: rgb(249 171 0 / 0.30);
+  --danger-soft: rgb(204 0 0 / 0.06);
+  --progress: #ff0033;              /* chapter progress bar, "live" dot */
+  --shadow-pop: 0 4px 32px rgb(0 0 0 / 0.12);
+}
+
+.dark {
+  --background: #0f0f0f;
+  --foreground: #f1f1f1;
+  --card: #181818;
+  --card-foreground: #cfcfcf;
+  --popover: #282828;
+  --popover-foreground: #f1f1f1;
+  --primary: #f1f1f1;
+  --primary-foreground: #0f0f0f;
+  --secondary: #272727;
+  --secondary-foreground: #f1f1f1;
+  --muted: #3f3f3f;
+  --muted-foreground: #aaaaaa;
+  --accent: #3e3e3e;
+  --accent-foreground: #f1f1f1;
+  --destructive: #ff6b61;
+  --border: rgb(255 255 255 / 0.10);
+  --input: rgb(255 255 255 / 0.20);
+  --ring: #3ea6ff;
+  --subtle-foreground: #717171;
+  --link: #3ea6ff;
+  --link-soft: rgb(62 166 255 / 0.14);
+  --success: #3fbf5a;  --success-soft: rgb(63 191 90 / 0.14);
+  --warning: #f9ab00;  --warning-soft: rgb(249 171 0 / 0.28);
+  --danger-soft: rgb(255 78 69 / 0.12);
+  --progress: #ff0033;
+  --shadow-pop: 0 4px 32px rgb(0 0 0 / 0.45);
+}
+
+@theme inline {
+  --font-sans: "Roboto", Arial, sans-serif;
+  --font-mono: "Roboto Mono", ui-monospace, monospace;
+  --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-link: var(--link);
+  --color-link-soft: var(--link-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger-soft: var(--danger-soft);
+  --color-progress: var(--progress);
+  --shadow-pop: var(--shadow-pop);
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground font-sans antialiased; }
+}
