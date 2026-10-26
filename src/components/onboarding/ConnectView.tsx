@@ -13,7 +13,7 @@ import { KeyField, type KeyFieldState } from "./KeyField"
 import { useKeyCheck } from "./useKeyCheck"
 
 const FOOTER = [
-  { icon: HardDrives, text: "Stored in chrome.storage on this device" },
+  { icon: HardDrives, text: "Stored in extension storage on this device" },
   { icon: LockSimple, text: "Never sent to my server — there isn't one" },
   { icon: Trash, text: "Remove it anytime in settings" },
 ]

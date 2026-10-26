@@ -14,8 +14,11 @@
   "type": "module",
   "scripts": {
     "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
     "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
     "icons": "node scripts/make-icons.mjs",
     "test": "vitest run",
     "check": "biome check .",

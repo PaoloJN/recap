@@ -19,7 +19,7 @@ const remToPx = {
 export default defineConfig({
   srcDir: "src",
   modules: ["@wxt-dev/module-react"],
-  manifest: {
+  manifest: ({ browser }) => ({
     name: "Recap AI",
     version: "2.0.0",
     permissions: ["storage"],
@@ -42,18 +42,19 @@ export default defineConfig({
         description: "Toggle the Recap panel",
       },
     },
-  },
+    ...(browser === "firefox"
+      ? { browser_specific_settings: { gecko: { id: "recap-ai@paolojn.github.io" } } }
+      : {}),
+  }),
   hooks: {
     // Only the bundled fonts need to be web accessible; the stylesheet is inlined into the
     // content script (see src/entrypoints/youtube.content/index.tsx).
-    "build:manifestGenerated": (_wxt, manifest) => {
-      manifest.web_accessible_resources = [
-        {
-          resources: ["fonts/*"],
-          matches: YOUTUBE_MATCHES,
-          use_dynamic_url: false,
-        },
-      ]
+    "build:manifestGenerated": (wxt, manifest) => {
+      // MV2 (the Firefox build) takes a plain string list; MV3 takes the object form.
+      manifest.web_accessible_resources =
+        wxt.config.manifestVersion === 2
+          ? ["fonts/*"]
+          : [{ resources: ["fonts/*"], matches: YOUTUBE_MATCHES, use_dynamic_url: false }]
     },
   },
   vite: () => ({

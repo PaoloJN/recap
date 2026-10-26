@@ -29,6 +29,8 @@ From a release:
 
 Or build from source, as described under Development, and load `.output/chrome-mv3` the same way.
 
+Firefox: run `pnpm build:firefox`, open `about:debugging#/runtime/this-firefox`, click Load Temporary Add-on and pick `.output/firefox-mv2/manifest.json`. The Firefox build is dev-only for now and is not on Firefox Add-ons.
+
 ## Setup
 
 1. Open a YouTube video. The card shows "Add a key".
@@ -47,7 +49,7 @@ The transcript tab works without a key.
 
 ## Privacy
 
-- Your key is stored in `chrome.storage.local` on your device and sent only to the provider you pick.
+- Your key is stored in the extension's local storage on your device and sent only to the provider you pick.
 - Requests go only to YouTube and the provider you chose. There is no server of ours in between.
 - No analytics, no telemetry, no tracking.
 - Transcripts come from YouTube's own transcript feature. It is undocumented and may change. If it breaks, the panel shows "no transcript".
@@ -56,12 +58,13 @@ The transcript tab works without a key.
 
 ```sh
 pnpm install
-pnpm dev        # run the extension with hot reload
+pnpm dev        # run the extension in Chrome with hot reload
+pnpm dev:firefox  # same, in Firefox (needs Firefox installed; builds .output/firefox-mv2)
 pnpm test       # unit tests
 pnpm check      # lint and format (Biome)
 pnpm typecheck
 pnpm build
-pnpm zip        # package into .output/
+pnpm zip        # package into .output/ (add -b firefox or use zip:firefox for Firefox)
 pnpm icons      # regenerate extension icons
 ```
 
