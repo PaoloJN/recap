@@ -6,7 +6,7 @@ import { chatsItem, removeChat, upsertChat } from "@/lib/storage"
 export interface ChatHistory {
   initialMessages: UIMessage[] | undefined
   ready: boolean
-  save(messages: UIMessage[]): Promise<void>
+  save(messages: UIMessage[], title?: string): Promise<void>
   clear(): Promise<void>
 }
 
@@ -14,10 +14,10 @@ export function useChatHistory(videoId: string): ChatHistory {
   const [store] = useStorageItem(chatsItem)
 
   const save = useCallback(
-    (messages: UIMessage[]) =>
+    (messages: UIMessage[], title?: string) =>
       chatsItem
         .getValue()
-        .then((s) => chatsItem.setValue(upsertChat(s, videoId, messages, Date.now()))),
+        .then((s) => chatsItem.setValue(upsertChat(s, videoId, messages, Date.now(), title))),
     [videoId],
   )
 

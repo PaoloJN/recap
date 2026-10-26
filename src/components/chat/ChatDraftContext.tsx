@@ -15,6 +15,12 @@ export interface ChatDraft {
   /** Bumped by `requestFocus`; the composer focuses when it changes. */
   focusToken: number
   requestFocus(): void
+  /** Whether the open chat thread has messages; drives the tab row's "New" button. */
+  hasMessages: boolean
+  setHasMessages(v: boolean): void
+  /** Bumped by `requestNewChat`; the chat panel clears its thread when it changes. */
+  newChatToken: number
+  requestNewChat(): void
 }
 
 const ChatDraftContext = createContext<ChatDraft | null>(null)
@@ -25,6 +31,9 @@ export function ChatDraftProvider({ children }: { children: ReactNode }) {
   const [attachTime, setAttachTime] = useState(false)
   const [focusToken, setFocusToken] = useState(0)
   const requestFocus = useCallback(() => setFocusToken((t) => t + 1), [])
+  const [hasMessages, setHasMessages] = useState(false)
+  const [newChatToken, setNewChatToken] = useState(0)
+  const requestNewChat = useCallback(() => setNewChatToken((t) => t + 1), [])
 
   const value = useMemo<ChatDraft>(
     () => ({
@@ -36,8 +45,12 @@ export function ChatDraftProvider({ children }: { children: ReactNode }) {
       setAttachTime,
       focusToken,
       requestFocus,
+      hasMessages,
+      setHasMessages,
+      newChatToken,
+      requestNewChat,
     }),
-    [draft, quote, attachTime, focusToken, requestFocus],
+    [draft, quote, attachTime, focusToken, requestFocus, hasMessages, newChatToken, requestNewChat],
   )
   return <ChatDraftContext.Provider value={value}>{children}</ChatDraftContext.Provider>
 }

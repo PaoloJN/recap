@@ -1,233 +1,282 @@
 import { useChat } from "@ai-sdk/react"
 import type { UIMessage } from "ai"
-import { RefreshCw, Trash2 } from "lucide-react"
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef } from "react"
-import {
-  Conversation,
-  ConversationContent,
-  ConversationScrollButton,
-} from "@/components/ai-elements/conversation"
-import { Message, MessageContent } from "@/components/ai-elements/message"
-import {
-  PromptInput,
-  PromptInputBody,
-  PromptInputFooter,
-  type PromptInputMessage,
-  PromptInputProvider,
-  PromptInputSubmit,
-  PromptInputTextarea,
-  usePromptInputController,
-} from "@/components/ai-elements/prompt-input"
-import { Markdown } from "@/components/markdown/Markdown"
-import { Button } from "@/components/ui/button"
+import { useCallback, useEffect, useMemo, useRef } from "react"
+import { usePanelNav } from "@/components/shell/NavigationContext"
+import { useToast } from "@/components/shell/ToastContext"
+import { useSummaryContext } from "@/components/summary/SummaryContext"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useSettings } from "@/hooks/useSettings"
+import type { VideoState } from "@/hooks/useVideo"
+import { DEFAULT_SETTINGS } from "@/lib/storage"
+import { chunkSegments, findActiveIndex } from "@/lib/transcript/parse"
+import { displayText } from "@/lib/transcript/text"
 import { PortChatTransport } from "@/lib/transport"
-import type { AnswerLanguage, ModelSelection, VideoContext } from "@/lib/types"
-import { ChatEmptyState } from "./ChatEmptyState"
+import type { ChatMessageMetadata, ModelSelection, VideoContext } from "@/lib/types"
+import { getVideoElement } from "@/lib/youtube/player"
+import { type ChatQuote, useChatDraft } from "./ChatDraftContext"
+import { ChatEmptyState, pickSuggestions } from "./ChatEmptyState"
+import { Composer } from "./Composer"
+import { MessageList, messageMeta } from "./MessageList"
+import { ModelPicker } from "./ModelPicker"
 import { useChatHistory } from "./useChatHistory"
 
-export interface ChatPanelProps {
-  context: VideoContext
-  selection: ModelSelection
-  language: AnswerLanguage
-}
+const EXPLAIN_NOW_PROMPT = "Explain what's happening here."
+/** Within this distance of the bottom, new content keeps the list pinned to the bottom. */
+const STICK_PX = 40
 
-export function ChatPanel({ context, selection, language }: ChatPanelProps) {
-  const videoId = context.metadata.videoId
-  const { initialMessages, ready, save, clear } = useChatHistory(videoId)
-
-  if (!ready) {
-    return (
-      <div className="flex h-[460px] flex-col gap-2 p-4" role="status" aria-label="Loading chat">
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="h-4 w-1/2" />
-      </div>
-    )
-  }
-
+function ChatSkeleton() {
   return (
-    <PromptInputProvider key={videoId}>
-      <ChatView
-        videoId={videoId}
-        context={context}
-        selection={selection}
-        language={language}
-        initialMessages={initialMessages}
-        save={save}
-        clear={clear}
-      />
-    </PromptInputProvider>
+    <div
+      className="flex flex-1 flex-col gap-[8px] p-[16px]"
+      role="status"
+      aria-label="Loading chat"
+    >
+      <Skeleton className="h-[14px] w-2/3" />
+      <Skeleton className="h-[14px] w-1/2" />
+    </div>
   )
 }
 
-interface ChatViewProps extends ChatPanelProps {
-  videoId: string
-  initialMessages: UIMessage[] | undefined
-  save: (messages: UIMessage[]) => Promise<void>
-  clear: () => Promise<void>
+/** Chat for the current video. Panel renders it once the transcript (and so the context) is ready. */
+export function ChatPanel({ video }: { video: VideoState }) {
+  const context = video.context
+  const videoId = context?.metadata.videoId ?? ""
+  const history = useChatHistory(videoId)
+  if (!context || !history.ready) return <ChatSkeleton />
+  return (
+    <ChatView
+      key={videoId}
+      context={context}
+      title={video.page?.metadata.title}
+      initialMessages={history.initialMessages}
+      save={history.save}
+      clear={history.clear}
+    />
+  )
 }
 
-function ChatView({
-  videoId,
-  context,
-  selection,
-  language,
-  initialMessages,
-  save,
-  clear,
-}: ChatViewProps) {
-  const ctxRef = useRef(context)
-  const selectionRef = useRef(selection)
-  useEffect(() => {
-    ctxRef.current = context
-  }, [context])
-  useEffect(() => {
-    selectionRef.current = selection
-  }, [selection])
-  const languageRef = useRef(language)
-  useEffect(() => {
-    languageRef.current = language
-  }, [language])
+interface ChatViewProps {
+  context: VideoContext
+  title: string | undefined
+  initialMessages: UIMessage[] | undefined
+  save(messages: UIMessage[], title?: string): Promise<void>
+  clear(): Promise<void>
+}
 
-  // Built once per mounted view (the view is keyed by videoId); refs carry the latest settings.
+function withMetadata(m: UIMessage, patch: Partial<ChatMessageMetadata>): UIMessage {
+  const metadata: ChatMessageMetadata = { ...messageMeta(m), ...patch }
+  for (const key of Object.keys(metadata) as (keyof ChatMessageMetadata)[]) {
+    if (metadata[key] === undefined) delete metadata[key]
+  }
+  return { ...m, metadata }
+}
+
+/** Marks the last message "Stopped." if it is an assistant reply. */
+function markStopped(messages: UIMessage[]): UIMessage[] {
+  const last = messages.at(-1)
+  if (last?.role !== "assistant") return messages
+  return [...messages.slice(0, -1), withMetadata(last, { stopped: true })]
+}
+
+function ChatView({ context, title, initialMessages, save, clear }: ChatViewProps) {
+  const [stored] = useSettings()
+  const settings = stored ?? DEFAULT_SETTINGS
+  const { tab } = usePanelNav()
+  const toast = useToast()
+  const summary = useSummaryContext()
+  const {
+    draft,
+    setDraft,
+    quote,
+    setQuote,
+    attachTime,
+    setAttachTime,
+    focusToken,
+    setHasMessages,
+    newChatToken,
+  } = useChatDraft()
+
+  const selection = useMemo<ModelSelection>(
+    () => ({ provider: settings.provider, model: settings.models[settings.provider] }),
+    [settings.provider, settings.models],
+  )
+
+  // The transport is built once per view (keyed by video); refs carry the latest values.
+  const latest = useRef({ context, selection, language: settings.language, title })
+  latest.current = { context, selection, language: settings.language, title }
   const transport = useMemo(
     () =>
       new PortChatTransport(() => ({
-        context: ctxRef.current,
-        selection: selectionRef.current,
-        language: languageRef.current,
+        context: latest.current.context,
+        selection: latest.current.selection,
+        language: latest.current.language,
       })),
     [],
   )
 
-  // Set while Clear is in flight so the abort-triggered onFinish cannot re-save the cleared chat.
+  // Set while New is in flight so the abort-triggered onFinish cannot re-save the cleared chat.
   const clearingRef = useRef(false)
+  // Set while Stop is in flight so onFinish marks the partial reply "Stopped.".
+  const stoppingRef = useRef(false)
 
   const { messages, sendMessage, status, stop, setMessages, error, regenerate, clearError } =
     useChat({
-      id: videoId,
+      id: context.metadata.videoId,
       messages: initialMessages,
       transport,
-      onFinish: ({ messages: finished, isError }) => {
+      onFinish: ({ messages: finished, isError, isAbort }) => {
         if (isError || clearingRef.current) return
-        save(finished).catch((e: unknown) => console.error("Failed to save chat", e))
+        let next = finished
+        if (isAbort || stoppingRef.current) {
+          next = markStopped(finished)
+          setMessages(next)
+        }
+        save(next, latest.current.title).catch((e: unknown) =>
+          console.error("Failed to save chat", e),
+        )
       },
     })
 
-  const controller = usePromptInputController()
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const busy = status === "submitted" || status === "streaming"
 
-  const ask = useCallback((text: string) => void sendMessage({ text }), [sendMessage])
+  useEffect(() => {
+    setHasMessages(messages.length > 0)
+  }, [messages.length, setHasMessages])
+  useEffect(() => () => setHasMessages(false), [setHasMessages])
 
-  const prefill = useCallback(
-    (text: string) => {
-      controller.textInput.setInput(text)
-      requestAnimationFrame(() => {
-        const el = textareaRef.current
-        if (!el) return
-        el.focus()
-        el.setSelectionRange(el.value.length, el.value.length)
-      })
+  // Scrolling: stay pinned to the bottom while the user is there; jump down on send.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const pinnedRef = useRef(true)
+  const onScroll = () => {
+    const el = scrollRef.current
+    if (el) pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX
+  }
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-pin on every message/stream update
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el && pinnedRef.current) el.scrollTop = el.scrollHeight
+  }, [messages, status])
+
+  // Focus the textarea (cursor at the end) on each focus request, once the Chat tab is visible.
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const handledFocus = useRef(focusToken)
+  useEffect(() => {
+    if (tab !== "chat" || handledFocus.current === focusToken) return
+    handledFocus.current = focusToken
+    const el = textareaRef.current
+    if (!el) return
+    el.focus()
+    el.setSelectionRange(el.value.length, el.value.length)
+  }, [tab, focusToken])
+
+  const send = useCallback(
+    (text: string, sendQuote: ChatQuote | null) => {
+      const seconds = getVideoElement()?.currentTime
+      const metadata: ChatMessageMetadata = {}
+      if (attachTime && seconds !== undefined) metadata.at = Math.floor(seconds)
+      if (sendQuote) metadata.quote = sendQuote
+      pinnedRef.current = true
+      void sendMessage({ text, metadata })
+      setDraft("")
+      setQuote(null)
+      setAttachTime(false)
     },
-    [controller.textInput],
+    [attachTime, sendMessage, setDraft, setQuote, setAttachTime],
   )
 
-  const onSubmit = ({ text }: PromptInputMessage) => {
-    const trimmed = text.trim()
-    if (!trimmed || busy) return
-    ask(trimmed)
+  const ask = useCallback((text: string) => send(text, quote), [send, quote])
+
+  const rows = useMemo(() => chunkSegments(context.transcript), [context.transcript])
+  const explainNow = (ms: number) => {
+    const row = rows[Math.max(findActiveIndex(rows, ms), 0)]
+    const nowQuote = row
+      ? {
+          seconds: Math.floor(row.startMs / 1000),
+          text: displayText(row.text, settings.removeFillers),
+        }
+      : null
+    send(EXPLAIN_NOW_PROMPT, nowQuote)
   }
 
-  // While generating, Enter must not submit (and clear) the draft; the button is Stop then.
-  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (busy && e.key === "Enter" && !e.shiftKey) e.preventDefault()
+  const onStop = async () => {
+    stoppingRef.current = true
+    try {
+      await stop()
+    } finally {
+      stoppingRef.current = false
+    }
   }
 
-  const onClear = () => {
+  const onFeedback = (id: string) => {
+    const next = messages.map((m) =>
+      m.id === id
+        ? withMetadata(m, { feedback: messageMeta(m).feedback === "up" ? undefined : "up" })
+        : m,
+    )
+    setMessages(next)
+    save(next, title).catch((e: unknown) => console.error("Failed to save chat", e))
+  }
+
+  const onCopy = (text: string) => {
+    navigator.clipboard.writeText(text).then(
+      () => toast("Copied"),
+      () => toast("Couldn't copy"),
+    )
+  }
+
+  // New chat (tab-row button): drop the thread and its stored copy.
+  const handledNewChat = useRef(newChatToken)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs only when New is requested
+  useEffect(() => {
+    if (handledNewChat.current === newChatToken) return
+    handledNewChat.current = newChatToken
     clearingRef.current = true
     if (busy) void stop()
     clearError()
     setMessages([])
+    setDraft("")
+    setQuote(null)
     clear()
       .catch((e: unknown) => console.error("Failed to clear chat", e))
       .finally(() => {
         clearingRef.current = false
       })
-  }
+  }, [newChatToken])
 
   return (
-    <div className="flex h-[460px] flex-col">
-      {messages.length > 0 && (
-        <div className="flex justify-end px-2 pt-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" onClick={onClear}>
-                  <Trash2 />
-                  Clear chat
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Delete this video's chat history</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      )}
-
-      <Conversation className="min-h-0">
-        <ConversationContent className="gap-4">
-          {messages.length === 0 ? (
-            <ChatEmptyState onAsk={ask} onPrefill={prefill} />
-          ) : (
-            messages.map((m) => (
-              <Message key={m.id} from={m.role}>
-                <MessageContent>
-                  {m.parts.map((part, i) => {
-                    if (part.type !== "text") return null
-                    const key = `${m.id}-${i}`
-                    return m.role === "assistant" ? (
-                      <Markdown key={key}>{part.text}</Markdown>
-                    ) : (
-                      <p key={key} className="whitespace-pre-wrap">
-                        {part.text}
-                      </p>
-                    )
-                  })}
-                </MessageContent>
-              </Message>
-            ))
-          )}
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
-
-      {error && (
-        <div className="flex items-center justify-between gap-2 px-4 py-2 text-sm text-destructive">
-          <span role="alert" className="min-w-0 break-words">
-            {error.message}
-          </span>
-          <Button variant="ghost" size="sm" onClick={() => void regenerate()}>
-            <RefreshCw />
-            Retry
-          </Button>
-        </div>
-      )}
-
-      <div className="p-2">
-        <PromptInput onSubmit={onSubmit}>
-          <PromptInputBody>
-            <PromptInputTextarea
-              ref={textareaRef}
-              placeholder="Ask about the video…"
-              onKeyDown={onKeyDown}
-            />
-          </PromptInputBody>
-          <PromptInputFooter className="justify-end">
-            <PromptInputSubmit status={status} onStop={stop} />
-          </PromptInputFooter>
-        </PromptInput>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto p-[16px]">
+        {messages.length === 0 && !busy ? (
+          <ChatEmptyState
+            suggestions={pickSuggestions(summary.parsed.questions)}
+            onExplainNow={explainNow}
+            onAsk={ask}
+          />
+        ) : (
+          <MessageList
+            messages={messages}
+            status={status}
+            error={error}
+            onCopy={onCopy}
+            onRegenerate={() => void regenerate()}
+            onFeedback={onFeedback}
+            onRetry={() => void regenerate()}
+          />
+        )}
       </div>
+      <Composer
+        draft={draft}
+        onDraft={setDraft}
+        quote={quote}
+        onClearQuote={() => setQuote(null)}
+        attachTime={attachTime}
+        onToggleAttach={() => setAttachTime(!attachTime)}
+        busy={busy}
+        onSend={() => ask(draft.trim())}
+        onStop={() => void onStop()}
+        modelPicker={<ModelPicker />}
+        textareaRef={textareaRef}
+      />
     </div>
   )
 }

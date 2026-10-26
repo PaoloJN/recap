@@ -31,6 +31,8 @@ export interface ChatMessageMetadata {
   at?: number
   quote?: { seconds: number; text: string }
   feedback?: "up"
+  /** Set on an assistant reply the user stopped mid-stream. */
+  stopped?: boolean
 }
 
 export interface TranscriptSegment {

@@ -1,6 +1,7 @@
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { ToastProvider } from "@/components/shell/ToastContext"
 import { seekTo } from "@/lib/youtube/player"
 import { Markdown } from "./Markdown"
 
@@ -29,7 +30,11 @@ describe("Markdown", () => {
 
   it("renders timestamps as anchors that seek the player on click", async () => {
     await act(async () => {
-      root.render(<Markdown>see 12:34</Markdown>)
+      root.render(
+        <ToastProvider>
+          <Markdown>see 12:34</Markdown>
+        </ToastProvider>,
+      )
     })
     const anchor = container.querySelector<HTMLAnchorElement>('a[href="#t=754"]')
     expect(anchor).not.toBeNull()
@@ -39,5 +44,17 @@ describe("Markdown", () => {
     })
     expect(seekTo).toHaveBeenCalledWith(754)
     expect(click.defaultPrevented).toBe(true)
+  })
+
+  it("keeps ordinary links as new-tab links", async () => {
+    await act(async () => {
+      root.render(
+        <ToastProvider>
+          <Markdown>[docs](https://example.com)</Markdown>
+        </ToastProvider>,
+      )
+    })
+    const anchor = container.querySelector<HTMLAnchorElement>('a[href^="https://example.com"]')
+    expect(anchor?.target).toBe("_blank")
   })
 })

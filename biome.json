@@ -11,8 +11,7 @@
       "!**/__fixtures__",
       "!**/*.md",
       "!pnpm-lock.yaml",
-      "!src/components/ui",
-      "!src/components/ai-elements"
+      "!src/components/ui"
     ]
   },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },

@@ -2,7 +2,7 @@ import type { UIMessage, UIMessageChunk } from "ai"
 import { describe, expect, it } from "vitest"
 import type { StreamPortMessage } from "./port-protocol"
 import { openStream, PortChatTransport, type PortLike, readTextFromUIStream } from "./transport"
-import type { ModelSelection, SummaryStyle, VideoContext } from "./types"
+import type { AnswerLanguage, ModelSelection, SummaryStyle, VideoContext } from "./types"
 
 class FakePort implements PortLike {
   posted: unknown[] = []
@@ -152,6 +152,26 @@ describe("PortChatTransport", () => {
     expect(port.posted).toEqual([{ kind: "chat", messages, context, selection, language: "match" }])
     port.emit({ type: "done" })
     expect((await stream.getReader().read()).done).toBe(true)
+  })
+
+  it("forwards the current answer language with each request", async () => {
+    const port = new FakePort()
+    let language: AnswerLanguage = "match"
+    const transport = new PortChatTransport(
+      () => ({ context, selection, language }),
+      () => port,
+    )
+    language = "Español"
+    await transport.sendMessages({
+      trigger: "submit-message",
+      chatId: "c",
+      messageId: undefined,
+      messages: [],
+      abortSignal: undefined,
+    })
+    expect(port.posted).toEqual([
+      { kind: "chat", messages: [], context, selection, language: "Español" },
+    ])
   })
 
   it("reconnectToStream resolves null", async () => {

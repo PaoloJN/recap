@@ -1,6 +1,9 @@
-import { ClosedCaptioning, Key, WarningCircle } from "@phosphor-icons/react"
+import { Key, WarningCircle } from "@phosphor-icons/react"
 import { type ReactNode, useEffect, useMemo, useRef } from "react"
+import { useChatDraft } from "@/components/chat/ChatDraftContext"
 import { ChatPanel } from "@/components/chat/ChatPanel"
+import { NewChatButton } from "@/components/chat/NewChatButton"
+import { NoCaptions } from "@/components/summary/NoCaptions"
 import { SummaryActions } from "@/components/summary/SummaryActions"
 import { SummaryProvider } from "@/components/summary/SummaryContext"
 import { SummaryPanel } from "@/components/summary/SummaryPanel"
@@ -14,13 +17,7 @@ import { useTheme } from "@/hooks/useTheme"
 import { useVideo, type VideoState } from "@/hooks/useVideo"
 import { downloadText } from "@/lib/download"
 import { exportVideoMarkdown, slugify } from "@/lib/export"
-import {
-  apiKeysItem,
-  chatsItem,
-  DEFAULT_SETTINGS,
-  type Settings,
-  summariesItem,
-} from "@/lib/storage"
+import { apiKeysItem, chatsItem, DEFAULT_SETTINGS, summariesItem } from "@/lib/storage"
 import type { ModelSelection, PanelTab, TranscriptStatus, VideoContext } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { LiveChapterBar } from "./ChapterBar"
@@ -81,11 +78,9 @@ function TranscriptGate({
       return <TranscriptSkeleton />
     case "unavailable":
       return (
-        <EmptyState
-          icon={ClosedCaptioning}
-          title="No captions on this video"
-          description="Summaries, chat and the transcript all need captions. Try another video."
-        />
+        <div className="px-[16px]">
+          <NoCaptions variant="summary" />
+        </div>
       )
     case "error":
       return (
@@ -109,13 +104,11 @@ function TranscriptGate({
 interface BodyProps {
   tab: PanelTab
   hasKey: boolean
-  settings: Settings
-  selection: ModelSelection
   video: VideoState
   onAddKey(): void
 }
 
-function Body({ tab, hasKey, settings, selection, video, onAddKey }: BodyProps) {
+function Body({ tab, hasKey, video, onAddKey }: BodyProps) {
   const noKey = (
     <EmptyState
       icon={Key}
@@ -153,11 +146,7 @@ function Body({ tab, hasKey, settings, selection, video, onAddKey }: BodyProps) 
       </div>
       <div className={pane("chat")}>
         {hasKey ? (
-          <TranscriptGate video={video}>
-            {(_, context) => (
-              <ChatPanel context={context} selection={selection} language={settings.language} />
-            )}
-          </TranscriptGate>
+          <TranscriptGate video={video}>{() => <ChatPanel video={video} />}</TranscriptGate>
         ) : (
           noKey
         )}
@@ -176,6 +165,7 @@ export function Panel() {
   const container = usePortalContainer()
   const cardRef = useRef<HTMLDivElement>(null)
   const video = useVideo(open)
+  const { hasMessages } = useChatDraft()
 
   const settings = storedSettings ?? DEFAULT_SETTINGS
   const provider = settings.provider
@@ -283,21 +273,22 @@ export function Panel() {
         ) : null}
         {/* Kept mounted while collapsed or in settings so streams and panel state survive. */}
         <div className={showMain ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
-          <TabRow right={tab === "summary" && hasKey ? <SummaryActions /> : null} />
+          <TabRow
+            right={
+              !hasKey ? null : tab === "summary" ? (
+                <SummaryActions />
+              ) : tab === "chat" && hasMessages ? (
+                <NewChatButton />
+              ) : null
+            }
+          />
           <div
             className={cn(
               "flex min-h-0 flex-1 flex-col",
               transcriptScrolls ? "overflow-hidden" : "overflow-auto",
             )}
           >
-            <Body
-              tab={tab}
-              hasKey={hasKey}
-              settings={settings}
-              selection={selection}
-              video={video}
-              onAddKey={() => setView("onboarding")}
-            />
+            <Body tab={tab} hasKey={hasKey} video={video} onAddKey={() => setView("onboarding")} />
           </div>
         </div>
       </div>
