@@ -25,7 +25,6 @@ const TABS: { id: PanelTab; label: string; icon: LucideIcon }[] = [
 const COPIED_MS = 2000
 
 export interface HeaderProps {
-  title: string | undefined
   tab: PanelTab
   open: boolean
   settingsActive: boolean
@@ -48,7 +47,6 @@ function IconButton(props: { label: string; onClick(): void; children: ReactNode
 }
 
 export function Header({
-  title,
   tab,
   open,
   settingsActive,
@@ -75,16 +73,8 @@ export function Header({
 
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2.5 text-card-foreground">
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div className="flex flex-1 items-center">
         <Sparkles className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        {title ? (
-          <span
-            className="hidden truncate text-xs text-muted-foreground @min-[480px]:block"
-            title={title}
-          >
-            {title}
-          </span>
-        ) : null}
       </div>
       <ButtonGroup aria-label="Panel tabs">
         {TABS.map(({ id, label, icon: Icon }) => {

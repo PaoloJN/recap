@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { loadTranscript } from "@/lib/transcript/fetch"
 import type { TranscriptStatus, VideoContext, WatchPageData } from "@/lib/types"
 import { onVideoChange } from "@/lib/youtube/navigation"
@@ -16,20 +16,26 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-export function useVideo(): VideoState {
+/**
+ * Tracks the current watch-page video id at all times, but only fetches the watch page and
+ * transcript while `enabled` is true. Results are kept per id (collapsing does not discard them);
+ * an id change resets to loading without fetching until enabled.
+ */
+export function useVideo(enabled: boolean): VideoState {
   const [videoId, setVideoId] = useState<string | null>(null)
   const [page, setPage] = useState<WatchPageData | null>(null)
   const [transcript, setTranscript] = useState<TranscriptStatus>({ state: "loading" })
   const requestRef = useRef(0)
+  const trackedIdRef = useRef<string | null | undefined>(undefined)
+  const loadedIdRef = useRef<string | null>(null)
 
   useEffect(() => onVideoChange(setVideoId), [])
 
-  const load = useCallback(async (id: string | null) => {
+  const load = useCallback(async (id: string) => {
     const request = ++requestRef.current
     const isCurrent = () => request === requestRef.current
     setPage(null)
     setTranscript({ state: "loading" })
-    if (!id) return
     try {
       const nextPage = await fetchWatchPage(id)
       if (!isCurrent()) return
@@ -42,21 +48,42 @@ export function useVideo(): VideoState {
   }, [])
 
   useEffect(() => {
-    void load(videoId)
-    return () => {
-      // invalidate any in-flight request for this id
-      requestRef.current++
+    if (trackedIdRef.current !== videoId) {
+      trackedIdRef.current = videoId
+      loadedIdRef.current = null
+      requestRef.current++ // drop any in-flight result for the previous id
+      setPage(null)
+      setTranscript({ state: "loading" })
     }
-  }, [videoId, load])
+    if (!enabled || !videoId || loadedIdRef.current === videoId) return
+    loadedIdRef.current = videoId
+    void load(videoId)
+  }, [enabled, videoId, load])
+
+  useEffect(
+    () => () => {
+      requestRef.current++
+    },
+    [],
+  )
 
   const reload = useCallback(() => {
+    if (!videoId) return
+    loadedIdRef.current = videoId
     void load(videoId)
   }, [load, videoId])
 
-  const context: VideoContext | null =
-    page && transcript.state === "ready"
-      ? { metadata: page.metadata, transcript: transcript.segments, language: transcript.language }
-      : null
+  const context = useMemo<VideoContext | null>(
+    () =>
+      page && transcript.state === "ready"
+        ? {
+            metadata: page.metadata,
+            transcript: transcript.segments,
+            language: transcript.language,
+          }
+        : null,
+    [page, transcript],
+  )
 
   return { videoId, page, transcript, context, reload }
 }

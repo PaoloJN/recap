@@ -1,5 +1,5 @@
 import { CaptionsOff, KeyRound, TriangleAlert } from "lucide-react"
-import { type ReactNode, useState } from "react"
+import { type ReactNode, useMemo, useState } from "react"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { SummaryPanel } from "@/components/summary/SummaryPanel"
 import { TranscriptPanel } from "@/components/transcript/TranscriptPanel"
@@ -14,7 +14,7 @@ import {
   type Settings,
   settingsItem,
 } from "@/lib/storage"
-import type { ModelSelection, PanelTab } from "@/lib/types"
+import type { ModelSelection, PanelTab, VideoMetadata } from "@/lib/types"
 import { EmptyState } from "./EmptyState"
 import { Header } from "./Header"
 import { SettingsView } from "./SettingsView"
@@ -23,8 +23,18 @@ interface BodyProps {
   tab: PanelTab
   settings: Settings
   apiKeys: ApiKeys
+  selection: ModelSelection
   video: VideoState
   onOpenSettings(): void
+}
+
+function VideoStrip({ metadata }: { metadata: VideoMetadata }) {
+  const label = metadata.author ? `${metadata.title} · ${metadata.author}` : metadata.title
+  return (
+    <div className="truncate border-b px-3 py-1.5 text-xs text-muted-foreground" title={label}>
+      {label}
+    </div>
+  )
 }
 
 function TranscriptSkeleton() {
@@ -38,7 +48,7 @@ function TranscriptSkeleton() {
   )
 }
 
-function Body({ tab, settings, apiKeys, video, onOpenSettings }: BodyProps): ReactNode {
+function Body({ tab, settings, apiKeys, selection, video, onOpenSettings }: BodyProps): ReactNode {
   if (!apiKeys[settings.provider]) {
     return (
       <EmptyState
@@ -84,10 +94,6 @@ function Body({ tab, settings, apiKeys, video, onOpenSettings }: BodyProps): Rea
   }
 
   if (!context) return <TranscriptSkeleton />
-  const selection: ModelSelection = {
-    provider: settings.provider,
-    model: settings.models[settings.provider],
-  }
   switch (tab) {
     case "summary":
       return <SummaryPanel context={context} selection={selection} />
@@ -103,7 +109,14 @@ export function Panel() {
   const [settings] = useStorageItem(settingsItem)
   const [apiKeys] = useStorageItem(apiKeysItem)
   const [showSettings, setShowSettings] = useState(false)
-  const video = useVideo()
+  const provider = settings?.provider
+  const model = provider ? settings?.models[provider] : undefined
+  const selection = useMemo<ModelSelection | null>(
+    () => (provider && model ? { provider, model } : null),
+    [provider, model],
+  )
+  const hasKey = Boolean(provider && apiKeys?.[provider])
+  const video = useVideo(Boolean(panelState?.open) && hasKey)
 
   if (!panelState) return null
 
@@ -121,12 +134,9 @@ export function Panel() {
     void setPanelState({ ...panelState, open: !panelState.open })
   }
 
-  const loaded = settings !== undefined && apiKeys !== undefined
-
   return (
-    <main className="mb-3 flex w-full flex-col gap-2 @container">
+    <main className="mb-3 flex w-full flex-col gap-2">
       <Header
-        title={video.page?.metadata.title}
         tab={panelState.tab}
         open={panelState.open}
         settingsActive={showSettings}
@@ -134,8 +144,9 @@ export function Panel() {
         onToggleOpen={toggleOpen}
         onOpenSettings={openSettings}
       />
-      {panelState.open && loaded ? (
+      {panelState.open && settings && apiKeys && selection ? (
         <div className="max-h-[520px] overflow-auto rounded-lg border bg-card text-card-foreground">
+          {video.page ? <VideoStrip metadata={video.page.metadata} /> : null}
           {showSettings ? (
             <SettingsView
               settings={settings}
@@ -147,6 +158,7 @@ export function Panel() {
               tab={panelState.tab}
               settings={settings}
               apiKeys={apiKeys}
+              selection={selection}
               video={video}
               onOpenSettings={openSettings}
             />
