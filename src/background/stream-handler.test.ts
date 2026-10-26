@@ -89,6 +89,28 @@ describe("runStreamRequest", () => {
     expect(messages.some((m) => m.type === "done")).toBe(false)
   })
 
+  it("posts a single error and no done when the stream emits an error part", async () => {
+    const { messages, post } = collect()
+    const model = new MockLanguageModelV3({
+      doStream: async () => ({
+        stream: simulateReadableStream({
+          chunks: [
+            { type: "text-start", id: "t1" },
+            { type: "text-delta", id: "t1", delta: "Hel" },
+            { type: "error", error: new Error("provider exploded") },
+          ],
+        }),
+      }),
+    })
+    await runStreamRequest(
+      { kind: "summary", preset: "tldr", context, selection },
+      { model, post, signal: new AbortController().signal },
+    )
+    const errors = messages.filter((m) => m.type === "error")
+    expect(errors).toEqual([{ type: "error", message: "provider exploded" }])
+    expect(messages.some((m) => m.type === "done")).toBe(false)
+  })
+
   it("uses the summary prompt for summary requests", async () => {
     const { post } = collect()
     const model = helloModel()

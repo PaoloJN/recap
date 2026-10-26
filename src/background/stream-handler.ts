@@ -62,7 +62,10 @@ export async function runStreamRequest(req: StreamRequest, deps: StreamDeps): Pr
             return streamText({ model, system, prompt: user, abortSignal: signal, onError })
           })()
     for await (const chunk of toUIMessageStream({ stream: result.stream })) {
-      if (chunk.type === "error") continue
+      if (chunk.type === "error") {
+        streamError ??= new Error(chunk.errorText)
+        continue
+      }
       post({ type: "chunk", chunk })
     }
     if (streamError !== undefined && !signal.aborted) {
@@ -75,11 +78,17 @@ export async function runStreamRequest(req: StreamRequest, deps: StreamDeps): Pr
   }
 }
 
-function safePost(port: { postMessage: (m: StreamPortMessage) => void }, m: StreamPortMessage) {
+function safePost(
+  port: { postMessage: (m: StreamPortMessage) => void },
+  isDisconnected: () => boolean,
+  m: StreamPortMessage,
+) {
+  if (isDisconnected()) return
   try {
     port.postMessage(m)
-  } catch {
-    // port disconnected
+  } catch (e) {
+    if (e instanceof Error && /disconnected/i.test(e.message)) return
+    console.error("Failed to post stream message", e)
   }
 }
 
@@ -88,12 +97,16 @@ export function registerStreamPortHandler(): void {
     if (port.name !== STREAM_PORT_NAME) return
     const controller = new AbortController()
     let started = false
-    port.onDisconnect.addListener(() => controller.abort())
+    let disconnected = false
+    port.onDisconnect.addListener(() => {
+      disconnected = true
+      controller.abort()
+    })
     port.onMessage.addListener(async (raw) => {
       if (started) return
       started = true
       const req = raw as StreamRequest
-      const post = (m: StreamPortMessage) => safePost(port, m)
+      const post = (m: StreamPortMessage) => safePost(port, () => disconnected, m)
       try {
         const keys = await apiKeysItem.getValue()
         const key = keys[req.selection.provider]
