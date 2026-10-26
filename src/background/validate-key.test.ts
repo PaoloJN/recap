@@ -90,11 +90,11 @@ describe("validateKey", () => {
 })
 
 describe("registerKeyCheckHandler", () => {
-  // fakeBrowser's sendMessage does not relay listener return values, so call the listener directly.
-  function capture() {
-    let listener: ((m: unknown) => unknown) | undefined
+  type Listener = (m: unknown, sender: unknown, sendResponse: (r: unknown) => void) => unknown
+  function capture(): Listener {
+    let listener: Listener | undefined
     const spy = vi.spyOn(fakeBrowser.runtime.onMessage, "addListener").mockImplementation((fn) => {
-      listener = fn as (m: unknown) => unknown
+      listener = fn as Listener
     })
     registerKeyCheckHandler()
     spy.mockRestore()
@@ -102,20 +102,30 @@ describe("registerKeyCheckHandler", () => {
     return listener
   }
 
-  it("answers validate-key with the validation result", async () => {
+  it("returns true and responds asynchronously with the result", async () => {
     const original = globalThis.fetch
     globalThis.fetch = (async () => json({ data: [{ id: "gpt-6-luna" }] })) as typeof fetch
     try {
       const listener = capture()
-      const reply = await listener({ type: "validate-key", provider: "openai", key: "sk-x" })
-      expect(reply).toEqual({ ok: true, models: ["gpt-6-luna"] })
+      const sendResponse = vi.fn()
+      const ret = listener(
+        { type: "validate-key", provider: "openai", key: "sk-x" },
+        {},
+        sendResponse,
+      )
+      expect(ret).toBe(true)
+      await vi.waitFor(() =>
+        expect(sendResponse).toHaveBeenCalledWith({ ok: true, models: ["gpt-6-luna"] }),
+      )
     } finally {
       globalThis.fetch = original
     }
   })
 
-  it("ignores other message types", () => {
+  it("ignores other message types without responding", () => {
     const listener = capture()
-    expect(listener({ type: "toggle-panel" })).toBeUndefined()
+    const sendResponse = vi.fn()
+    expect(listener({ type: "toggle-panel" }, {}, sendResponse)).toBeUndefined()
+    expect(sendResponse).not.toHaveBeenCalled()
   })
 })

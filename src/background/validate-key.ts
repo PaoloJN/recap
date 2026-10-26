@@ -90,10 +90,24 @@ export async function validateKey(
   }
 }
 
+function isKeyCheckRequest(message: unknown): message is KeyCheckRequest {
+  const m = message as Partial<KeyCheckRequest> | null
+  return m?.type === "validate-key" && typeof m.provider === "string" && typeof m.key === "string"
+}
+
 export function registerKeyCheckHandler(): void {
-  browser.runtime.onMessage.addListener((message: unknown) => {
-    const req = message as Partial<KeyCheckRequest> | null
-    if (req?.type !== "validate-key" || !req.provider || typeof req.key !== "string") return
-    return validateKey(req.provider, req.key)
-  })
+  browser.runtime.onMessage.addListener(
+    (message: unknown, _sender: unknown, sendResponse: (r: KeyCheckResult) => void) => {
+      if (!isKeyCheckRequest(message)) return undefined
+      const label = PROVIDERS[message.provider]?.label ?? message.provider
+      validateKey(message.provider, message.key).then(sendResponse, () =>
+        sendResponse({
+          ok: false,
+          status: null,
+          message: `Couldn't reach ${label}. Check your connection.`,
+        }),
+      )
+      return true
+    },
+  )
 }
