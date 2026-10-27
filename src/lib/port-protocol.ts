@@ -29,7 +29,7 @@ export type StreamRequest =
 
 export type StreamPortMessage =
   | { type: "chunk"; chunk: UIMessageChunk }
-  | { type: "error"; message: string }
+  | { type: "error"; message: string; code?: ProErrorCode; resetsAt?: string }
   | { type: "done" }
 
 export type ToggleMessage = { type: "toggle-panel" }

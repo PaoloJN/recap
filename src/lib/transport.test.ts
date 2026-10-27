@@ -1,7 +1,13 @@
 import type { UIMessage, UIMessageChunk } from "ai"
 import { describe, expect, it } from "vitest"
 import type { StreamPortMessage } from "./port-protocol"
-import { openStream, PortChatTransport, type PortLike, readTextFromUIStream } from "./transport"
+import {
+  openStream,
+  PortChatTransport,
+  type PortLike,
+  readTextFromUIStream,
+  StreamError,
+} from "./transport"
 import type { AnswerLanguage, ModelSelection, SummaryStyle, VideoContext } from "./types"
 
 class FakePort implements PortLike {
@@ -181,5 +187,39 @@ describe("PortChatTransport", () => {
       language: "match" as const,
     }))
     expect(await transport.reconnectToStream({ chatId: "c" })).toBeNull()
+  })
+})
+
+describe("StreamError", () => {
+  it("surfaces the Pro error code and resetsAt through openStream", async () => {
+    const port = new FakePort()
+    const stream = openStream(summaryReq, { connect: () => port })
+    const resetsAt = "2026-11-01T00:00:00.000Z"
+    port.emit({ type: "error", code: "limit_reached", message: "Limit reached.", resetsAt })
+    const err = await stream
+      .getReader()
+      .read()
+      .then(
+        () => null,
+        (e: unknown) => e,
+      )
+    expect(err).toBeInstanceOf(StreamError)
+    expect(err).toBeInstanceOf(Error)
+    expect((err as StreamError).message).toBe("Limit reached.")
+    expect((err as StreamError).code).toBe("limit_reached")
+    expect((err as StreamError).resetsAt).toBe(resetsAt)
+  })
+
+  it("has no code for a BYOK error", async () => {
+    const port = new FakePort()
+    const stream = openStream(summaryReq, { connect: () => port })
+    port.emit({ type: "error", message: "Invalid API key. Check it in Settings." })
+    const err = (await stream
+      .getReader()
+      .read()
+      .catch((e: unknown) => e)) as StreamError
+    expect(err).toBeInstanceOf(StreamError)
+    expect(err.message).toBe("Invalid API key. Check it in Settings.")
+    expect(err.code).toBeUndefined()
   })
 })
