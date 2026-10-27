@@ -22,6 +22,9 @@ function messageChars(message: ModelMessage): number {
  * with a user message and keeps the latest user message. The system prompt is never cut and no
  * text is truncated: if even the smallest allowed tail is too big it is returned as is, and the
  * server answers 413.
+ *
+ * Precondition: `messages` ends with a user message (every summary and chat request does). With no
+ * user message at all there is nothing safe to keep, so the input is returned unchanged.
  */
 export function trimForPro(
   system: string,

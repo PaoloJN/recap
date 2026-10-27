@@ -24,7 +24,7 @@ export interface ProStreamBody {
 const NETWORK_MESSAGE = "Can't reach Recap Pro. Check your connection."
 
 const DEFAULT_MESSAGES: Record<ProErrorCode, string> = {
-  bad_request: "Recap Pro couldn't read that request.",
+  bad_request: "Recap Pro couldn't read that request. Update the extension and try again.",
   unauthorized: "You've been signed out of Recap Pro.",
   upgrade_required: "Your Recap Pro trial has ended.",
   too_large: "This request is too large for Recap Pro.",
@@ -48,6 +48,8 @@ const SERVER_CODES = new Set<string>([
 
 function codeForStatus(status: number): ProErrorCode {
   switch (status) {
+    case 400:
+      return "bad_request"
     case 401:
       return "unauthorized"
     case 402:
@@ -101,14 +103,23 @@ async function send(fetchImpl: typeof fetch, url: string, init?: RequestInit): P
   return res
 }
 
+/** Parses a 2xx JSON body; a body that isn't JSON is a server fault, not a crash. */
+async function readJson<T>(res: Response): Promise<T> {
+  try {
+    return (await res.json()) as T
+  } catch {
+    throw new ProError("internal_error", DEFAULT_MESSAGES.internal_error)
+  }
+}
+
 export async function fetchMe(token: string, fetchImpl: typeof fetch = fetch): Promise<MeResponse> {
   const res = await send(fetchImpl, proUrl("/api/v1/me"), { headers: { "x-api-key": token } })
-  return (await res.json()) as MeResponse
+  return readJson<MeResponse>(res)
 }
 
 export async function fetchPricing(fetchImpl: typeof fetch = fetch): Promise<Pricing> {
   const res = await send(fetchImpl, proUrl("/api/v1/pricing"))
-  return (await res.json()) as Pricing
+  return readJson<Pricing>(res)
 }
 
 /** Revokes the device key on the server. Best effort: never throws. */

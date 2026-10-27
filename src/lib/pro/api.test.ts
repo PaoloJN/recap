@@ -45,6 +45,7 @@ describe("toProError", () => {
   })
 
   it.each([
+    [400, "bad_request"],
     [401, "unauthorized"],
     [402, "upgrade_required"],
     [413, "too_large"],
@@ -56,6 +57,13 @@ describe("toProError", () => {
     const err = await toProError(new Response("<html>oops</html>", { status }))
     expect(err.code).toBe(code)
     expect(err.message.length).toBeGreaterThan(0)
+  })
+
+  it("uses the bad_request default message for a bare 400", async () => {
+    const err = await toProError(new Response("", { status: 400 }))
+    expect(err.message).toBe(
+      "Recap Pro couldn't read that request. Update the extension and try again.",
+    )
   })
 
   it("falls back to status for an unknown error code", async () => {
@@ -87,6 +95,23 @@ describe("fetchMe", () => {
       code: "network",
       message: "Can't reach Recap Pro. Check your connection.",
     })
+  })
+})
+
+describe("2xx with a non-JSON body", () => {
+  const html = () => new Response("<html>proxy</html>", { status: 200 })
+  it("fetchMe maps it to internal_error", async () => {
+    const err = await fetchMe(
+      "tok",
+      vi.fn(async () => html()),
+    ).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ProError)
+    expect(err).toMatchObject({ code: "internal_error" })
+  })
+  it("fetchPricing maps it to internal_error", async () => {
+    const err = await fetchPricing(vi.fn(async () => html())).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ProError)
+    expect(err).toMatchObject({ code: "internal_error" })
   })
 })
 

@@ -19,7 +19,10 @@ const chars = (system: string, messages: ModelMessage[]) =>
       n +
       (typeof m.content === "string"
         ? m.content.length
-        : m.content.reduce((k, p) => k + ("text" in p ? p.text.length : 0), 0)),
+        : m.content.reduce(
+            (k, p) => k + (p.type === "text" ? p.text.length : JSON.stringify(p).length),
+            0,
+          )),
     0,
   )
 
@@ -90,6 +93,11 @@ describe("trimForPro", () => {
     const huge = user("q".repeat(200_000))
     const messages = [user("old"), assistant("old answer"), huge]
     expect(trimForPro("sys", messages)).toEqual([huge])
+  })
+
+  it("returns a list with no user message unchanged (precondition)", () => {
+    const messages = [assistant("a"), assistant("b")]
+    expect(trimForPro("sys", messages)).toBe(messages)
   })
 
   it("does not mutate the input", () => {
