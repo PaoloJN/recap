@@ -137,6 +137,15 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
 
   const busy = status === "submitted" || status === "streaming"
 
+  // An error (or gate) from one provider says nothing about the next: switching clears it.
+  const provider = settings.provider
+  const providerRef = useRef(provider)
+  useEffect(() => {
+    if (providerRef.current === provider) return
+    providerRef.current = provider
+    clearError()
+  }, [provider, clearError])
+
   useEffect(() => {
     setHasMessages(messages.length > 0)
   }, [messages.length, setHasMessages])

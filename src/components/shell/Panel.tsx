@@ -198,6 +198,13 @@ export function Panel() {
   const signedOut = useSignedOut(pro.signedIn) && provider === "pro"
   const summary = useSummary(video.context, selection, settings, open && hasAccess)
 
+  // An error (or gate) from one provider says nothing about the next: switching clears it.
+  const { clearError: clearSummaryError } = summary
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs only when the provider changes
+  useEffect(() => {
+    clearSummaryError()
+  }, [provider])
+
   // ⌥S on a collapsed card or a still-loading video: the transcript (and so the context) only
   // arrives after the card opens, so the request waits here, tied to the video it was made for.
   const [pendingSummarize, setPendingSummarize] = useState<string | null>(null)
