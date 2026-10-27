@@ -1,4 +1,5 @@
 import type { UIMessage, UIMessageChunk } from "ai"
+import type { MeResponse, ProErrorCode } from "./pro/types"
 import type {
   AnswerLanguage,
   ByokProviderId,
@@ -39,4 +40,23 @@ export type KeyCheckResult =
   | { ok: true; models: string[] }
   | { ok: false; status: number | null; message: string }
 
-export type RuntimeMessage = ToggleMessage | KeyCheckRequest
+export type ProSignInRequest = { type: "pro-sign-in" }
+export type ProSignOutRequest = { type: "pro-sign-out" }
+export type ProRefreshRequest = { type: "pro-refresh" }
+
+export type ProAuthResult =
+  | { ok: true }
+  | { ok: false; reason: "cancelled" | "failed"; message: string }
+
+export type ProSignOutResult = { ok: true }
+
+export type ProRefreshResult =
+  | { ok: true; me: MeResponse }
+  | { ok: false; code: ProErrorCode; message: string }
+
+export type RuntimeMessage =
+  | ToggleMessage
+  | KeyCheckRequest
+  | ProSignInRequest
+  | ProSignOutRequest
+  | ProRefreshRequest
