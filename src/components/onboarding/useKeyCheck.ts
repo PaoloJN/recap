@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react"
 import { checkKey } from "@/lib/key-check"
 import type { KeyCheckResult } from "@/lib/port-protocol"
-import type { ProviderId } from "@/lib/types"
+import type { ByokProviderId } from "@/lib/types"
 
 export type KeyCheckStatus = "idle" | "checking" | "invalid" | "valid"
 
@@ -10,12 +10,12 @@ export interface KeyCheckState {
   result: KeyCheckResult | null
   /** True after an attempt to check an empty key. */
   error: boolean
-  check(provider: ProviderId, key: string): Promise<void>
+  check(provider: ByokProviderId, key: string): Promise<void>
   reset(): void
 }
 
 export function useKeyCheck(
-  check: (provider: ProviderId, key: string) => Promise<KeyCheckResult> = checkKey,
+  check: (provider: ByokProviderId, key: string) => Promise<KeyCheckResult> = checkKey,
 ): KeyCheckState {
   const [status, setStatus] = useState<KeyCheckStatus>("idle")
   const [result, setResult] = useState<KeyCheckResult | null>(null)
@@ -31,7 +31,7 @@ export function useKeyCheck(
   }, [])
 
   const start = useCallback(
-    async (provider: ProviderId, key: string) => {
+    async (provider: ByokProviderId, key: string) => {
       if (!key.trim()) {
         setError(true)
         setStatus("idle")

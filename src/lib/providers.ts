@@ -3,7 +3,8 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import type { LanguageModel } from "ai"
-import type { ModelSelection, ProviderId } from "./types"
+import { PRO_ENABLED } from "@/lib/pro/config"
+import type { ByokModelSelection, ByokProviderId, ProviderId } from "./types"
 
 export interface ModelInfo {
   id: string
@@ -22,9 +23,33 @@ export interface ProviderInfo {
   tag: string
 }
 
-export const PROVIDER_IDS: readonly ProviderId[] = ["openai", "anthropic", "google", "openrouter"]
+export const BYOK_PROVIDER_IDS: readonly ByokProviderId[] = [
+  "openai",
+  "anthropic",
+  "google",
+  "openrouter",
+]
+
+/** Providers this build offers: Recap Pro first when the build enables it. */
+export const PROVIDER_IDS: readonly ProviderId[] = PRO_ENABLED
+  ? ["pro", ...BYOK_PROVIDER_IDS]
+  : BYOK_PROVIDER_IDS
+
+export function isByok(id: ProviderId): id is ByokProviderId {
+  return id !== "pro"
+}
 
 export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
+  pro: {
+    id: "pro",
+    label: "Recap Pro",
+    models: [{ id: "pro", label: "Recap Pro", note: "No key needed" }],
+    defaultModel: "pro",
+    keyUrl: "",
+    keyHint: "",
+    tagline: "No key needed. Sign in and go",
+    tag: "Recommended",
+  },
   openai: {
     id: "openai",
     label: "OpenAI",
@@ -87,8 +112,12 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   },
 }
 
-export function createModel(selection: ModelSelection, apiKey: string): LanguageModel {
+/** BYOK only: Recap Pro streams through the server, never through a local model. */
+export function createModel(selection: ByokModelSelection, apiKey: string): LanguageModel {
   const { provider, model } = selection
+  if ((provider as ProviderId) === "pro") {
+    throw new Error("Recap Pro has no local model; it streams through the Pro server")
+  }
   switch (provider) {
     case "openai":
       return createOpenAI({ apiKey })(model)

@@ -17,12 +17,13 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { useSettings } from "@/hooks/useSettings"
 import { useStorageItem } from "@/hooks/useStorageItem"
-import { PROVIDER_IDS, PROVIDERS } from "@/lib/providers"
+import { isByok, PROVIDER_IDS, PROVIDERS } from "@/lib/providers"
 import { apiKeysItem, type Settings } from "@/lib/storage"
 import { SUMMARY_STYLE_IDS, SUMMARY_STYLES } from "@/lib/summary/styles"
 import {
   ANSWER_LANGUAGES,
   type AnswerLanguage,
+  type ByokProviderId,
   type ProviderId,
   type SummaryStyle,
   type TextSize,
@@ -97,7 +98,7 @@ function Picker<T extends string>({ label, value, options, onChange }: PickerPro
   )
 }
 
-function ApiKeyRow({ provider }: { provider: ProviderId }) {
+function ApiKeyRow({ provider }: { provider: ByokProviderId }) {
   const { setView } = usePanelNav()
   const toast = useToast()
   const [apiKeys] = useStorageItem(apiKeysItem)
@@ -188,7 +189,7 @@ function SettingsBody({
             />
           }
         />
-        <ApiKeyRow provider={provider} />
+        {isByok(provider) ? <ApiKeyRow provider={provider} /> : null}
         <SettingsRow
           title="Default model"
           control={

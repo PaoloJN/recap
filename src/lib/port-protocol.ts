@@ -1,8 +1,8 @@
 import type { UIMessage, UIMessageChunk } from "ai"
 import type {
   AnswerLanguage,
+  ByokProviderId,
   ModelSelection,
-  ProviderId,
   SummaryStyle,
   VideoContext,
 } from "./types"
@@ -33,7 +33,7 @@ export type StreamPortMessage =
 
 export type ToggleMessage = { type: "toggle-panel" }
 
-export type KeyCheckRequest = { type: "validate-key"; provider: ProviderId; key: string }
+export type KeyCheckRequest = { type: "validate-key"; provider: ByokProviderId; key: string }
 
 export type KeyCheckResult =
   | { ok: true; models: string[] }

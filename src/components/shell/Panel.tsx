@@ -20,6 +20,7 @@ import { useTheme } from "@/hooks/useTheme"
 import { useVideo, type VideoState } from "@/hooks/useVideo"
 import { downloadText } from "@/lib/download"
 import { exportVideoMarkdown, slugify } from "@/lib/export"
+import { isByok } from "@/lib/providers"
 import { apiKeysItem, chatsItem, DEFAULT_SETTINGS, summariesItem } from "@/lib/storage"
 import type { ModelSelection, PanelTab, TranscriptStatus, VideoContext } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -185,7 +186,8 @@ export function Panel() {
   const provider = settings.provider
   const model = settings.models[provider]
   const selection = useMemo<ModelSelection>(() => ({ provider, model }), [provider, model])
-  const hasKey = Boolean(apiKeys?.[provider])
+  // Recap Pro access gating arrives with the Pro UI; until then "pro" counts as no key.
+  const hasKey = isByok(provider) && Boolean(apiKeys?.[provider])
   const summary = useSummary(video.context, selection, settings, open && hasKey)
 
   // ⌥S on a collapsed card or a still-loading video: the transcript (and so the context) only

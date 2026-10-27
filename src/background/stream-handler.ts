@@ -11,7 +11,7 @@ import { STREAM_PORT_NAME, type StreamPortMessage, type StreamRequest } from "..
 import { expandUserMessages } from "../lib/prompts/chat-messages"
 import { buildSummaryPrompt } from "../lib/prompts/summary"
 import { buildChatSystemPrompt } from "../lib/prompts/system"
-import { createModel, PROVIDERS } from "../lib/providers"
+import { createModel, isByok, PROVIDERS } from "../lib/providers"
 import { recordUsage as addUsage, apiKeysItem, monthKey, usageItem } from "../lib/storage"
 
 const INVALID_KEY = "Invalid API key. Check it in Settings."
@@ -161,17 +161,23 @@ export function registerStreamPortHandler(): void {
       const req = raw as StreamRequest
       const post = (m: StreamPortMessage) => safePost(port, () => disconnected, m)
       try {
+        const selection = req.selection
+        if (!isByok(selection.provider)) {
+          post({ type: "error", message: "Recap Pro isn't available in this version yet." })
+          return
+        }
+        const byok = { provider: selection.provider, model: selection.model }
         const keys = await apiKeysItem.getValue()
-        const key = keys[req.selection.provider]
+        const key = keys[byok.provider]
         if (!key) {
           post({
             type: "error",
-            message: `No API key configured for ${PROVIDERS[req.selection.provider].label}.`,
+            message: `No API key configured for ${PROVIDERS[byok.provider].label}.`,
           })
           return
         }
         await runStreamRequest(req, {
-          model: createModel(req.selection, key),
+          model: createModel(byok, key),
           post,
           signal: controller.signal,
           recordUsage: defaultRecordUsage,

@@ -128,4 +128,13 @@ describe("registerKeyCheckHandler", () => {
     expect(listener({ type: "toggle-panel" }, {}, sendResponse)).toBeUndefined()
     expect(sendResponse).not.toHaveBeenCalled()
   })
+
+  it("ignores key checks for Recap Pro", () => {
+    const listener = capture()
+    const sendResponse = vi.fn()
+    expect(listener({ type: "validate-key", provider: "pro", key: "k" }, {}, sendResponse)).toBe(
+      undefined,
+    )
+    expect(sendResponse).not.toHaveBeenCalled()
+  })
 })

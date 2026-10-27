@@ -5,9 +5,9 @@ import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { largeButton, primaryButton } from "@/components/summary/buttons"
 import { useSettings } from "@/hooks/useSettings"
-import { PROVIDER_IDS, PROVIDERS } from "@/lib/providers"
+import { BYOK_PROVIDER_IDS, isByok, PROVIDERS } from "@/lib/providers"
 import { apiKeysItem } from "@/lib/storage"
-import type { ProviderId } from "@/lib/types"
+import type { ByokProviderId, ProviderId } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { KeyField, type KeyFieldState } from "./KeyField"
 import { useKeyCheck } from "./useKeyCheck"
@@ -22,7 +22,10 @@ export function ConnectView({ initialProvider }: { initialProvider: ProviderId }
   const { setView } = usePanelNav()
   const toast = useToast()
   const [, updateSettings] = useSettings()
-  const [provider, setProvider] = useState(initialProvider)
+  // The key screen is BYOK-only; arriving from Recap Pro starts on the first key provider.
+  const [provider, setProvider] = useState<ByokProviderId>(
+    isByok(initialProvider) ? initialProvider : "openai",
+  )
   const [key, setKey] = useState("")
   const [show, setShow] = useState(false)
   const { status, result, error, check, reset } = useKeyCheck()
@@ -95,12 +98,12 @@ export function ConnectView({ initialProvider }: { initialProvider: ProviderId }
             aria-labelledby="provider-label"
             value={provider}
             onValueChange={(v) => {
-              setProvider(v as ProviderId)
+              setProvider(v as ByokProviderId)
               reset()
             }}
             className="divide-y divide-border overflow-hidden rounded-[12px] bg-card"
           >
-            {PROVIDER_IDS.map((id) => {
+            {BYOK_PROVIDER_IDS.map((id) => {
               const p = PROVIDERS[id]
               return (
                 <RadioGroup.Item
