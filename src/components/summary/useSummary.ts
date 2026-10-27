@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { errorInfo } from "@/components/pro/access"
 import { useStorageItem } from "@/hooks/useStorageItem"
+import type { ProErrorCode } from "@/lib/pro/types"
 import {
   mergeSettings,
   type Settings,
@@ -19,6 +21,12 @@ export interface SummaryState {
   parsed: ParsedSummary
   receivedFirstToken: boolean
   error: string | null
+  /** Recap Pro error code of the last failure, if any. */
+  errorCode: ProErrorCode | null
+  /** When a Recap Pro monthly limit resets (limit_reached only). */
+  resetsAt: string | null
+  /** Drops an error (and any partial text it kept) back to idle. */
+  clearError(): void
   style: SummaryStyle
   /** Sets the style and regenerates. */
   setStyle(style: SummaryStyle): void
@@ -52,6 +60,7 @@ export function useSummary(
   const [status, setStatus] = useState<SummaryStatus>("idle")
   const [liveText, setLiveText] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [errorMeta, setErrorMeta] = useState<{ code?: ProErrorCode; resetsAt?: string }>({})
   const [receivedFirstToken, setReceivedFirstToken] = useState(false)
   const requestRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
@@ -70,6 +79,7 @@ export function useSummary(
     setStatus("idle")
     setLiveText("")
     setError(null)
+    setErrorMeta({})
     setReceivedFirstToken(false)
   }, [videoId, cancel])
 
@@ -88,6 +98,7 @@ export function useSummary(
       setStatus("streaming")
       setLiveText("")
       setError(null)
+      setErrorMeta({})
       setReceivedFirstToken(false)
 
       void (async () => {
@@ -137,7 +148,9 @@ export function useSummary(
             settle(latest)
             return
           }
+          // The partial text streamed so far stays in `liveText`, so it remains visible.
           setError(errorMessage(err))
+          setErrorMeta(errorInfo(err))
           setStatus("error")
         } finally {
           if (abortRef.current === controller) abortRef.current = null
@@ -165,6 +178,16 @@ export function useSummary(
     },
     [videoId, run],
   )
+
+  const statusRef = useRef(status)
+  statusRef.current = status
+  const clearError = useCallback(() => {
+    if (statusRef.current !== "error") return
+    setStatus("idle")
+    setLiveText("")
+    setError(null)
+    setErrorMeta({})
+  }, [])
 
   const stop = useCallback(() => {
     // Abort without invalidating the request so the reader can deliver the partial text.
@@ -209,6 +232,9 @@ export function useSummary(
     parsed,
     receivedFirstToken,
     error,
+    errorCode: errorMeta.code ?? null,
+    resetsAt: errorMeta.resetsAt ?? null,
+    clearError,
     style,
     setStyle,
     stored,

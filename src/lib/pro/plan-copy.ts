@@ -4,7 +4,8 @@ function count(n: number): string {
   return n.toLocaleString("en-US")
 }
 
-function shortDate(iso: string): string {
+/** "Nov 1": en-US short month and day, in UTC. */
+export function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",

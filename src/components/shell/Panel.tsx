@@ -4,7 +4,10 @@ import { useChatDraft } from "@/components/chat/ChatDraftContext"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { NewChatButton } from "@/components/chat/NewChatButton"
 import { ConnectView } from "@/components/onboarding/ConnectView"
-import { NoKeyGate } from "@/components/onboarding/NoKeyGate"
+import { access } from "@/components/pro/access"
+import { NoAccessGate } from "@/components/pro/NoAccessGate"
+import { useSignedOut } from "@/components/pro/useSignedOut"
+import { WelcomeView } from "@/components/pro/WelcomeView"
 import { NoCaptions } from "@/components/summary/NoCaptions"
 import { SummaryActions } from "@/components/summary/SummaryActions"
 import { SummaryProvider } from "@/components/summary/SummaryContext"
@@ -13,6 +16,7 @@ import { useSummary } from "@/components/summary/useSummary"
 import { TranscriptPanel } from "@/components/transcript/TranscriptPanel"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { usePro } from "@/hooks/usePro"
 import { useSettings } from "@/hooks/useSettings"
 import { useShortcuts } from "@/hooks/useShortcuts"
 import { useStorageItem } from "@/hooks/useStorageItem"
@@ -20,7 +24,7 @@ import { useTheme } from "@/hooks/useTheme"
 import { useVideo, type VideoState } from "@/hooks/useVideo"
 import { downloadText } from "@/lib/download"
 import { exportVideoMarkdown, slugify } from "@/lib/export"
-import { isByok } from "@/lib/providers"
+import { PRO_ENABLED } from "@/lib/pro/config"
 import { apiKeysItem, chatsItem, DEFAULT_SETTINGS, summariesItem } from "@/lib/storage"
 import type { ModelSelection, PanelTab, TranscriptStatus, VideoContext } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -110,11 +114,13 @@ function TranscriptGate({
 
 interface BodyProps {
   tab: PanelTab
-  hasKey: boolean
+  hasAccess: boolean
+  /** The Recap Pro session was lost (401 or sign-out) while this page was open. */
+  signedOut: boolean
   video: VideoState
 }
 
-function Body({ tab, hasKey, video }: BodyProps) {
+function Body({ tab, hasAccess, signedOut, video }: BodyProps) {
   // All three stay mounted so in-flight chat streams and transcript search/scroll survive tab
   // switches; inactive ones are hidden (a class, since the panels set their own display).
   const pane = (name: PanelTab) => (tab === name ? "contents" : "hidden")
@@ -122,8 +128,8 @@ function Body({ tab, hasKey, video }: BodyProps) {
     <>
       <div className={pane("summary")}>
         {/* SummaryPanel handles transcript loading, no captions and errors itself. */}
-        {!hasKey ? (
-          <NoKeyGate verb="summarize videos" />
+        {!hasAccess ? (
+          <NoAccessGate verb="summarize videos" signedOut={signedOut} />
         ) : video.pageError !== null ? (
           <PageError video={video} />
         ) : (
@@ -139,10 +145,10 @@ function Body({ tab, hasKey, video }: BodyProps) {
         )}
       </div>
       <div className={pane("chat")}>
-        {hasKey ? (
+        {hasAccess ? (
           <TranscriptGate video={video}>{() => <ChatPanel video={video} />}</TranscriptGate>
         ) : (
-          <NoKeyGate verb="chat with videos" />
+          <NoAccessGate verb="chat with videos" signedOut={signedOut} />
         )}
       </div>
     </>
@@ -157,6 +163,7 @@ export function Panel() {
     tab,
     view,
     setView,
+    onboardingScreen,
     goBack,
     selectTab,
     requestSearchFocus,
@@ -164,6 +171,7 @@ export function Panel() {
   } = nav
   const [storedSettings] = useSettings()
   const [apiKeys] = useStorageItem(apiKeysItem)
+  const pro = usePro()
   const youtubeTheme = useTheme()
   const toast = useToast()
   const container = usePortalContainer()
@@ -186,9 +194,9 @@ export function Panel() {
   const provider = settings.provider
   const model = settings.models[provider]
   const selection = useMemo<ModelSelection>(() => ({ provider, model }), [provider, model])
-  // Recap Pro access gating arrives with the Pro UI; until then "pro" counts as no key.
-  const hasKey = isByok(provider) && Boolean(apiKeys?.[provider])
-  const summary = useSummary(video.context, selection, settings, open && hasKey)
+  const hasAccess = access(settings, apiKeys, pro) === "ok"
+  const signedOut = useSignedOut(pro.signedIn) && provider === "pro"
+  const summary = useSummary(video.context, selection, settings, open && hasAccess)
 
   // ⌥S on a collapsed card or a still-loading video: the transcript (and so the context) only
   // arrives after the card opens, so the request waits here, tied to the video it was made for.
@@ -201,10 +209,10 @@ export function Panel() {
       setPendingSummarize(null)
       return
     }
-    if (!hasKey || contextVideoId !== pendingSummarize || summaryStatus === "streaming") return
+    if (!hasAccess || contextVideoId !== pendingSummarize || summaryStatus === "streaming") return
     setPendingSummarize(null)
     generateSummary({ force: false })
-  }, [pendingSummarize, video.videoId, hasKey, contextVideoId, summaryStatus, generateSummary])
+  }, [pendingSummarize, video.videoId, hasAccess, contextVideoId, summaryStatus, generateSummary])
 
   const openTab = (t: PanelTab) => {
     setOpen(true)
@@ -215,12 +223,12 @@ export function Panel() {
   useShortcuts(video.videoId !== null, {
     "focus-chat": () => {
       openTab("chat")
-      if (hasKey) requestFocus()
+      if (hasAccess) requestFocus()
     },
     summarize: () => {
       openTab("summary")
       // Never restart a running summary; `generate` also ignores a request already in flight.
-      if (hasKey && summary.status !== "streaming") setPendingSummarize(video.videoId)
+      if (hasAccess && summary.status !== "streaming") setPendingSummarize(video.videoId)
     },
     "search-transcript": () => {
       openTab("transcript")
@@ -280,7 +288,7 @@ export function Panel() {
   }
 
   const status = collapsedStatus({
-    hasKey,
+    hasKey: hasAccess,
     pageError: video.pageError !== null,
     transcript: video.transcript.state,
     summary: summary.status,
@@ -300,7 +308,13 @@ export function Panel() {
   // Summary idle / error / no-captions / no-key screens are short: the card hugs them instead
   // of reserving the full scroll height. Everything that scrolls keeps the fixed 640px.
   const fitContent =
-    showMain && tab === "summary" && !(summary.status === "streaming" || summary.status === "done")
+    showMain &&
+    tab === "summary" &&
+    !(
+      summary.status === "streaming" ||
+      summary.status === "done" ||
+      (summary.status === "error" && summary.text.length > 0)
+    )
 
   return (
     <SummaryProvider value={summary}>
@@ -317,7 +331,13 @@ export function Panel() {
         >
           {open && view !== "main" ? (
             <SubHeader
-              title={view === "settings" ? "Settings" : "Add API key"}
+              title={
+                view === "settings"
+                  ? "Settings"
+                  : PRO_ENABLED && onboardingScreen === "welcome"
+                    ? "Get started"
+                    : "Add API key"
+              }
               onBack={goBack}
               right={view === "settings" ? <SettingsVersion /> : null}
             />
@@ -342,14 +362,21 @@ export function Panel() {
           ) : null}
           {open ? null : <CollapsedRow status={status} onExpand={() => setOpen(true)} />}
           {open && view === "onboarding" && storedSettings ? (
-            <ConnectView key={storedSettings.provider} initialProvider={storedSettings.provider} />
+            PRO_ENABLED && onboardingScreen === "welcome" ? (
+              <WelcomeView />
+            ) : (
+              <ConnectView
+                key={storedSettings.provider}
+                initialProvider={storedSettings.provider}
+              />
+            )
           ) : null}
           {open && view === "settings" ? <SettingsView /> : null}
           {/* Kept mounted while collapsed or in settings so streams and panel state survive. */}
           <div className={showMain ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
             <TabRow
               right={
-                !hasKey ? null : tab === "summary" ? (
+                !hasAccess ? null : tab === "summary" ? (
                   <SummaryActions />
                 ) : tab === "chat" && hasMessages ? (
                   <NewChatButton />
@@ -362,7 +389,7 @@ export function Panel() {
                 transcriptScrolls ? "overflow-hidden" : "overflow-auto",
               )}
             >
-              <Body tab={tab} hasKey={hasKey} video={video} />
+              <Body tab={tab} hasAccess={hasAccess} signedOut={signedOut} video={video} />
             </div>
           </div>
         </div>
