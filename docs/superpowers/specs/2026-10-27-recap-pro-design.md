@@ -1,6 +1,6 @@
 # Recap Pro: hosted tier design
 
-Date: 2026-10-27. Status: draft for review.
+Date: 2026-10-27. Status: approved by Paolo (domain, repo name, Polar, Better Auth, Neon chosen; pricing deferred).
 
 ## Intent
 
@@ -12,7 +12,7 @@ The thing being sold is convenience, not features. Pro users and BYOK users get 
 
 - Install → "Continue with Google" → summarize a video within a minute, with no key.
 - A free trial that follows the Google account, not the browser install.
-- $5/month or $40/year, bought on a hosted checkout page, with a customer portal for cancelling.
+- A monthly and a yearly plan, bought on a hosted checkout page, with a customer portal for cancelling. Prices are set in Polar and read from there; nothing in the extension or site hardcodes a price. ($5/month and $40/year are the working assumption; Paolo decides later.)
 - BYOK remains available to everyone, including Pro users, as a secondary path.
 - One extension codebase. The Chrome Web Store build is the open-source build. No fork, nothing to sync by hand.
 - One private Next.js app that is the website, sign-in, checkout and API, so the marketing site has a home from day one.
@@ -43,15 +43,15 @@ The thing being sold is convenience, not features. Pro users and BYOK users get 
 ## Naming
 
 - Product tier: **Recap Pro**. Provider row in the extension: "Recap Pro" with the note "No key needed. Sign in and go."
-- Private repo: `recap-web` (GitHub, PaoloJN, private). One Next.js app.
+- Private repo: `recap-website` (GitHub, PaoloJN, private). One Next.js app.
 - Public repo: `recap` (exists). Gains the Pro client.
-- Origin: the production domain is not chosen yet. The app reads `NEXT_PUBLIC_APP_URL`; the extension reads `WXT_PRO_ORIGIN` at build time. Local dev uses `http://localhost:3000`.
+- Origin: production is **https://recapai.dev**. The app reads `NEXT_PUBLIC_APP_URL`; the extension reads `WXT_PRO_ORIGIN` at build time. Local dev uses `http://localhost:3000`.
 - **Pro is a build-time option** (my call). When `WXT_PRO_ORIGIN` is unset, the build is pure BYOK: "Recap Pro" is absent from the provider list, the default provider stays `openai`, onboarding starts at the key screen, and no `identity` permission or Pro host permission is emitted. Anyone building from source gets exactly today's extension. When it is set (Paolo's `.env`, the CI secret for the release and store builds), Pro is listed first and is the default for fresh installs. `PROVIDER_IDS` and `DEFAULT_SETTINGS` derive from one `PRO_ENABLED` constant in `src/lib/pro/config.ts`.
 
 ## Architecture
 
 ```
-Extension (public repo)                       recap-web (private, Vercel)
+Extension (public repo)                       recap-website (private, Vercel)
 ┌──────────────────────────┐                  ┌──────────────────────────────┐
 │ content script (panel)   │                  │ Next.js app router           │
 │  provider = "pro"        │  runtime msg     │  /            landing        │
@@ -71,14 +71,14 @@ Extension (public repo)                       recap-web (private, Vercel)
 
 The extension already builds the system prompt, summary prompt and chat messages for BYOK. Pro reuses that exact code: the background builds the prompts and sends `{ kind, system, messages }` to the server. The server never needs the transcript parsing, prompt or type code, so there is nothing shared between the repos and nothing to sync. Trade-off accepted: prompt improvements require an extension release, and the endpoint is technically a general completion proxy. Caps and rate limits bound the abuse; it is a $5 plan.
 
-### Decided: stack for `recap-web`
+### Decided: stack for `recap-website`
 
 - Next.js (current stable, App Router), TypeScript strict, Tailwind v4, shadcn/ui, Biome, Vitest.
 - Better Auth with Google as the only sign-in method, the `nextCookies` plugin for the web app, and the **API key plugin** (`@better-auth/api-key`) with `enableSessionForAPIKeys: true` for extension tokens. Each connected browser gets its own key, named "Chrome extension" or "Firefox extension" plus the date, 1-year expiry, listed and revocable on `/account`.
-- Drizzle ORM on Neon Postgres (Paolo's existing habit; see his other Next projects).
-- Polar as merchant of record, via `@polar-sh/better-auth` with the `checkout`, `portal` and `webhooks` sub-plugins. Two products: `pro-monthly` ($5) and `pro-yearly` ($40). Sandbox environment in dev, production in prod, selected by env.
+- Polar as merchant of record, via `@polar-sh/better-auth` with the `checkout`, `portal` and `webhooks` sub-plugins. Two products, slugs `pro-monthly` and `pro-yearly`, ids from env. Prices are read from Polar's product API on the server and cached for an hour; the site and the extension display whatever Polar says. Sandbox environment in dev, production in prod, selected by env.
+- Drizzle ORM on **Neon Postgres provisioned through the Vercel marketplace** (so `DATABASE_URL` is injected into the Vercel project).
 - Vercel AI SDK on the server with the **AI Gateway** (plain `creator/model` strings, `AI_GATEWAY_API_KEY` or Vercel OIDC). The Pro model is env `PRO_MODEL`, default `google/gemini-3.8-flash`. The builder verifies the slug exists via `gateway.getAvailableModels()` and picks the cheapest current Gemini Flash if it doesn't.
-- Deployed on Vercel from the `recap-web` repo.
+- Deployed on Vercel from the `recap-website` repo.
 
 ## Entitlements
 
@@ -94,7 +94,7 @@ The extension already builds the system prompt, summary prompt and chat messages
 - Per-key rate limit via the API key plugin: 120 requests per hour.
 - Usage is counted per request, by kind, and token totals are stored for Paolo's cost tracking. Usage is counted when the stream completes or is aborted after first token; a request that fails before the first token is not counted.
 
-## Data model (`recap-web`)
+## Data model (`recap-website`)
 
 Better Auth tables (`user`, `session`, `account`, `verification`, `apikey`) as generated by its CLI, plus:
 
@@ -105,13 +105,14 @@ Plan resolution: `pro` if a `subscription` row is `active`, or `canceled` with `
 
 Caps apply **per kind, independently** (my call). A trial user who has used all 20 summaries can still chat until 50 messages; `/api/v1/stream` checks the counter for the request's `kind` and answers 402 (trial) or 429 (Pro) for that kind only. The panel gates per tab: the Summary tab can show the upgrade gate while Chat still works. `/me` therefore returns both counters and both limits, and the Settings plan row reads "Trial · 12 of 20 summaries, 40 of 50 messages left".
 
-## API (`recap-web`)
+## API (`recap-website`)
 
 All under `/api/v1/`, authenticated with the `x-api-key` header (the extension's device token). CORS: `Access-Control-Allow-Origin: *` on `/api/v1/*` with `x-api-key, content-type` allowed and no credentials, plus `OPTIONS` handling; the extension also declares the Pro origin as a host permission so Chrome and Firefox skip CORS from the background anyway.
 
 - `POST /api/v1/stream` — body `{ kind: "summary" | "chat", system: string, messages: ModelMessage[] }`. Returns a UI message stream (`toUIMessageStreamResponse()`), including usage in the finish metadata. Increments `usage`.
 - `GET /api/v1/me` — `{ user: { email, name, image }, plan: "trial" | "pro" | "expired", usage: { summaries, chats, summaryLimit, chatLimit, resetsAt: string | null }, subscription: { status, currentPeriodEnd, cancelAtPeriodEnd } | null }`.
 - `POST /api/v1/disconnect` — revokes the calling key. 204.
+- `GET /api/v1/pricing` — public, no auth, cached: `{ monthly: { amount, currency, display: "$5" }, yearly: { amount, currency, display: "$40" } }` from Polar. The extension fetches it for copy such as "Then {monthly}/month" and omits the price if the fetch fails.
 - Errors as JSON `{ error, message }`: 401 `unauthorized` (bad, revoked or expired key), 402 `upgrade_required` (trial used up, not Pro), 429 `limit_reached` (Pro monthly cap; includes `resetsAt`) or rate limit, 413 `too_large`, 503 `model_unavailable`.
 
 Web-only endpoints (cookie session): `POST /api/extension/token` (creates the device key and returns it; only called by `/extension/connect`), Better Auth routes under `/api/auth/*`, Polar webhook route as the adapter mounts it.
@@ -149,12 +150,12 @@ Match the v3 design language: same type scale, radii, `card`/`secondary` surface
 - **Welcome view** (the onboarding view now starts here; the key screen stays as its second step). Nothing opens automatically on first run (my call): the panel still lands on the main view, the Transcript tab works without signing in, and the no-access gate in Summary and Chat carries "Continue with Google" directly, so the one-minute path does not need a first-run flag.
   - Logo, "Recap" wordmark, one line: "Summaries, transcript and chat for any YouTube video."
   - Primary button "Continue with Google" (Google "G" mark drawn inline as SVG, no network asset).
-  - Under it: "20 free summaries. Then $5/month, cancel anytime."
+  - Under it: "20 free summaries. Then {monthly}/month, cancel anytime." (price from `/api/v1/pricing`; "Then a small monthly plan, cancel anytime." if unavailable).
   - Secondary: "Use my own API key" → existing `ConnectView`.
   - Footer rows: "Transcript works without signing in" and "Your key never leaves this device" (shown on the key path only).
   - While the sign-in window is open: button shows a spinner and "Waiting for Google…". Cancel resets it.
 - **No-access gate** (today's `NoKeyGate`): heading "Sign in to summarize videos" / "…chat with videos"; primary "Continue with Google"; secondary "Use my own key"; tertiary text button "Open transcript". The three info rows become: "20 free summaries", "No key, no setup", "Transcript works without it".
-- **Upgrade gate** (shown in Summary and Chat on a 402): heading "Your free summaries are used up", body "Recap Pro is $5 a month for 300 summaries and 1,000 chat messages. Cancel anytime.", primary "Get Recap Pro" (opens `PRO_ORIGIN/account?upgrade=monthly` in a new tab), secondary "Use my own key instead". After the tab is opened, the panel polls `/me` every 5 s for 2 minutes while the YouTube tab is visible, and clears the gate as soon as the plan is `pro`, with a toast "You're on Recap Pro".
+- **Upgrade gate** (shown in Summary and Chat on a 402): heading "Your free summaries are used up", body "Recap Pro is {monthly} a month for 300 summaries and 1,000 chat messages. Cancel anytime." (price from `/api/v1/pricing`), primary "Get Recap Pro" (opens `PRO_ORIGIN/account?upgrade=monthly` in a new tab), secondary "Use my own key instead". After the tab is opened, the panel polls `/me` every 5 s for 2 minutes while the YouTube tab is visible, and clears the gate as soon as the plan is `pro`, with a toast "You're on Recap Pro".
 - **Limit gate** (429): "Monthly limit reached" with "Resets {date}. Switch to your own key to keep going." and the "Use my own key" secondary.
 - **Signed-out gate** (401): "Signed out of Recap Pro" with "Sign in again".
 - **Too large** (413, only reachable if trimming could not get under the limit): in Chat, an inline error "This chat is too long for one request. Start a new chat." with the existing New chat action; in Summary, the standard error card.
@@ -168,10 +169,10 @@ Match the v3 design language: same type scale, radii, `card`/`secondary` surface
 
 Unit tests for: plan/gate derivation from `local:pro` + settings; the Pro stream path mapping HTTP statuses to port error codes (with a fake fetch); `launchWebAuthFlow` result parsing (fragment token, cancelled, malformed); settings migration keeping existing providers; `mergeSettings` accepting `"pro"`.
 
-## Site (`recap-web`) pages
+## Site (`recap-website`) pages
 
 - `/` landing: hero (headline, one paragraph, "Add to Chrome" button to `NEXT_PUBLIC_STORE_URL` or "Coming soon" when unset, "Open source on GitHub" link), three feature blocks (summaries with timestamps, searchable transcript, chat), pricing teaser, footer with privacy, terms, GitHub.
-- `/pricing`: Free (bring your own key, unlimited, open source) vs Pro ($5/mo or $40/yr toggle, 300 summaries, 1,000 chat messages, no setup). Buttons start Polar checkout via the Better Auth client (`authClient.checkout({ slug })`); signed-out users are sent through Google sign-in first and return to checkout.
+- `/pricing`: Free (bring your own key, unlimited, open source) vs Pro (monthly/yearly toggle with prices from Polar, 300 summaries, 1,000 chat messages, no setup). Buttons start Polar checkout via the Better Auth client (`authClient.checkout({ slug })`); signed-out users are sent through Google sign-in first and return to checkout.
 - `/account` (signed in): plan card with usage bars, "Manage billing" (Polar portal), "Connected browsers" list with revoke, "Sign out". `?upgrade=monthly|yearly` triggers checkout on load.
 - `/checkout/success`: "You're on Recap Pro. Head back to YouTube, the panel will pick it up." 
 - `/extension/connect`: the handoff page above.
@@ -179,7 +180,7 @@ Unit tests for: plan/gate derivation from `local:pro` + settings; the Pro stream
 
 Design: shadcn defaults, system font, light/dark via `next-themes`. Deliberately plain; Paolo will replace it.
 
-## Environment (`recap-web`)
+## Environment (`recap-website`)
 
 `DATABASE_URL`, `BETTER_AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `POLAR_ACCESS_TOKEN`, `POLAR_WEBHOOK_SECRET`, `POLAR_ENVIRONMENT` (`sandbox` | `production`), `POLAR_PRODUCT_MONTHLY_ID`, `POLAR_PRODUCT_YEARLY_ID`, `AI_GATEWAY_API_KEY` (optional on Vercel, OIDC otherwise), `PRO_MODEL`, `EXTENSION_REDIRECT_ALLOWLIST`, `NEXT_PUBLIC_STORE_URL` (optional), `NEXT_PUBLIC_GITHUB_URL`. `.env.example` documents each.
 
@@ -187,16 +188,15 @@ Design: shadcn defaults, system font, light/dark via `next-themes`. Deliberately
 
 1. Domain and DNS → Vercel.
 2. Google Cloud OAuth client (Web application) with redirect `https://<domain>/api/auth/callback/google` and `http://localhost:3000/api/auth/callback/google`.
-3. Polar organization, two products (monthly $5, yearly $40), an access token, a webhook endpoint pointing at the deployed app. Sandbox first.
-4. Neon database.
-5. Vercel project importing `recap-web`, env vars filled, AI Gateway enabled.
+3. Polar organization, two subscription products (monthly and yearly; prices his call), an access token, a webhook endpoint pointing at the deployed app. Sandbox first.
+4. Vercel project importing `recap-website`, Neon added from the Vercel marketplace, env vars filled, AI Gateway enabled.
 6. Chrome Web Store developer account ($5) when ready to list; its extension id goes into `EXTENSION_REDIRECT_ALLOWLIST`.
 
 ## Verification
 
-- `recap-web`: `pnpm check`, `pnpm typecheck`, `pnpm test`, `pnpm build` green. Unit tests for plan resolution, usage accounting (trial vs month rollover, cancelled-with-period-end), redirect allowlist validation, webhook payload → subscription row mapping, and the `/api/v1/stream` handler's 401/402/413/429 paths with a stubbed model.
+- `recap-website`: `pnpm check`, `pnpm typecheck`, `pnpm test`, `pnpm build` green. Unit tests for plan resolution, usage accounting (trial vs month rollover, cancelled-with-period-end), redirect allowlist validation, webhook payload → subscription row mapping, and the `/api/v1/stream` handler's 401/402/413/429 paths with a stubbed model.
 - Extension: existing 245 tests plus the new ones; `pnpm build` and `pnpm build:firefox` green.
-- End-to-end in a real browser: Paolo, using Polar sandbox and a local `recap-web`.
+- End-to-end in a real browser: Paolo, using Polar sandbox and a local `recap-website`.
 
 ## Left to the builder
 
@@ -208,12 +208,10 @@ Design: shadcn defaults, system font, light/dark via `next-themes`. Deliberately
 
 ## Repos, branches, where things live
 
-- `recap-web` is scaffolded at `~/Projects/recap-web` and pushed to a new **private** GitHub repo `PaoloJN/recap-web` (Paolo's go-ahead required for the remote; the local scaffold does not need it).
-- Extension work happens on a `pro` branch off `main` in the public repo, merged when Paolo has tested it against a local `recap-web` with Polar sandbox.
+- `recap-website` is scaffolded at `~/Projects/recap-website` and pushed to a new **private** GitHub repo `PaoloJN/recap-website` (Paolo named the repo, which is the go-ahead).
+- Extension work happens on a `pro` branch off `main` in the public repo, merged when Paolo has tested it against a local `recap-website` with Polar sandbox.
 - The two plans are executed one after the other, backend first, because the extension's Pro path is tested against the real stream endpoint shape.
 
-## Open questions for Paolo
+## Answered by Paolo (2026-10-27)
 
-1. Production domain (needed for OAuth redirects, Polar webhooks and the extension's `WXT_PRO_ORIGIN`).
-2. OK to create the private GitHub repo `PaoloJN/recap-web` and push to it.
-3. Confirm pricing ($5/mo, $40/yr) and trial size (20 summaries, 50 messages). Defaults stand if unanswered.
+- Domain: recapai.dev. Repo: `PaoloJN/recap-website` (private). Payments: Polar. Auth: Better Auth. Database: Neon on Vercel, ORM my call (Drizzle). Pricing: decided later, so prices live in Polar only.
