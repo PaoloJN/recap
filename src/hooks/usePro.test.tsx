@@ -6,7 +6,7 @@ import { fakeBrowser } from "wxt/testing/fake-browser"
 import type { ProAuthResult } from "@/lib/port-protocol"
 import type { MeResponse, Pricing, ProState } from "@/lib/pro/types"
 import { proItem } from "@/lib/storage"
-import { usePro } from "./usePro"
+import { resetPricingCacheForTests, usePro } from "./usePro"
 
 const cfg = vi.hoisted(() => ({ enabled: true }))
 const api = vi.hoisted(() => ({ fetchPricing: vi.fn() }))
@@ -75,6 +75,7 @@ beforeEach(async () => {
   cfg.enabled = true
   api.fetchPricing.mockReset()
   api.fetchPricing.mockResolvedValue(PRICING)
+  resetPricingCacheForTests()
   sendMessage = vi.fn(async (message: { type: string }) => {
     if (message.type === "pro-refresh") {
       const state = await proItem.getValue()
@@ -122,15 +123,26 @@ describe("usePro state", () => {
     expect(pro.me).toEqual(ME)
   })
 
-  it("loads pricing once per mount and keeps null on failure", async () => {
+  it("loads pricing once per page, shared across mounts", async () => {
     await mount()
     expect(pro.pricing).toEqual(PRICING)
     expect(api.fetchPricing).toHaveBeenCalledTimes(1)
 
     act(() => root?.unmount())
+    await mount()
+    expect(pro.pricing).toEqual(PRICING)
+    expect(api.fetchPricing).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps null on failure and retries on the next mount", async () => {
     api.fetchPricing.mockRejectedValueOnce(new Error("offline"))
     await mount()
     expect(pro.pricing).toBeNull()
+
+    act(() => root?.unmount())
+    await mount()
+    expect(pro.pricing).toEqual(PRICING)
+    expect(api.fetchPricing).toHaveBeenCalledTimes(2)
   })
 })
 

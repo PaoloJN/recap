@@ -25,12 +25,12 @@ import { SummaryLoading } from "./SummaryLoading"
 /** A failure after part of the summary arrived: the partial text stays, this sits above it. */
 function PartialError({ message, onRetry }: { message: string; onRetry(): void }) {
   return (
-    <div
-      role="alert"
-      className="mb-[16px] flex items-center gap-[8px] rounded-[12px] bg-danger-soft p-[12px]"
-    >
+    <div className="mb-[16px] flex items-center gap-[8px] rounded-[12px] bg-danger-soft p-[12px]">
       <WarningCircle weight="fill" className="size-[16px] shrink-0 text-destructive" aria-hidden />
-      <span className="min-w-0 flex-1 text-[13px] leading-[19px] break-words text-foreground">
+      <span
+        role="alert"
+        className="min-w-0 flex-1 text-[13px] leading-[19px] break-words text-foreground"
+      >
         {message}
       </span>
       <button type="button" className={cn(primaryButton, smallButton)} onClick={onRetry}>

@@ -56,6 +56,33 @@ function refreshNow(): Promise<void> {
   return inflight
 }
 
+// Pricing is public and changes rarely: one request per page load, shared by every hook.
+// A failed request is not cached, so the next mount tries again.
+let pricingCache: Pricing | null = null
+let pricingRequest: Promise<Pricing> | null = null
+
+function loadPricing(): Promise<Pricing> {
+  if (pricingRequest) return pricingRequest
+  const request = fetchPricing().then(
+    (p) => {
+      pricingCache = p
+      return p
+    },
+    (e: unknown) => {
+      pricingRequest = null
+      throw e
+    },
+  )
+  pricingRequest = request
+  return request
+}
+
+/** Test hook: forget the cached pricing. */
+export function resetPricingCacheForTests(): void {
+  pricingCache = null
+  pricingRequest = null
+}
+
 async function refreshIfStale(): Promise<void> {
   const { token, fetchedAt } = await proItem.getValue()
   if (token !== null && Date.now() - fetchedAt > PRO_STALE_MS) await refreshNow()
@@ -64,7 +91,7 @@ async function refreshIfStale(): Promise<void> {
 export function usePro(): UsePro {
   const [state] = useStorageItem(proItem)
   const [signingIn, setSigningIn] = useState(false)
-  const [pricing, setPricing] = useState<Pricing | null>(null)
+  const [pricing, setPricing] = useState<Pricing | null>(() => (PRO_ENABLED ? pricingCache : null))
 
   useEffect(() => {
     if (!PRO_ENABLED) return
@@ -79,7 +106,7 @@ export function usePro(): UsePro {
   useEffect(() => {
     if (!PRO_ENABLED) return
     let active = true
-    fetchPricing().then(
+    loadPricing().then(
       (p) => {
         if (active) setPricing(p)
       },

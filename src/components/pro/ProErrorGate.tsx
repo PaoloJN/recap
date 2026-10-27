@@ -13,13 +13,14 @@ export function ProErrorGate({
   gate: Gate
   kind: "summary" | "chat"
   resetsAt: string | null | undefined
+  /** Clears the error behind the gate once the plan or usage no longer blocks it. */
   onUpgraded(): void
 }) {
   switch (gate) {
     case "upgrade":
       return <UpgradeGate kind={kind} onUpgraded={onUpgraded} />
     case "limit":
-      return <LimitGate resetsAt={resetsAt} />
+      return <LimitGate kind={kind} resetsAt={resetsAt} onCleared={onUpgraded} />
     case "signed-out":
       return <SignedOutGate />
   }

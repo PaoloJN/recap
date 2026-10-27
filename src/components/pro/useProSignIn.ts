@@ -27,6 +27,8 @@ export function useProSignIn(): { signIn(): Promise<void>; signingIn: boolean } 
       await updateSettings({ provider: "pro" })
     } catch (e) {
       console.error("Failed to switch to Recap Pro", e)
+      toast("Couldn't sign in. Try again.")
+      return
     }
     setView("main")
     toast("Signed in to Recap Pro")

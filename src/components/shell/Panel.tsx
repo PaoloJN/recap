@@ -4,8 +4,9 @@ import { useChatDraft } from "@/components/chat/ChatDraftContext"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { NewChatButton } from "@/components/chat/NewChatButton"
 import { ConnectView } from "@/components/onboarding/ConnectView"
-import { access } from "@/components/pro/access"
+import { access, gateFor } from "@/components/pro/access"
 import { NoAccessGate } from "@/components/pro/NoAccessGate"
+import { useClearOnSignIn } from "@/components/pro/useClearOnSignIn"
 import { useSignedOut } from "@/components/pro/useSignedOut"
 import { WelcomeView } from "@/components/pro/WelcomeView"
 import { NoCaptions } from "@/components/summary/NoCaptions"
@@ -204,6 +205,7 @@ export function Panel() {
   useEffect(() => {
     clearSummaryError()
   }, [provider])
+  useClearOnSignIn(pro.signedIn, summary.errorCode, clearSummaryError)
 
   // ⌥S on a collapsed card or a still-loading video: the transcript (and so the context) only
   // arrives after the card opens, so the request waits here, tied to the video it was made for.
@@ -235,7 +237,11 @@ export function Panel() {
     summarize: () => {
       openTab("summary")
       // Never restart a running summary; `generate` also ignores a request already in flight.
-      if (hasAccess && summary.status !== "streaming") setPendingSummarize(video.videoId)
+      // Nor resend a request an upgrade, limit or signed-out gate is already answering.
+      const gated = summary.status === "error" && gateFor(summary.errorCode ?? undefined) !== null
+      if (hasAccess && summary.status !== "streaming" && !gated) {
+        setPendingSummarize(video.videoId)
+      }
     },
     "search-transcript": () => {
       openTab("transcript")

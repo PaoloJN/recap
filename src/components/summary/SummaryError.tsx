@@ -34,7 +34,7 @@ export function SummaryError({
         </span>
       </div>
       <p className="text-[14px] leading-[21px] text-pretty text-card-foreground">
-        {message} {hint}
+        {hint ? `${message} ${hint}` : message}
       </p>
       <div className="flex gap-[8px]">
         <button type="button" className={cn(primaryButton, smallButton)} onClick={onRetry}>

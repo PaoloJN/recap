@@ -2,7 +2,7 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { MeResponse, Pricing } from "@/lib/pro/types"
-import { UpgradeGate } from "./UpgradeGate"
+import { resetUpgradeToastForTests, UpgradeGate } from "./UpgradeGate"
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(async () => {}),
@@ -78,6 +78,7 @@ describe("UpgradeGate", () => {
     onUpgraded.mockClear()
     mocks.plan = "trial"
     mocks.pricing = null
+    resetUpgradeToastForTests()
     visibility = "visible"
     vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility)
     vi.spyOn(window, "open").mockImplementation(() => null)
@@ -182,5 +183,49 @@ describe("UpgradeGate", () => {
     await render()
     await act(async () => button("Use my own key instead").click())
     expect(mocks.setView).toHaveBeenCalledWith("onboarding", { screen: "key" })
+  })
+
+  it("clears when the plan turns pro after the poll window ran out", async () => {
+    await render()
+    await clickUpgrade()
+    visibility = "hidden"
+    await advance(180_000)
+    expect(mocks.refresh).not.toHaveBeenCalled()
+    // Back on YouTube, usePro's own refresh brings the new plan.
+    visibility = "visible"
+    mocks.plan = "pro"
+    await render()
+    expect(onUpgraded).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).toHaveBeenCalledWith("You're on Recap Pro")
+  })
+
+  it("clears both panes' gates and toasts once", async () => {
+    const onChat = vi.fn()
+    const both = async () =>
+      act(async () =>
+        root.render(
+          <>
+            <UpgradeGate kind="summary" onUpgraded={onUpgraded} />
+            <UpgradeGate kind="chat" onUpgraded={onChat} />
+          </>,
+        ),
+      )
+    await both()
+    await act(async () => [...el.querySelectorAll("button")][0]?.click())
+    await advance(150_000)
+    mocks.plan = "pro"
+    await both()
+    expect(onUpgraded).toHaveBeenCalledTimes(1)
+    expect(onChat).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).toHaveBeenCalledTimes(1)
+  })
+
+  it("clears without a toast when no upgrade was started on this page", async () => {
+    await render()
+    mocks.plan = "pro"
+    await render()
+    expect(onUpgraded).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).not.toHaveBeenCalled()
   })
 })

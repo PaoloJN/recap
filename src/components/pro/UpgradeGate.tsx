@@ -12,15 +12,26 @@ import { GateLayout } from "./GateLayout"
 export const UPGRADE_POLL_MS = 5_000
 export const UPGRADE_POLL_WINDOW_MS = 2 * 60_000
 
+// Set when a poll starts on this page, so "You're on Recap Pro" shows once, and only after the
+// upgrade page was opened here (shared by the Summary and Chat gates).
+let upgradeToastPending = false
+
+/** Test hook: forget a pending upgrade toast. */
+export function resetUpgradeToastForTests(): void {
+  upgradeToastPending = false
+}
+
 /**
  * After the upgrade page opens, refetches the account every 5 s for 2 minutes while this tab is
- * visible, and calls `onPro` once when the plan turns "pro". One poller per hook, however often
- * `start` is called (a repeat click only extends the window).
+ * visible. One poller per hook, however often `start` is called (a repeat click only extends the
+ * window). Whenever the plan is "pro" while mounted (from a poll, or usePro's own refresh after
+ * a checkout that took longer), polling stops and `onPro(toast)` runs; `toast` is true once per
+ * page, for the first gate to see it after a poll was started.
  */
 export function useUpgradePoll(
   refresh: () => Promise<void>,
   plan: MeResponse["plan"] | undefined,
-  onPro: () => void,
+  onPro: (toast: boolean) => void,
 ): () => void {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
   const deadline = useRef(0)
@@ -33,6 +44,7 @@ export function useUpgradePoll(
   }, [])
 
   const start = useCallback(() => {
+    upgradeToastPending = true
     deadline.current = Date.now() + UPGRADE_POLL_WINDOW_MS
     if (timer.current !== null) return
     timer.current = setInterval(() => {
@@ -49,9 +61,11 @@ export function useUpgradePoll(
   useEffect(() => stop, [stop])
 
   useEffect(() => {
-    if (plan !== "pro" || timer.current === null) return
+    if (plan !== "pro") return
     stop()
-    latest.current.onPro()
+    const toast = upgradeToastPending
+    upgradeToastPending = false
+    latest.current.onPro(toast)
   }, [plan, stop])
 
   return start
@@ -69,8 +83,8 @@ export function UpgradeGate({
   const { me, pricing, refresh } = usePro()
   const { setView } = usePanelNav()
   const toast = useToast()
-  const startPolling = useUpgradePoll(refresh, me?.plan, () => {
-    toast("You're on Recap Pro")
+  const startPolling = useUpgradePoll(refresh, me?.plan, (showToast) => {
+    if (showToast) toast("You're on Recap Pro")
     onUpgraded()
   })
 

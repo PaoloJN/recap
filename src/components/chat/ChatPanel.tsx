@@ -3,10 +3,12 @@ import type { UIMessage } from "ai"
 import { useCallback, useEffect, useMemo, useRef } from "react"
 import { errorInfo, gateFor } from "@/components/pro/access"
 import { ProErrorGate } from "@/components/pro/ProErrorGate"
+import { useClearOnSignIn } from "@/components/pro/useClearOnSignIn"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { useSummaryContext } from "@/components/summary/SummaryContext"
 import { Skeleton } from "@/components/ui/skeleton"
+import { usePro } from "@/hooks/usePro"
 import { useSettings } from "@/hooks/useSettings"
 import type { VideoState } from "@/hooks/useVideo"
 import { isByok } from "@/lib/providers"
@@ -145,6 +147,8 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
     providerRef.current = provider
     clearError()
   }, [provider, clearError])
+  const { signedIn } = usePro()
+  useClearOnSignIn(signedIn, errorInfo(error).code, clearError)
 
   useEffect(() => {
     setHasMessages(messages.length > 0)
