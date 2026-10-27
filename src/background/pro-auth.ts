@@ -84,9 +84,23 @@ export async function refresh(deps: ProAuthDeps): Promise<ProRefreshResult> {
 
 let signingIn: Promise<ProAuthResult> | null = null
 
+/** True when `url` lands on exactly the expected redirect (same origin and path, no query). */
+function isExpectedRedirect(url: string | undefined, expected: string): boolean {
+  if (!url) return false
+  try {
+    const got = new URL(url)
+    const want = new URL(expected)
+    return got.origin === want.origin && got.pathname === want.pathname && got.search === ""
+  } catch {
+    return false
+  }
+}
+
 async function runSignIn(deps: ProAuthDeps): Promise<ProAuthResult> {
-  const redirect = encodeURIComponent(deps.getRedirectURL("connect"))
-  const url = proUrl(`/extension/connect?redirect_uri=${redirect}&browser=${deps.browser}`)
+  const expected = deps.getRedirectURL("connect")
+  const url = proUrl(
+    `/extension/connect?redirect_uri=${encodeURIComponent(expected)}&browser=${deps.browser}`,
+  )
   let redirected: string | undefined
   try {
     redirected = await deps.launchWebAuthFlow({ url, interactive: true })
@@ -96,7 +110,7 @@ async function runSignIn(deps: ProAuthDeps): Promise<ProAuthResult> {
       return { ok: false, reason: "cancelled", message: "Sign-in cancelled." }
     return { ok: false, reason: "failed", message: SIGN_IN_FAILED }
   }
-  const token = parseTokenFromRedirect(redirected)
+  const token = isExpectedRedirect(redirected, expected) ? parseTokenFromRedirect(redirected) : null
   if (!token) return { ok: false, reason: "failed", message: SIGN_IN_FAILED }
   await deps.store.setValue({ token, me: null, fetchedAt: 0 })
   const result = await refresh(deps)
@@ -127,7 +141,9 @@ export async function signOut(deps: ProAuthDeps): Promise<ProSignOutResult> {
       // Local sign-out must succeed even when the server can't be reached.
     }
   }
-  await deps.store.setValue(EMPTY)
+  // A sign-in that completed while disconnect was in flight keeps its new token.
+  const current = await deps.store.getValue()
+  if (current.token === token) await deps.store.setValue(EMPTY)
   return { ok: true }
 }
 
@@ -161,7 +177,9 @@ export function registerProHandlers(deps?: ProAuthDeps): void {
       if (!isProMessage(message)) return undefined
       resolved ??= defaultDeps()
       // Chrome ignores a returned Promise: answer through sendResponse and keep the channel open.
-      handle(message, resolved).then(sendResponse)
+      handle(message, resolved)
+        .then(sendResponse)
+        .catch(() => {})
       return true
     },
   )

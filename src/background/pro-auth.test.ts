@@ -121,6 +121,22 @@ describe("signIn", () => {
     expect(state()).toEqual(EMPTY)
   })
 
+  it.each([
+    "https://evil.example/connect#token=x",
+    `${REDIRECT}/other#token=x`,
+    `${REDIRECT}?a=b#token=x`,
+    "https://abc.chromiumapp.org.evil/connect#token=x",
+  ])("a redirect to %s fails without storing", async (url) => {
+    const { deps, state } = setup({ launchWebAuthFlow: vi.fn(async () => url) })
+    expect(await signIn(deps)).toEqual({
+      ok: false,
+      reason: "failed",
+      message: "Couldn't sign in. Try again.",
+    })
+    expect(deps.fetchMe).not.toHaveBeenCalled()
+    expect(state()).toEqual(EMPTY)
+  })
+
   it("a non-401 refresh failure still counts as signed in", async () => {
     const { deps, state } = setup({
       fetchMe: vi.fn(async () => {
@@ -257,6 +273,25 @@ describe("signOut", () => {
     )
     expect(await signOut(deps)).toEqual({ ok: true })
     expect(state()).toEqual(EMPTY)
+  })
+
+  it("keeps a fresh sign-in that lands while disconnect is in flight", async () => {
+    const fresh: ProState = { token: "new", me: null, fetchedAt: 0 }
+    let state: ProState = { token: "old", me: ME, fetchedAt: 5 }
+    const { deps } = setup({
+      store: {
+        getValue: async () => state,
+        setValue: async (v: ProState) => {
+          state = v
+        },
+      },
+      disconnect: vi.fn(async () => {
+        state = fresh
+      }),
+    })
+    expect(await signOut(deps)).toEqual({ ok: true })
+    expect(deps.disconnect).toHaveBeenCalledWith("old")
+    expect(state).toEqual(fresh)
   })
 
   it("skips disconnect without a token", async () => {
