@@ -1,0 +1,190 @@
+import { describe, expect, it, vi } from "vitest"
+import { disconnect, fetchMe, fetchPricing, ProError, streamRequest, toProError } from "./api"
+import type { MeResponse } from "./types"
+
+vi.mock("./config", () => ({
+  PRO_ORIGIN: "https://pro.test",
+  PRO_ENABLED: true,
+  proUrl: (path: string) => `https://pro.test${path}`,
+}))
+
+const json = (status: number, body: unknown) =>
+  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
+
+const ME: MeResponse = {
+  user: { email: "a@b.c", name: "A", image: null },
+  plan: "trial",
+  usage: { summaries: 1, chats: 2, summaryLimit: 10, chatLimit: 20, resetsAt: null },
+  subscription: null,
+}
+
+describe("toProError", () => {
+  it.each([
+    [400, "bad_request"],
+    [401, "unauthorized"],
+    [402, "upgrade_required"],
+    [413, "too_large"],
+    [429, "rate_limited"],
+    [503, "model_unavailable"],
+    [500, "internal_error"],
+  ] as const)("maps JSON error code %s → %s and keeps the message", async (status, code) => {
+    const err = await toProError(json(status, { error: code, message: `server says ${code}` }))
+    expect(err).toBeInstanceOf(ProError)
+    expect(err.code).toBe(code)
+    expect(err.message).toBe(`server says ${code}`)
+  })
+
+  it("maps limit_reached with resetsAt", async () => {
+    const resetsAt = "2026-11-01T00:00:00.000Z"
+    const err = await toProError(
+      json(429, { error: "limit_reached", message: "Monthly limit reached", resetsAt }),
+    )
+    expect(err.code).toBe("limit_reached")
+    expect(err.resetsAt).toBe(resetsAt)
+    expect(err.message).toBe("Monthly limit reached")
+  })
+
+  it.each([
+    [401, "unauthorized"],
+    [402, "upgrade_required"],
+    [413, "too_large"],
+    [429, "rate_limited"],
+    [503, "model_unavailable"],
+    [500, "internal_error"],
+    [418, "internal_error"],
+  ] as const)("falls back to status %s → %s for an unparseable body", async (status, code) => {
+    const err = await toProError(new Response("<html>oops</html>", { status }))
+    expect(err.code).toBe(code)
+    expect(err.message.length).toBeGreaterThan(0)
+  })
+
+  it("falls back to status for an unknown error code", async () => {
+    const err = await toProError(json(402, { error: "something_new", message: "Pay up" }))
+    expect(err.code).toBe("upgrade_required")
+    expect(err.message).toBe("Pay up")
+  })
+})
+
+describe("fetchMe", () => {
+  it("sends x-api-key to /api/v1/me and returns the body", async () => {
+    const fetchImpl = vi.fn(async () => json(200, ME))
+    await expect(fetchMe("tok", fetchImpl)).resolves.toEqual(ME)
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe("https://pro.test/api/v1/me")
+    expect(new Headers(init.headers).get("x-api-key")).toBe("tok")
+  })
+
+  it("throws a ProError on 401", async () => {
+    const fetchImpl = vi.fn(async () => json(401, { error: "unauthorized", message: "Bad key" }))
+    await expect(fetchMe("tok", fetchImpl)).rejects.toMatchObject({ code: "unauthorized" })
+  })
+
+  it("maps a network rejection to network", async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("Failed to fetch")
+    })
+    await expect(fetchMe("tok", fetchImpl)).rejects.toMatchObject({
+      code: "network",
+      message: "Can't reach Recap Pro. Check your connection.",
+    })
+  })
+})
+
+describe("fetchPricing", () => {
+  it("GETs /api/v1/pricing without a key", async () => {
+    const pricing = { monthly: { display: "$5" }, yearly: { display: "$50" } }
+    const fetchImpl = vi.fn(async () => json(200, pricing))
+    await expect(fetchPricing(fetchImpl)).resolves.toEqual(pricing)
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit | undefined]
+    expect(url).toBe("https://pro.test/api/v1/pricing")
+    expect(new Headers(init?.headers).has("x-api-key")).toBe(false)
+  })
+})
+
+describe("disconnect", () => {
+  it("POSTs /api/v1/disconnect with the key", async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }))
+    await disconnect("tok", fetchImpl)
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe("https://pro.test/api/v1/disconnect")
+    expect(init.method).toBe("POST")
+    expect(new Headers(init.headers).get("x-api-key")).toBe("tok")
+  })
+
+  it("swallows network errors and error statuses", async () => {
+    await expect(
+      disconnect(
+        "tok",
+        vi.fn(async () => {
+          throw new TypeError("Failed to fetch")
+        }),
+      ),
+    ).resolves.toBeUndefined()
+    await expect(
+      disconnect(
+        "tok",
+        vi.fn(async () => json(500, { error: "internal_error", message: "x" })),
+      ),
+    ).resolves.toBeUndefined()
+  })
+})
+
+describe("streamRequest", () => {
+  const body = {
+    kind: "chat" as const,
+    system: "sys",
+    messages: [{ role: "user" as const, content: "hi" }],
+  }
+
+  it("POSTs JSON with the key and signal and returns the response on 2xx", async () => {
+    const res = new Response("data: [DONE]\n\n", {
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+    })
+    const fetchImpl = vi.fn(async () => res)
+    const signal = new AbortController().signal
+    await expect(streamRequest("tok", body, signal, fetchImpl)).resolves.toBe(res)
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe("https://pro.test/api/v1/stream")
+    expect(init.method).toBe("POST")
+    expect(init.signal).toBe(signal)
+    const headers = new Headers(init.headers)
+    expect(headers.get("x-api-key")).toBe("tok")
+    expect(headers.get("content-type")).toBe("application/json")
+    expect(JSON.parse(init.body as string)).toEqual(body)
+  })
+
+  it("throws the mapped ProError on non-2xx", async () => {
+    const fetchImpl = vi.fn(async () =>
+      json(429, { error: "limit_reached", message: "Limit", resetsAt: "2026-11-01T00:00:00Z" }),
+    )
+    await expect(
+      streamRequest("tok", body, new AbortController().signal, fetchImpl),
+    ).rejects.toMatchObject({ code: "limit_reached", resetsAt: "2026-11-01T00:00:00Z" })
+  })
+
+  it("maps a network rejection to network", async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("Failed to fetch")
+    })
+    const err = await streamRequest("tok", body, new AbortController().signal, fetchImpl).catch(
+      (e: unknown) => e,
+    )
+    expect(err).toBeInstanceOf(ProError)
+    expect(err).toMatchObject({
+      code: "network",
+      message: "Can't reach Recap Pro. Check your connection.",
+    })
+  })
+
+  it("lets an AbortError propagate unchanged", async () => {
+    const abort = new DOMException("The operation was aborted.", "AbortError")
+    const fetchImpl = vi.fn(async () => {
+      throw abort
+    })
+    const err = await streamRequest("tok", body, new AbortController().signal, fetchImpl).catch(
+      (e: unknown) => e,
+    )
+    expect(err).toBe(abort)
+  })
+})
