@@ -489,6 +489,19 @@ describe("runProStreamRequest", () => {
     expect(recordUsage).toHaveBeenCalledWith("summary", 12)
   })
 
+  it("strips the server's metadata from the forwarded finish chunk", async () => {
+    const { fetchImpl } = fakeFetch(() => sseResponse(HELLO_EVENTS))
+    const { messages, post } = collect()
+    await runProStreamRequest(proSummaryReq(), {
+      token: "tok",
+      post,
+      signal: new AbortController().signal,
+      fetchImpl,
+    })
+    const finish = messages.find((m) => m.type === "chunk" && m.chunk.type === "finish")
+    expect(finish).toEqual({ type: "chunk", chunk: { type: "finish", finishReason: "stop" } })
+  })
+
   it("records nothing when the finish chunk carries no usage", async () => {
     const events = HELLO_EVENTS.map((e) => (e.type === "finish" ? { type: "finish" } : e))
     const { fetchImpl } = fakeFetch(() => sseResponse(events))

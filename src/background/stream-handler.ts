@@ -209,7 +209,13 @@ export async function runProStreamRequest(req: StreamRequest, deps: ProStreamDep
         post({ type: "error", code: "model_unavailable", message: PRO_MID_STREAM })
         return
       }
-      tokens = usageFromFinish(chunk) ?? tokens
+      if (chunk.type === "finish") {
+        tokens = usageFromFinish(chunk) ?? tokens
+        // Usage is recorded here; the server's metadata must not end up in the stored chat.
+        const { messageMetadata: _serverMeta, ...finish } = chunk
+        post({ type: "chunk", chunk: finish })
+        continue
+      }
       post({ type: "chunk", chunk })
     }
     if (signal.aborted) return

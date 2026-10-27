@@ -70,7 +70,11 @@ export function openStream(
         }
       }
       const onDisconnect = () => {
-        settle(() => controller.error(new Error("Connection to the extension was lost")))
+        settle(() =>
+          controller.error(
+            new StreamError("Connection to the extension was lost", { code: "network" }),
+          ),
+        )
       }
       const onAbort = () => {
         settle(() => {

@@ -83,7 +83,13 @@ describe("openStream", () => {
     const port = new FakePort()
     const stream = openStream(summaryReq, { connect: () => port })
     port.emitDisconnect()
-    await expect(stream.getReader().read()).rejects.toThrow("Connection to the extension was lost")
+    const err = (await stream
+      .getReader()
+      .read()
+      .catch((e: unknown) => e)) as StreamError
+    expect(err).toBeInstanceOf(StreamError)
+    expect(err.message).toBe("Connection to the extension was lost")
+    expect(err.code).toBe("network")
     expect(port.listenerCount).toBe(0)
   })
 
