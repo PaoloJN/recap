@@ -53,7 +53,7 @@ Recap Pro is an optional way to use Recap without your own key. Sign in with Goo
 
 Pro is turned on at build time. Release builds include it when the repository's `WXT_PRO_ORIGIN` variable is set. If you build from source without `WXT_PRO_ORIGIN`, you get the bring-your-own-key extension only: no Recap Pro option, no `identity` permission, no requests to recapai.dev.
 
-A Pro build adds two permissions: `identity`, for Google sign-in through the browser's sign-in window, and host access to the Pro server.
+A Pro build adds one permission: `identity`, for Google sign-in through the browser's sign-in window. It needs no host access to recapai.dev; the Pro server allows the extension's requests through CORS.
 
 ## Privacy
 

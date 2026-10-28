@@ -33,7 +33,6 @@ export default defineConfig({
         "https://api.anthropic.com/*",
         "https://generativelanguage.googleapis.com/*",
         "https://openrouter.ai/*",
-        ...pro.host_permissions,
       ],
       icons: {
         16: "icon/16.png",

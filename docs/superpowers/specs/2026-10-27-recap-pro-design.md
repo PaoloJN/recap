@@ -36,7 +36,7 @@ The thing being sold is convenience, not features. Pro users and BYOK users get 
 
 - Extension stack is fixed: WXT 0.21, React 19, TypeScript strict, Tailwind v4, shadcn/radix, Phosphor icons, Vercel AI SDK 7, Biome 2, Vitest. Match the existing v3 design language (`docs/design/v3-handoff/`).
 - Paolo tests in Chrome himself. Agents verify by build, typecheck, lint and unit tests only. Never drive his browser.
-- Keep extension permissions minimal. `storage` and `identity` only, plus host permissions for the four provider APIs and the Pro origin.
+- Keep extension permissions minimal. `storage` and `identity` only, plus host permissions for the four provider APIs. No host permission for the Pro origin (it would be a privilege increase that disables the extension on update for existing users; CORS covers it).
 - Vercel's free Hobby plan forbids commercial use; the app deploys on Vercel Pro once money is charged. Not a code concern, noted for Paolo.
 - Polar's Better Auth adapter requires `@polar-sh/sdk` and `better-auth`; use their current stable versions (verify on npm at build time; do not pin from memory).
 
@@ -46,7 +46,7 @@ The thing being sold is convenience, not features. Pro users and BYOK users get 
 - Private repo: `recap-website` (GitHub, PaoloJN, private). One Next.js app.
 - Public repo: `recap` (exists). Gains the Pro client.
 - Origin: production is **https://recapai.dev**. The app reads `NEXT_PUBLIC_APP_URL`; the extension reads `WXT_PRO_ORIGIN` at build time. Local dev uses `http://localhost:3000`.
-- **Pro is a build-time option** (my call). When `WXT_PRO_ORIGIN` is unset, the build is pure BYOK: "Recap Pro" is absent from the provider list, the default provider stays `openai`, onboarding starts at the key screen, and no `identity` permission or Pro host permission is emitted. Anyone building from source gets exactly today's extension. When it is set (Paolo's `.env`, the CI secret for the release and store builds), Pro is listed first and is the default for fresh installs. `PROVIDER_IDS` and `DEFAULT_SETTINGS` derive from one `PRO_ENABLED` constant in `src/lib/pro/config.ts`.
+- **Pro is a build-time option** (my call). When `WXT_PRO_ORIGIN` is unset, the build is pure BYOK: "Recap Pro" is absent from the provider list, the default provider stays `openai`, onboarding starts at the key screen, and no `identity` permission is emitted. Anyone building from source gets exactly today's extension. When it is set (Paolo's `.env`, the CI secret for the release and store builds), Pro is listed first and is the default for fresh installs. `PROVIDER_IDS` and `DEFAULT_SETTINGS` derive from one `PRO_ENABLED` constant in `src/lib/pro/config.ts`.
 
 ## Architecture
 
@@ -107,7 +107,7 @@ Caps apply **per kind, independently** (my call). A trial user who has used all 
 
 ## API (`recap-website`)
 
-All under `/api/v1/`, authenticated with the `x-api-key` header (the extension's device token). CORS: `Access-Control-Allow-Origin: *` on `/api/v1/*` with `x-api-key, content-type` allowed and no credentials, plus `OPTIONS` handling; the extension also declares the Pro origin as a host permission so Chrome and Firefox skip CORS from the background anyway.
+All under `/api/v1/`, authenticated with the `x-api-key` header (the extension's device token). CORS: `Access-Control-Allow-Origin: *` on `/api/v1/*` with `x-api-key, content-type` allowed and no credentials, plus `OPTIONS` handling; the extension relies on this CORS policy and declares no host permission for the Pro origin.
 
 - `POST /api/v1/stream` — body `{ kind: "summary" | "chat", system: string, messages: ModelMessage[] }`. Returns a UI message stream (`toUIMessageStreamResponse()`), including usage in the finish metadata. Increments `usage`.
 - `GET /api/v1/me` — `{ user: { email, name, image }, plan: "trial" | "pro" | "expired", usage: { summaries, chats, summaryLimit, chatLimit, resetsAt: string | null }, subscription: { status, currentPeriodEnd, cancelAtPeriodEnd } | null }`.
@@ -142,7 +142,7 @@ Web-only endpoints (cookie session): `POST /api/extension/token` (creates the de
 
 - `pro-sign-in` and `pro-sign-out` runtime message handlers (identity flow above). Also `pro-refresh` to refetch `/me`.
 - Stream handler: when `selection.provider === "pro"`, build the prompts exactly as the BYOK path does, drop the oldest chat turns (never the system prompt or the latest user message) until the request is under the server's character and message limits, then POST to `/api/v1/stream` with the device token and forward the returned UI message stream chunks through the existing port. Non-2xx responses map to port errors carrying a `code` (`unauthorized` | `upgrade_required` | `limit_reached` | `too_large` | `model_unavailable` | `network`) so the panel can render the right state instead of a generic error. Usage is recorded locally from the finish metadata, as the BYOK path does.
-- Manifest: `identity` permission; host permission for the Pro origin.
+- Manifest: `identity` permission only (no host permission for the Pro origin).
 
 ### Panel UI
 

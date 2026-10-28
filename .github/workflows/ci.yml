@@ -24,3 +24,7 @@ jobs:
         run: pnpm build
         env:
           WXT_PRO_ORIGIN: https://recapai.dev
+      - name: Build with Recap Pro (Firefox)
+        run: pnpm build:firefox
+        env:
+          WXT_PRO_ORIGIN: https://recapai.dev
