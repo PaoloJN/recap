@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai"
 import { describe, expect, it } from "vitest"
-import { markStopped, shouldClearDraft } from "./thread"
+import { endsOnUnansweredQuestion, markStopped, shouldClearDraft } from "./thread"
 
 const user: UIMessage = { id: "u", role: "user", parts: [{ type: "text", text: "Hi" }] }
 const reply: UIMessage = { id: "a", role: "assistant", parts: [{ type: "text", text: "Hel" }] }
@@ -29,5 +29,14 @@ describe("shouldClearDraft", () => {
   it("clears only when the draft itself was sent", () => {
     expect(shouldClearDraft("Why?", "  Why? ")).toBe(true)
     expect(shouldClearDraft("Quiz me on this video with 3 questions", "half-typed")).toBe(false)
+  })
+})
+
+describe("endsOnUnansweredQuestion", () => {
+  it("is true only when the thread ends on the user's turn", () => {
+    expect(endsOnUnansweredQuestion([user])).toBe(true)
+    expect(endsOnUnansweredQuestion([user, reply, user])).toBe(true)
+    expect(endsOnUnansweredQuestion([user, reply])).toBe(false)
+    expect(endsOnUnansweredQuestion([])).toBe(false)
   })
 })

@@ -24,7 +24,7 @@ import { ChatEmptyState, pickSuggestions } from "./ChatEmptyState"
 import { Composer } from "./Composer"
 import { MessageList, messageMeta } from "./MessageList"
 import { ModelPicker } from "./ModelPicker"
-import { markStopped, shouldClearDraft, withMetadata } from "./thread"
+import { endsOnUnansweredQuestion, markStopped, shouldClearDraft, withMetadata } from "./thread"
 import { useChatHistory } from "./useChatHistory"
 
 const newMessageId = () => crypto.randomUUID()
@@ -299,6 +299,12 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
       })
   }, [newChatToken])
 
+  // An upgrade or limit gate cleared: drop the error and ask the stopped question again.
+  const onGateCleared = useCallback(() => {
+    clearError()
+    if (!busyRef.current && endsOnUnansweredQuestion(messagesRef.current)) void regenerate()
+  }, [clearError, regenerate])
+
   // Upgrade, limit and signed-out errors show their gate under the thread instead of a Retry row.
   const errorDetails = errorInfo(error)
   const gate = gateFor(errorDetails.code)
@@ -307,7 +313,7 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
       gate={gate}
       kind="chat"
       resetsAt={errorDetails.resetsAt}
-      onUpgraded={clearError}
+      onUpgraded={onGateCleared}
     />
   ) : undefined
 

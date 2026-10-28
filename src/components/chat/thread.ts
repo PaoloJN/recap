@@ -28,3 +28,11 @@ export function markStopped(messages: UIMessage[], newId: () => string): UIMessa
 export function shouldClearDraft(sent: string, draft: string): boolean {
   return sent === draft.trim()
 }
+
+/**
+ * The thread ends on the user's turn with no reply yet, e.g. a question a Recap Pro upgrade or
+ * limit gate stopped. Once that gate clears, the question is retried.
+ */
+export function endsOnUnansweredQuestion(messages: UIMessage[]): boolean {
+  return messages.at(-1)?.role === "user"
+}
