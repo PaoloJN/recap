@@ -21,6 +21,8 @@ const remToPx = {
 export default defineConfig({
   srcDir: "src",
   modules: ["@wxt-dev/module-react"],
+  // Port 3000 belongs to a local recap-website (WXT_PRO_ORIGIN=http://localhost:3000).
+  dev: { server: { port: 3001 } },
   manifest: ({ browser }) => {
     // Read lazily: WXT loads .env files after evaluating this file but before calling this.
     const pro = proManifestAdditions(normalizeProOrigin(process.env.WXT_PRO_ORIGIN))
