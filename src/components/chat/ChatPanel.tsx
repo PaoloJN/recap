@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react"
 import { errorInfo, gateFor } from "@/components/pro/access"
 import { ProErrorGate } from "@/components/pro/ProErrorGate"
 import { useClearOnSignIn } from "@/components/pro/useClearOnSignIn"
+import { useRefreshOnGateError } from "@/components/pro/useRefreshOnGateError"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { useSummaryContext } from "@/components/summary/SummaryContext"
@@ -147,8 +148,10 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
     providerRef.current = provider
     clearError()
   }, [provider, clearError])
-  const { signedIn } = usePro()
-  useClearOnSignIn(signedIn, errorInfo(error).code, clearError)
+  const { signedIn, refresh: refreshPro } = usePro()
+  const errorCode = errorInfo(error).code
+  useClearOnSignIn(signedIn, errorCode, clearError)
+  useRefreshOnGateError(error, errorCode, refreshPro)
 
   useEffect(() => {
     setHasMessages(messages.length > 0)

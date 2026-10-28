@@ -68,7 +68,16 @@ describe("LimitGate", () => {
     expect(onCleared).not.toHaveBeenCalled()
   })
 
-  it("clears when the plan changes", async () => {
+  it("ignores plan changes that only correct a stale snapshot", async () => {
+    await render()
+    mocks.me = me("expired", 300)
+    await render()
+    mocks.me = me("trial", 300)
+    await render()
+    expect(onCleared).not.toHaveBeenCalled()
+  })
+
+  it("clears when the plan turns pro", async () => {
     mocks.me = me("trial", 20)
     await render()
     mocks.me = me("pro", 20)

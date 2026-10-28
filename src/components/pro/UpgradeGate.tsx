@@ -24,9 +24,9 @@ export function resetUpgradeToastForTests(): void {
 /**
  * After the upgrade page opens, refetches the account every 5 s for 2 minutes while this tab is
  * visible. One poller per hook, however often `start` is called (a repeat click only extends the
- * window). Whenever the plan is "pro" while mounted (from a poll, or usePro's own refresh after
- * a checkout that took longer), polling stops and `onPro(toast)` runs; `toast` is true once per
- * page, for the first gate to see it after a poll was started.
+ * window). When the plan changes from trial/expired to "pro" while mounted (from a poll, or
+ * usePro's own refresh after a checkout that took longer), polling stops and `onPro(toast)` runs;
+ * `toast` is true once per page, for the first gate to see it after a poll was started.
  */
 export function useUpgradePoll(
   refresh: () => Promise<void>,
@@ -50,6 +50,9 @@ export function useUpgradePoll(
     timer.current = setInterval(() => {
       if (Date.now() > deadline.current) {
         stop()
+        // Ended without an upgrade while the user is on YouTube: forget the toast. Ending while
+        // hidden means checkout is likely still open, so a later "pro" still earns the toast.
+        if (document.visibilityState === "visible") upgradeToastPending = false
         return
       }
       // Paused while the YouTube tab is in the background; usePro refreshes on return anyway.
@@ -60,8 +63,21 @@ export function useUpgradePoll(
 
   useEffect(() => stop, [stop])
 
+  // Only a change to "pro" seen while mounted counts. A cached "pro" (or one that first loads
+  // here) may be stale, e.g. a lapsed subscription behind a real 402: refetch instead of clearing.
+  const prevPlan = useRef<MeResponse["plan"] | undefined>(undefined)
+  const mounted = useRef(false)
   useEffect(() => {
+    const before = prevPlan.current
+    const first = !mounted.current
+    mounted.current = true
+    prevPlan.current = plan
     if (plan !== "pro") return
+    if (first || before === undefined) {
+      void latest.current.refresh()
+      return
+    }
+    if (before === "pro") return
     stop()
     const toast = upgradeToastPending
     upgradeToastPending = false

@@ -8,8 +8,10 @@ import { resetsLine } from "./access"
 import { GateLayout } from "./GateLayout"
 
 /**
- * Calls `onCleared` when the account changes in a way that lifts the limit: the plan changes, or
- * the usage count for `kind` goes down (the month reset). The first account load only records.
+ * Calls `onCleared` when the account changes in a way that lifts the limit while mounted: the
+ * usage count for `kind` goes down (the month reset), or the plan goes from trial/expired to
+ * "pro". Other plan changes may just correct a stale snapshot, so they don't count, and the first
+ * account load only records.
  */
 export function useLimitLifted(kind: "summary" | "chat", onCleared: () => void): void {
   const { me } = usePro()
@@ -23,7 +25,8 @@ export function useLimitLifted(kind: "summary" | "chat", onCleared: () => void):
     prev.current = { plan, used }
     if (plan === undefined || before.plan === undefined) return
     const usageDropped = used !== undefined && before.used !== undefined && used < before.used
-    if (plan !== before.plan || usageDropped) latest.current()
+    const upgraded = plan === "pro" && before.plan !== "pro"
+    if (usageDropped || upgraded) latest.current()
   }, [plan, used])
 }
 

@@ -7,6 +7,7 @@ import { ConnectView } from "@/components/onboarding/ConnectView"
 import { access, gateFor } from "@/components/pro/access"
 import { NoAccessGate } from "@/components/pro/NoAccessGate"
 import { useClearOnSignIn } from "@/components/pro/useClearOnSignIn"
+import { useRefreshOnGateError } from "@/components/pro/useRefreshOnGateError"
 import { useSignedOut } from "@/components/pro/useSignedOut"
 import { WelcomeView } from "@/components/pro/WelcomeView"
 import { NoCaptions } from "@/components/summary/NoCaptions"
@@ -206,6 +207,7 @@ export function Panel() {
     clearSummaryError()
   }, [provider])
   useClearOnSignIn(pro.signedIn, summary.errorCode, clearSummaryError)
+  useRefreshOnGateError(summary.error, summary.errorCode, pro.refresh)
 
   // ⌥S on a collapsed card or a still-loading video: the transcript (and so the context) only
   // arrives after the card opens, so the request waits here, tied to the video it was made for.

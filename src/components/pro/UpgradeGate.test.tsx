@@ -213,7 +213,9 @@ describe("UpgradeGate", () => {
       )
     await both()
     await act(async () => [...el.querySelectorAll("button")][0]?.click())
+    visibility = "hidden"
     await advance(150_000)
+    visibility = "visible"
     mocks.plan = "pro"
     await both()
     expect(onUpgraded).toHaveBeenCalledTimes(1)
@@ -223,6 +225,32 @@ describe("UpgradeGate", () => {
 
   it("clears without a toast when no upgrade was started on this page", async () => {
     await render()
+    mocks.plan = "pro"
+    await render()
+    expect(onUpgraded).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).not.toHaveBeenCalled()
+  })
+
+  it("keeps the gate and refreshes when it mounts with a cached pro plan (stale 402)", async () => {
+    mocks.plan = "pro"
+    await render()
+    expect(el.querySelector("h2")?.textContent).toBe("Your free summaries are used up")
+    expect(mocks.refresh).toHaveBeenCalledTimes(1)
+    expect(onUpgraded).not.toHaveBeenCalled()
+    await render()
+    expect(onUpgraded).not.toHaveBeenCalled()
+    // The refresh corrects the snapshot; a real upgrade later still clears.
+    mocks.plan = "expired"
+    await render()
+    mocks.plan = "pro"
+    await render()
+    expect(onUpgraded).toHaveBeenCalledTimes(1)
+  })
+
+  it("forgets the toast when the window ends on YouTube without an upgrade", async () => {
+    await render()
+    await clickUpgrade()
+    await advance(180_000)
     mocks.plan = "pro"
     await render()
     expect(onUpgraded).toHaveBeenCalledTimes(1)
