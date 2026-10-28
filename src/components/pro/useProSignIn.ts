@@ -5,7 +5,7 @@ import { usePro } from "@/hooks/usePro"
 import { updateSettings } from "@/hooks/useSettings"
 
 /**
- * "Continue with Google" for the welcome screen and the gates: signs in (or reuses a session
+ * "Continue with Google" for the gates: signs in (or reuses a session
  * that already exists), switches the provider to Recap Pro and returns to the main view.
  * A cancelled window resets silently; a failure shows a toast.
  */

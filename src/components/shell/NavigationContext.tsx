@@ -3,8 +3,8 @@ import { useStorageItem } from "@/hooks/useStorageItem"
 import { panelStateItem } from "@/lib/storage"
 import type { PanelTab, PanelView } from "@/lib/types"
 
-/** The onboarding view's screen: the Recap Pro welcome, or the API key form. */
-export type OnboardingScreen = "welcome" | "key"
+/** The onboarding view's screen. Only the API key form remains; kept so call sites name it. */
+export type OnboardingScreen = "key"
 
 export interface PanelNav {
   open: boolean
@@ -12,13 +12,9 @@ export interface PanelNav {
   tab: PanelTab
   selectTab(tab: PanelTab): void
   view: PanelView
-  /** `screen` picks the onboarding screen (default: welcome; only used in builds with Recap Pro). */
+  /** `screen` names the onboarding screen; the key form is the only one. */
   setView(view: PanelView, opts?: { screen?: OnboardingScreen }): void
-  onboardingScreen: OnboardingScreen
-  /**
-   * Sub-header back: the key screen opened from the welcome screen returns there, the connect
-   * view opened from Settings returns there, else to main.
-   */
+  /** Sub-header back: the connect view opened from Settings returns there, else to main. */
   goBack(): void
   optionsOpen: boolean
   setOptionsOpen(v: boolean): void
@@ -36,54 +32,27 @@ const NavigationContext = createContext<PanelNav | null>(null)
 interface NavState {
   view: PanelView
   back: PanelView
-  screen: OnboardingScreen
-  /** The key screen was reached from the welcome screen, so back returns there. */
-  keyFromWelcome: boolean
 }
 
-const INITIAL_NAV: NavState = {
-  view: "main",
-  back: "main",
-  screen: "welcome",
-  keyFromWelcome: false,
-}
+const INITIAL_NAV: NavState = { view: "main", back: "main" }
 
 /** `open`/`tab` persist in `local:panel`; children render once that has loaded. */
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [panelState, setPanelState] = useStorageItem(panelStateItem)
   const [nav, setNav] = useState<NavState>(INITIAL_NAV)
   const view = nav.view
-  const onboardingScreen = nav.screen
   const setView = useCallback(
-    (next: PanelView, opts?: { screen?: OnboardingScreen }) =>
+    (next: PanelView, _opts?: { screen?: OnboardingScreen }) =>
       setNav((cur) => {
-        const screen = opts?.screen ?? "welcome"
-        // Welcome → key keeps welcome's own way back.
-        if (next === "onboarding" && cur.view === "onboarding") {
-          return {
-            ...cur,
-            screen,
-            keyFromWelcome: screen === "key" && (cur.screen === "welcome" || cur.keyFromWelcome),
-          }
-        }
+        if (next === "onboarding" && cur.view === "onboarding") return cur
         return {
           view: next,
           back: next === "onboarding" && cur.view === "settings" ? "settings" : "main",
-          screen,
-          keyFromWelcome: false,
         }
       }),
     [],
   )
-  const goBack = useCallback(
-    () =>
-      setNav((cur) =>
-        cur.view === "onboarding" && cur.screen === "key" && cur.keyFromWelcome
-          ? { ...cur, screen: "welcome", keyFromWelcome: false }
-          : { ...INITIAL_NAV, view: cur.back },
-      ),
-    [],
-  )
+  const goBack = useCallback(() => setNav((cur) => ({ ...INITIAL_NAV, view: cur.back })), [])
   const [optionsOpen, setOptionsOpen] = useState(false)
   const [searchFocusPending, setSearchFocusPending] = useState(false)
 
@@ -112,7 +81,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       selectTab,
       view,
       setView,
-      onboardingScreen,
       goBack,
       optionsOpen,
       setOptionsOpen,
@@ -127,7 +95,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       selectTab,
       view,
       setView,
-      onboardingScreen,
       goBack,
       optionsOpen,
       searchFocusPending,

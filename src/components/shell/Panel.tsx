@@ -9,7 +9,6 @@ import { NoAccessGate } from "@/components/pro/NoAccessGate"
 import { useClearOnSignIn } from "@/components/pro/useClearOnSignIn"
 import { useRefreshOnGateError } from "@/components/pro/useRefreshOnGateError"
 import { useSignedOut } from "@/components/pro/useSignedOut"
-import { WelcomeView } from "@/components/pro/WelcomeView"
 import { NoCaptions } from "@/components/summary/NoCaptions"
 import { SummaryActions } from "@/components/summary/SummaryActions"
 import { SummaryProvider } from "@/components/summary/SummaryContext"
@@ -26,7 +25,6 @@ import { useTheme } from "@/hooks/useTheme"
 import { useVideo, type VideoState } from "@/hooks/useVideo"
 import { downloadText } from "@/lib/download"
 import { exportVideoMarkdown, slugify } from "@/lib/export"
-import { PRO_ENABLED } from "@/lib/pro/config"
 import { apiKeysItem, chatsItem, DEFAULT_SETTINGS, summariesItem } from "@/lib/storage"
 import type { ModelSelection, PanelTab, TranscriptStatus, VideoContext } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -117,12 +115,17 @@ function TranscriptGate({
 interface BodyProps {
   tab: PanelTab
   hasAccess: boolean
+  /**
+   * Settings and keys have loaded, so `hasAccess` is real. Until then no gate shows: the default
+   * provider would flash the sign-in gate (and fetch Recap Pro pricing) for a user with a key.
+   */
+  accessKnown: boolean
   /** The Recap Pro session was lost (401 or sign-out) while this page was open. */
   signedOut: boolean
   video: VideoState
 }
 
-function Body({ tab, hasAccess, signedOut, video }: BodyProps) {
+function Body({ tab, hasAccess, accessKnown, signedOut, video }: BodyProps) {
   // All three stay mounted so in-flight chat streams and transcript search/scroll survive tab
   // switches; inactive ones are hidden (a class, since the panels set their own display).
   const pane = (name: PanelTab) => (tab === name ? "contents" : "hidden")
@@ -131,7 +134,9 @@ function Body({ tab, hasAccess, signedOut, video }: BodyProps) {
       <div className={pane("summary")}>
         {/* SummaryPanel handles transcript loading, no captions and errors itself. */}
         {!hasAccess ? (
-          <NoAccessGate verb="summarize videos" signedOut={signedOut} />
+          accessKnown ? (
+            <NoAccessGate verb="summarize videos" signedOut={signedOut} />
+          ) : null
         ) : video.pageError !== null ? (
           <PageError video={video} />
         ) : (
@@ -149,9 +154,9 @@ function Body({ tab, hasAccess, signedOut, video }: BodyProps) {
       <div className={pane("chat")}>
         {hasAccess ? (
           <TranscriptGate video={video}>{() => <ChatPanel video={video} />}</TranscriptGate>
-        ) : (
+        ) : accessKnown ? (
           <NoAccessGate verb="chat with videos" signedOut={signedOut} />
-        )}
+        ) : null}
       </div>
     </>
   )
@@ -165,7 +170,6 @@ export function Panel() {
     tab,
     view,
     setView,
-    onboardingScreen,
     goBack,
     selectTab,
     requestSearchFocus,
@@ -197,6 +201,7 @@ export function Panel() {
   const model = settings.models[provider]
   const selection = useMemo<ModelSelection>(() => ({ provider, model }), [provider, model])
   const hasAccess = access(settings, apiKeys, pro) === "ok"
+  const accessKnown = storedSettings !== undefined && apiKeys !== undefined
   const signedOut = useSignedOut(pro.signedIn) && provider === "pro"
   const summary = useSummary(video.context, selection, settings, open && hasAccess)
 
@@ -346,13 +351,7 @@ export function Panel() {
         >
           {open && view !== "main" ? (
             <SubHeader
-              title={
-                view === "settings"
-                  ? "Settings"
-                  : PRO_ENABLED && onboardingScreen === "welcome"
-                    ? "Get started"
-                    : "Add API key"
-              }
+              title={view === "settings" ? "Settings" : "Add API key"}
               onBack={goBack}
               right={view === "settings" ? <SettingsVersion /> : null}
             />
@@ -377,14 +376,7 @@ export function Panel() {
           ) : null}
           {open ? null : <CollapsedRow status={status} onExpand={() => setOpen(true)} />}
           {open && view === "onboarding" && storedSettings ? (
-            PRO_ENABLED && onboardingScreen === "welcome" ? (
-              <WelcomeView />
-            ) : (
-              <ConnectView
-                key={storedSettings.provider}
-                initialProvider={storedSettings.provider}
-              />
-            )
+            <ConnectView key={storedSettings.provider} initialProvider={storedSettings.provider} />
           ) : null}
           {open && view === "settings" ? <SettingsView /> : null}
           {/* Kept mounted while collapsed or in settings so streams and panel state survive. */}
@@ -404,7 +396,13 @@ export function Panel() {
                 transcriptScrolls ? "overflow-hidden" : "overflow-auto",
               )}
             >
-              <Body tab={tab} hasAccess={hasAccess} signedOut={signedOut} video={video} />
+              <Body
+                tab={tab}
+                hasAccess={hasAccess}
+                accessKnown={accessKnown}
+                signedOut={signedOut}
+                video={video}
+              />
             </div>
           </div>
         </div>

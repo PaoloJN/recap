@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { browser } from "wxt/browser"
 import { fakeBrowser } from "wxt/testing/fake-browser"
 import type { ProAuthResult } from "@/lib/port-protocol"
-import type { MeResponse, Pricing, ProState } from "@/lib/pro/types"
+import type { MeResponse, ProState } from "@/lib/pro/types"
 import { proItem } from "@/lib/storage"
-import { resetPricingCacheForTests, usePro } from "./usePro"
+import { usePro } from "./usePro"
 
 const cfg = vi.hoisted(() => ({ enabled: true }))
 const api = vi.hoisted(() => ({ fetchPricing: vi.fn() }))
@@ -33,7 +33,6 @@ const ME: MeResponse = {
   usage: { summaries: 1, chats: 0, summaryLimit: 20, chatLimit: 50, resetsAt: null },
   subscription: null,
 }
-const PRICING: Pricing = { monthly: { display: "$4.99" }, yearly: { display: "$39.99" } }
 
 type Pro = ReturnType<typeof usePro>
 let pro: Pro
@@ -74,8 +73,6 @@ beforeEach(async () => {
   vi.setSystemTime(NOW)
   cfg.enabled = true
   api.fetchPricing.mockReset()
-  api.fetchPricing.mockResolvedValue(PRICING)
-  resetPricingCacheForTests()
   sendMessage = vi.fn(async (message: { type: string }) => {
     if (message.type === "pro-refresh") {
       const state = await proItem.getValue()
@@ -123,26 +120,11 @@ describe("usePro state", () => {
     expect(pro.me).toEqual(ME)
   })
 
-  it("loads pricing once per page, shared across mounts", async () => {
+  it("never fetches pricing (only the price-showing gates do)", async () => {
+    await seed({ token: "tok", me: ME, fetchedAt: NOW })
     await mount()
-    expect(pro.pricing).toEqual(PRICING)
-    expect(api.fetchPricing).toHaveBeenCalledTimes(1)
-
-    act(() => root?.unmount())
-    await mount()
-    expect(pro.pricing).toEqual(PRICING)
-    expect(api.fetchPricing).toHaveBeenCalledTimes(1)
-  })
-
-  it("keeps null on failure and retries on the next mount", async () => {
-    api.fetchPricing.mockRejectedValueOnce(new Error("offline"))
-    await mount()
-    expect(pro.pricing).toBeNull()
-
-    act(() => root?.unmount())
-    await mount()
-    expect(pro.pricing).toEqual(PRICING)
-    expect(api.fetchPricing).toHaveBeenCalledTimes(2)
+    expect(api.fetchPricing).not.toHaveBeenCalled()
+    expect(pro).not.toHaveProperty("pricing")
   })
 })
 
@@ -339,7 +321,6 @@ describe("usePro when Pro is disabled", () => {
     expect(pro.enabled).toBe(false)
     expect(pro.signedIn).toBe(false)
     expect(pro.me).toBeNull()
-    expect(pro.pricing).toBeNull()
     await act(async () => {
       await pro.refresh()
       await pro.signIn()

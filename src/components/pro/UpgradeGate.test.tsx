@@ -26,9 +26,9 @@ vi.mock("@/hooks/usePro", () => ({
     signIn: vi.fn(),
     signOut: vi.fn(),
     refresh: mocks.refresh,
-    pricing: mocks.pricing,
   }),
 }))
+vi.mock("@/hooks/usePricing", () => ({ usePricing: () => mocks.pricing }))
 vi.mock("@/lib/pro/config", () => ({
   PRO_ENABLED: true,
   PRO_ORIGIN: "https://recap.test",

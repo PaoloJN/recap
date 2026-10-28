@@ -21,7 +21,6 @@ vi.mock("@/hooks/usePro", () => ({
     signIn: vi.fn(),
     signOut: mocks.signOut,
     refresh: vi.fn(async () => {}),
-    pricing: null,
   }),
 }))
 vi.mock("./useProSignIn", () => ({

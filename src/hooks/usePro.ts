@@ -6,9 +6,8 @@ import type {
   ProSignInRequest,
   ProSignOutRequest,
 } from "@/lib/port-protocol"
-import { fetchPricing } from "@/lib/pro/api"
 import { PRO_ENABLED } from "@/lib/pro/config"
-import type { MeResponse, Pricing } from "@/lib/pro/types"
+import type { MeResponse } from "@/lib/pro/types"
 import { proItem } from "@/lib/storage"
 import { useStorageItem } from "./useStorageItem"
 
@@ -31,7 +30,6 @@ export interface UsePro {
   signIn(): Promise<ProAuthResult>
   signOut(): Promise<void>
   refresh(): Promise<void>
-  pricing: Pricing | null
 }
 
 // One refresh at a time per page, however many components use the hook.
@@ -56,33 +54,6 @@ function refreshNow(): Promise<void> {
   return inflight
 }
 
-// Pricing is public and changes rarely: one request per page load, shared by every hook.
-// A failed request is not cached, so the next mount tries again.
-let pricingCache: Pricing | null = null
-let pricingRequest: Promise<Pricing> | null = null
-
-function loadPricing(): Promise<Pricing> {
-  if (pricingRequest) return pricingRequest
-  const request = fetchPricing().then(
-    (p) => {
-      pricingCache = p
-      return p
-    },
-    (e: unknown) => {
-      pricingRequest = null
-      throw e
-    },
-  )
-  pricingRequest = request
-  return request
-}
-
-/** Test hook: forget the cached pricing. */
-export function resetPricingCacheForTests(): void {
-  pricingCache = null
-  pricingRequest = null
-}
-
 async function refreshIfStale(): Promise<void> {
   const { token, fetchedAt } = await proItem.getValue()
   if (token !== null && Date.now() - fetchedAt > PRO_STALE_MS) await refreshNow()
@@ -91,7 +62,6 @@ async function refreshIfStale(): Promise<void> {
 export function usePro(): UsePro {
   const [state] = useStorageItem(proItem)
   const [signingIn, setSigningIn] = useState(false)
-  const [pricing, setPricing] = useState<Pricing | null>(() => (PRO_ENABLED ? pricingCache : null))
 
   useEffect(() => {
     if (!PRO_ENABLED) return
@@ -101,20 +71,6 @@ export function usePro(): UsePro {
     }
     document.addEventListener("visibilitychange", onVisibility)
     return () => document.removeEventListener("visibilitychange", onVisibility)
-  }, [])
-
-  useEffect(() => {
-    if (!PRO_ENABLED) return
-    let active = true
-    loadPricing().then(
-      (p) => {
-        if (active) setPricing(p)
-      },
-      () => {},
-    )
-    return () => {
-      active = false
-    }
   }, [])
 
   const signIn = useCallback(async (): Promise<ProAuthResult> => {
@@ -169,6 +125,5 @@ export function usePro(): UsePro {
     signIn,
     signOut,
     refresh,
-    pricing,
   }
 }

@@ -1,6 +1,8 @@
 import { ClosedCaptioning, Gift, SignIn, Sparkle } from "@phosphor-icons/react"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { largeButton, secondaryButton } from "@/components/summary/buttons"
+import { usePricing } from "@/hooks/usePricing"
+import { trialPriceLine } from "@/lib/pro/plan-copy"
 import { cn } from "@/lib/utils"
 import { GateLayout, type GateRow } from "./GateLayout"
 import { GoogleButton } from "./GoogleButton"
@@ -14,9 +16,15 @@ const ROWS: GateRow[] = [
 /** No access to Summary/Chat in a build with Recap Pro: sign in, or bring your own key. */
 export function AccessGate({ verb }: { verb: "summarize videos" | "chat with videos" }) {
   const { setView, selectTab } = usePanelNav()
+  const pricing = usePricing()
   return (
     <GateLayout icon={SignIn} title={`Sign in to ${verb}`} rows={ROWS}>
-      <GoogleButton />
+      <div className="flex flex-col gap-[8px]">
+        <GoogleButton />
+        <p className="text-center text-[12px] leading-[16px] text-muted-foreground">
+          {trialPriceLine(pricing)}
+        </p>
+      </div>
       <button
         type="button"
         className={cn(secondaryButton, largeButton, "w-full")}

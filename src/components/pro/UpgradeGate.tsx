@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef } from "react"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { largeButton, primaryButton, secondaryButton } from "@/components/summary/buttons"
+import { usePricing } from "@/hooks/usePricing"
 import { usePro } from "@/hooks/usePro"
 import { proUrl } from "@/lib/pro/config"
 import type { MeResponse } from "@/lib/pro/types"
@@ -110,7 +111,8 @@ export function UpgradeGate({
   /** Called once the plan turns "pro", to clear the error behind this gate. */
   onUpgraded(): void
 }) {
-  const { me, pricing, refresh } = usePro()
+  const { me, refresh } = usePro()
+  const pricing = usePricing()
   const { setView } = usePanelNav()
   const toast = useToast()
   const startPolling = useUpgradePoll(refresh, me?.plan, (showToast) => {
