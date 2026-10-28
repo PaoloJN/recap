@@ -78,17 +78,25 @@ export function useUpgradePoll(
     return () => document.removeEventListener("visibilitychange", onVisibility)
   }, [])
 
-  // Only a change to "pro" seen while mounted counts. A cached "pro" (or one that first loads
-  // here) may be stale, e.g. a lapsed subscription behind a real 402: refetch instead of clearing.
+  // Only a change to "pro" seen while mounted counts. A cached "pro" at mount may be stale, e.g.
+  // a lapsed subscription behind a real 402: refetch instead of clearing. With no account at
+  // mount, the gate fetches it; a "pro" that arrives after a refresh the gate made is fresh from
+  // the server, so it clears.
   const prevPlan = useRef<MeResponse["plan"] | undefined>(undefined)
   const mounted = useRef(false)
+  const refreshedUnknown = useRef(false)
   useEffect(() => {
     const before = prevPlan.current
     const first = !mounted.current
     mounted.current = true
     prevPlan.current = plan
+    if (first && plan === undefined) {
+      refreshedUnknown.current = true
+      void latest.current.refresh()
+      return
+    }
     if (plan !== "pro") return
-    if (first || before === undefined) {
+    if (first || (before === undefined && !refreshedUnknown.current)) {
       void latest.current.refresh()
       return
     }
