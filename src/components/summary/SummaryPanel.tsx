@@ -8,11 +8,10 @@ import { useToast } from "@/components/shell/ToastContext"
 import { useSettings } from "@/hooks/useSettings"
 import type { VideoState } from "@/hooks/useVideo"
 import { formatTranscriptForPrompt } from "@/lib/prompts/transcript-text"
-import { isByok, PROVIDERS } from "@/lib/providers"
+import { isByok, modelLabel, PROVIDERS } from "@/lib/providers"
 import { DEFAULT_SETTINGS } from "@/lib/storage"
 import { summaryForCopy } from "@/lib/summary/parse"
 import { SUMMARY_STYLES } from "@/lib/summary/styles"
-import type { ProviderId } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { primaryButton, smallButton } from "./buttons"
 import { NoCaptions } from "./NoCaptions"
@@ -38,10 +37,6 @@ function PartialError({ message, onRetry }: { message: string; onRetry(): void }
       </button>
     </div>
   )
-}
-
-function modelLabel(provider: ProviderId, id: string): string {
-  return PROVIDERS[provider].models.find((m) => m.id === id)?.label ?? id
 }
 
 export function SummaryPanel({ video }: { video: VideoState }) {

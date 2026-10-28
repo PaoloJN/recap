@@ -13,6 +13,13 @@ export function shortDate(iso: string): string {
   })
 }
 
+/** True when `iso` is a valid date still in the future; stale or unparseable dates aren't shown. */
+function upcoming(iso: string | null, now: number): iso is string {
+  if (iso === null) return false
+  const t = Date.parse(iso)
+  return !Number.isNaN(t) && t > now
+}
+
 /** One-line plan status, e.g. "Trial · 12 of 20 summaries, 40 of 50 messages left". */
 export function planLine(me: MeResponse, now: number): string {
   if (me.plan === "expired") return "Trial ended"
@@ -24,15 +31,15 @@ export function planLine(me: MeResponse, now: number): string {
   }
   const end = me.subscription?.currentPeriodEnd ?? null
   // A period end already in the past is stale data (the webhook hasn't landed yet), not a date to show.
-  if (end === null || Date.parse(end) <= now) return "Pro"
+  if (!upcoming(end, now)) return "Pro"
   return `Pro · ${me.subscription?.cancelAtPeriodEnd ? "ends" : "renews"} ${shortDate(end)}`
 }
 
 /** Usage so far, e.g. "12 of 300 summaries · 40 of 1,000 messages · resets Nov 1". */
-export function usageLine(me: MeResponse): string {
+export function usageLine(me: MeResponse, now: number): string {
   const { summaries, chats, summaryLimit, chatLimit, resetsAt } = me.usage
   const used = `${count(summaries)} of ${count(summaryLimit)} summaries · ${count(chats)} of ${count(chatLimit)} messages`
-  if (me.plan === "pro" && resetsAt !== null) return `${used} · resets ${shortDate(resetsAt)}`
+  if (me.plan === "pro" && upcoming(resetsAt, now)) return `${used} · resets ${shortDate(resetsAt)}`
   return used
 }
 

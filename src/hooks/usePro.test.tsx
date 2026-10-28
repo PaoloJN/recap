@@ -285,6 +285,17 @@ describe("usePro sign-in and sign-out", () => {
     expect(pro.signingIn).toBe(false)
   })
 
+  it("does not count a token that was already stored before the call as success", async () => {
+    await seed({ token: "old" })
+    await mount()
+    sendMessage.mockRejectedValueOnce(new Error("The message port closed before a response"))
+    let result: ProAuthResult | undefined
+    await act(async () => {
+      result = await pro.signIn()
+    })
+    expect(result).toEqual({ ok: false, reason: "failed", message: "Couldn't sign in. Try again." })
+  })
+
   it("signOut asks the background and clears state", async () => {
     await seed({ token: "tok", me: ME, fetchedAt: NOW })
     await mount()
@@ -302,6 +313,19 @@ describe("usePro sign-in and sign-out", () => {
     await flush()
     expect((await proItem.getValue()).token).toBeNull()
     expect(pro.signedIn).toBe(false)
+  })
+})
+
+describe("usePro signOut fallback", () => {
+  it("never rejects when the local fallback write fails", async () => {
+    await seed({ token: "tok", me: ME, fetchedAt: NOW })
+    await mount()
+    sendMessage.mockRejectedValueOnce(new Error("Could not establish connection"))
+    const spy = vi.spyOn(proItem, "setValue").mockRejectedValueOnce(new Error("quota"))
+    await act(async () => {
+      await expect(pro.signOut()).resolves.toBeUndefined()
+    })
+    spy.mockRestore()
   })
 })
 

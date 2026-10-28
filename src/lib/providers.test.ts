@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { BYOK_PROVIDER_IDS, createModel, isByok, PROVIDERS } from "./providers"
+import { BYOK_PROVIDER_IDS, createModel, isByok, modelLabel, PROVIDERS } from "./providers"
 import type { ProviderId } from "./types"
 
 // Pro on/off is a build-time constant, so these tests swap `@/lib/pro/config` with
@@ -80,5 +80,18 @@ describe("createModel", () => {
     expect(() => createModel({ provider: "nope" as never, model: "x" }, "k")).toThrow(
       "Unknown provider: nope",
     )
+  })
+})
+
+describe("modelLabel", () => {
+  it("labels the Recap Pro model", () => {
+    expect(modelLabel("pro", "pro")).toBe("Recap Pro")
+  })
+  it("labels a stored model from another provider than the current one", () => {
+    expect(modelLabel("openai", "pro")).toBe("Recap Pro")
+    expect(modelLabel("pro", "claude-haiku-5-5")).toBe("Claude Haiku 5.5")
+  })
+  it("falls back to the id", () => {
+    expect(modelLabel("openai", "mystery")).toBe("mystery")
   })
 })

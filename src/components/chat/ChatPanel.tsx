@@ -345,7 +345,7 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
         busy={busy}
         onSend={() => ask(draft.trim())}
         onStop={() => void onStop()}
-        modelPicker={<ModelPicker />}
+        modelPicker={isByok(settings.provider) ? <ModelPicker /> : null}
         textareaRef={textareaRef}
       />
     </div>

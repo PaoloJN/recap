@@ -39,6 +39,17 @@ export function isByok(id: ProviderId): id is ByokProviderId {
   return id !== "pro"
 }
 
+/** Display name for a model id, preferring `provider`'s list (a stored summary may use another). */
+export function modelLabel(provider: ProviderId, id: string): string {
+  const own = PROVIDERS[provider].models.find((m) => m.id === id)
+  if (own) return own.label
+  for (const info of Object.values(PROVIDERS)) {
+    const match = info.models.find((m) => m.id === id)
+    if (match) return match.label
+  }
+  return id
+}
+
 export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   pro: {
     id: "pro",

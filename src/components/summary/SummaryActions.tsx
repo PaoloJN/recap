@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useSettings } from "@/hooks/useSettings"
-import { PROVIDERS } from "@/lib/providers"
+import { isByok, PROVIDERS } from "@/lib/providers"
 import { DEFAULT_SETTINGS } from "@/lib/storage"
 import { SUMMARY_STYLE_IDS, SUMMARY_STYLES } from "@/lib/summary/styles"
 import type { SummaryStyle } from "@/lib/types"
@@ -100,16 +100,22 @@ export function SummaryActions() {
               />
             ))}
           </DropdownMenuRadioGroup>
-          <Separator />
-          <GroupLabel>Model</GroupLabel>
-          <DropdownMenuRadioGroup
-            value={model}
-            onValueChange={(id) => void update({ models: { ...settings.models, [provider]: id } })}
-          >
-            {PROVIDERS[provider].models.map((m) => (
-              <Option key={m.id} value={m.id} name={m.label} note={m.note} />
-            ))}
-          </DropdownMenuRadioGroup>
+          {isByok(provider) ? (
+            <>
+              <Separator />
+              <GroupLabel>Model</GroupLabel>
+              <DropdownMenuRadioGroup
+                value={model}
+                onValueChange={(id) =>
+                  void update({ models: { ...settings.models, [provider]: id } })
+                }
+              >
+                {PROVIDERS[provider].models.map((m) => (
+                  <Option key={m.id} value={m.id} name={m.label} note={m.note} />
+                ))}
+              </DropdownMenuRadioGroup>
+            </>
+          ) : null}
           <Separator />
           <DropdownMenuItem
             className={`${ITEM} rounded-none text-[14px] leading-[20px] focus:text-popover-foreground`}

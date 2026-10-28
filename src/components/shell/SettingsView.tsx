@@ -1,4 +1,5 @@
 import { browser } from "wxt/browser"
+import { AccountRows } from "@/components/pro/AccountRows"
 import { CustomInstructions } from "@/components/settings/CustomInstructions"
 import { DataSection } from "@/components/settings/DataSection"
 import { Segmented } from "@/components/settings/Segmented"
@@ -15,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { usePro } from "@/hooks/usePro"
 import { useSettings } from "@/hooks/useSettings"
 import { useStorageItem } from "@/hooks/useStorageItem"
 import { isByok, PROVIDER_IDS, PROVIDERS } from "@/lib/providers"
@@ -131,7 +133,7 @@ function ApiKeyRow({ provider }: { provider: ByokProviderId }) {
           <div className="flex items-center gap-[4px]">
             <button
               type="button"
-              onClick={() => setView("onboarding")}
+              onClick={() => setView("onboarding", { screen: "key" })}
               className={cn(ghost, "text-foreground")}
             >
               Replace
@@ -147,7 +149,7 @@ function ApiKeyRow({ provider }: { provider: ByokProviderId }) {
         ) : (
           <button
             type="button"
-            onClick={() => setView("onboarding")}
+            onClick={() => setView("onboarding", { screen: "key" })}
             className={cn(SMALL_BUTTON, "bg-secondary text-foreground hover:bg-muted")}
           >
             Add key
@@ -189,21 +191,27 @@ function SettingsBody({
             />
           }
         />
-        {isByok(provider) ? <ApiKeyRow provider={provider} /> : null}
-        <SettingsRow
-          title="Default model"
-          control={
-            <Picker
-              label="Default model"
-              value={settings.models[provider]}
-              options={PROVIDERS[provider].models}
-              onChange={(id) => set({ models: { ...settings.models, [provider]: id } })}
+        {isByok(provider) ? (
+          <>
+            <ApiKeyRow provider={provider} />
+            <SettingsRow
+              title="Default model"
+              control={
+                <Picker
+                  label="Default model"
+                  value={settings.models[provider]}
+                  options={PROVIDERS[provider].models}
+                  onChange={(id) => set({ models: { ...settings.models, [provider]: id } })}
+                />
+              }
             />
-          }
-        />
+          </>
+        ) : (
+          <AccountRows />
+        )}
       </SettingsSection>
 
-      <UsageSection />
+      <UsageSection provider={provider} />
 
       <SettingsSection label="Summaries">
         <SettingsRow
@@ -330,6 +338,8 @@ function SettingsBody({
 /** Scrollable settings body; the sub-header (← back, "Settings", version) is in Panel. */
 export function SettingsView() {
   const [settings, update] = useSettings()
+  // Mounting the hook refetches the Recap Pro account when the snapshot is stale.
+  usePro()
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       {settings ? <SettingsBody settings={settings} update={update} /> : null}

@@ -74,6 +74,10 @@ describe("planLine", () => {
     })
     expect(planLine(m, NOW)).toBe("Pro")
   })
+  it("is plain Pro when the period end is not a valid date", () => {
+    const m = pro({ status: "active", currentPeriodEnd: "garbage", cancelAtPeriodEnd: false })
+    expect(planLine(m, NOW)).toBe("Pro")
+  })
   it("says the trial ended when expired", () => {
     expect(planLine(me({ plan: "expired" }), NOW)).toBe("Trial ended")
   })
@@ -81,17 +85,27 @@ describe("planLine", () => {
 
 describe("usageLine", () => {
   it("shows Pro usage with thousands separators and the reset date", () => {
-    expect(usageLine(pro(null))).toBe("12 of 300 summaries · 40 of 1,000 messages · resets Nov 1")
+    expect(usageLine(pro(null), NOW)).toBe(
+      "12 of 300 summaries · 40 of 1,000 messages · resets Nov 1",
+    )
   })
   it("omits the reset date when there is none", () => {
     const m = me({ plan: "pro", usage: { ...proUsage, resetsAt: null } })
-    expect(usageLine(m)).toBe("12 of 300 summaries · 40 of 1,000 messages")
+    expect(usageLine(m, NOW)).toBe("12 of 300 summaries · 40 of 1,000 messages")
+  })
+  it("omits a reset date that is already past", () => {
+    const m = me({ plan: "pro", usage: { ...proUsage, resetsAt: "2026-10-01T00:00:00Z" } })
+    expect(usageLine(m, NOW)).toBe("12 of 300 summaries · 40 of 1,000 messages")
+  })
+  it("omits an invalid reset date", () => {
+    const m = me({ plan: "pro", usage: { ...proUsage, resetsAt: "not a date" } })
+    expect(usageLine(m, NOW)).toBe("12 of 300 summaries · 40 of 1,000 messages")
   })
   it("shows trial usage", () => {
     const m = me({
       usage: { summaries: 12, chats: 40, summaryLimit: 20, chatLimit: 50, resetsAt: null },
     })
-    expect(usageLine(m)).toBe("12 of 20 summaries · 40 of 50 messages")
+    expect(usageLine(m, NOW)).toBe("12 of 20 summaries · 40 of 50 messages")
   })
 })
 

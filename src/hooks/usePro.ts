@@ -122,6 +122,7 @@ export function usePro(): UsePro {
     setSigningIn(true)
     try {
       const request: ProSignInRequest = { type: "pro-sign-in" }
+      const before = (await proItem.getValue()).token
       let result: ProAuthResult = SIGN_IN_FAILED
       try {
         result =
@@ -130,7 +131,10 @@ export function usePro(): UsePro {
       } catch {
         // The MV3 worker can restart mid sign-in and drop the reply; the token may still be stored.
       }
-      if (!result.ok && (await proItem.getValue()).token !== null) return { ok: true }
+      if (!result.ok) {
+        const after = (await proItem.getValue()).token
+        if (after !== null && after !== before) return { ok: true }
+      }
       return result
     } catch {
       return SIGN_IN_FAILED
@@ -146,7 +150,11 @@ export function usePro(): UsePro {
       await browser.runtime.sendMessage(request)
     } catch {
       // Background unreachable: the server key can't be revoked now, but sign out locally anyway.
-      await proItem.setValue(SIGNED_OUT)
+      try {
+        await proItem.setValue(SIGNED_OUT)
+      } catch (e) {
+        console.error("Failed to clear Recap Pro session", e)
+      }
     }
   }, [])
 
