@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { browser } from "wxt/browser"
 import { fakeBrowser } from "wxt/testing/fake-browser"
 import { STREAM_PORT_NAME, type StreamPortMessage, type StreamRequest } from "../lib/port-protocol"
-import { apiKeysItem, proItem } from "../lib/storage"
+import { apiKeysItem, proItem, usageItem } from "../lib/storage"
 import type { VideoContext } from "../lib/types"
 import {
   mapStreamError,
@@ -469,16 +469,14 @@ describe("runProStreamRequest", () => {
     }
   })
 
-  it("forwards chunks, records usage from the finish metadata, then posts done", async () => {
+  it("forwards chunks, then posts done, without touching the local usage store", async () => {
     const { fetchImpl } = fakeFetch(() => sseResponse(HELLO_EVENTS))
     const { messages, post } = collect()
-    const recordUsage = vi.fn(async () => {})
     await runProStreamRequest(proSummaryReq(), {
       token: "tok",
       post,
       signal: new AbortController().signal,
       fetchImpl,
-      recordUsage,
     })
     const text = messages
       .flatMap((m) => (m.type === "chunk" && m.chunk.type === "text-delta" ? [m.chunk.delta] : []))
@@ -486,7 +484,8 @@ describe("runProStreamRequest", () => {
     expect(text).toBe("Hello world")
     expect(messages.some((m) => m.type === "chunk" && m.chunk.type === "finish")).toBe(true)
     expect(messages.at(-1)).toEqual({ type: "done" })
-    expect(recordUsage).toHaveBeenCalledWith("summary", 12)
+    // Pro usage lives on the server; the local store is for your own keys only.
+    expect(await usageItem.getValue()).toEqual({})
   })
 
   it("strips the server's metadata from the forwarded finish chunk", async () => {
@@ -502,20 +501,18 @@ describe("runProStreamRequest", () => {
     expect(finish).toEqual({ type: "chunk", chunk: { type: "finish", finishReason: "stop" } })
   })
 
-  it("records nothing when the finish chunk carries no usage", async () => {
+  it("posts done when the finish chunk carries no metadata", async () => {
     const events = HELLO_EVENTS.map((e) => (e.type === "finish" ? { type: "finish" } : e))
     const { fetchImpl } = fakeFetch(() => sseResponse(events))
-    const recordUsage = vi.fn(async () => {})
     const { messages, post } = collect()
     await runProStreamRequest(proSummaryReq(), {
       token: "tok",
       post,
       signal: new AbortController().signal,
       fetchImpl,
-      recordUsage,
     })
     expect(messages.at(-1)).toEqual({ type: "done" })
-    expect(recordUsage).not.toHaveBeenCalled()
+    expect(await usageItem.getValue()).toEqual({})
   })
 
   it("maps 402 to upgrade_required", async () => {
@@ -588,13 +585,11 @@ describe("runProStreamRequest", () => {
       ]),
     )
     const { messages, post } = collect()
-    const recordUsage = vi.fn(async () => {})
     await runProStreamRequest(proSummaryReq(), {
       token: "tok",
       post,
       signal: new AbortController().signal,
       fetchImpl,
-      recordUsage,
     })
     const deltaIdx = messages.findIndex(
       (m) => m.type === "chunk" && m.chunk.type === "text-delta" && m.chunk.delta === "Partial",
@@ -608,7 +603,6 @@ describe("runProStreamRequest", () => {
     expect(messages.filter((m) => m.type === "error")).toHaveLength(1)
     expect(messages.some((m) => m.type === "done")).toBe(false)
     expect(messages.some((m) => m.type === "chunk" && m.chunk.type === "error")).toBe(false)
-    expect(recordUsage).not.toHaveBeenCalled()
   })
 
   it("aborts the fetch and the stream reader on abort and posts nothing after", async () => {
@@ -699,5 +693,29 @@ describe("registerStreamPortHandler (Recap Pro)", () => {
     expect(sent).toEqual([
       { type: "error", code: "unauthorized", message: "Sign in to use Recap Pro." },
     ])
+  })
+
+  it("never records a Pro stream in the local usage store", async () => {
+    await proItem.setValue({ token: "tok", me: null, fetchedAt: 0 })
+    const { fetchImpl } = fakeFetch(() => sseResponse(HELLO_EVENTS))
+    vi.stubGlobal("fetch", fetchImpl)
+    let listener: (port: unknown) => void = () => {}
+    vi.spyOn(browser.runtime.onConnect, "addListener").mockImplementation((fn) => {
+      listener = fn as (port: unknown) => void
+    })
+    registerStreamPortHandler()
+    const sent: StreamPortMessage[] = []
+    let onMessage: (m: unknown) => void = () => {}
+    listener({
+      name: STREAM_PORT_NAME,
+      postMessage: (m: StreamPortMessage) => sent.push(m),
+      onMessage: { addListener: (fn: (m: unknown) => void) => (onMessage = fn) },
+      onDisconnect: { addListener: vi.fn() },
+    })
+    onMessage(proSummaryReq())
+    await vi.waitFor(() => expect(sent.at(-1)).toEqual({ type: "done" }))
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(await usageItem.getValue()).toEqual({})
+    vi.unstubAllGlobals()
   })
 })

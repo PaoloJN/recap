@@ -6,7 +6,6 @@ import {
   RetryError,
   streamText,
   toUIMessageStream,
-  type UIMessageChunk,
 } from "ai"
 import { browser } from "wxt/browser"
 import { STREAM_PORT_NAME, type StreamPortMessage, type StreamRequest } from "../lib/port-protocol"
@@ -148,7 +147,6 @@ interface ProStreamDeps {
   post: (m: StreamPortMessage) => void
   signal: AbortSignal
   fetchImpl?: typeof fetch
-  recordUsage?: (kind: "summary" | "chat", tokens: number) => Promise<void>
 }
 
 /**
@@ -171,20 +169,6 @@ export function toProMessages(messages: ModelMessage[]): ModelMessage[] {
   return out
 }
 
-/** Input + output tokens from the server's `finish` metadata, or null when it carries none. */
-function usageFromFinish(chunk: UIMessageChunk): number | null {
-  if (chunk.type !== "finish") return null
-  const meta = chunk.messageMetadata
-  if (typeof meta !== "object" || meta === null) return null
-  const usage = (meta as { totalUsage?: unknown }).totalUsage
-  if (typeof usage !== "object" || usage === null) return null
-  const { inputTokens, outputTokens } = usage as { inputTokens?: unknown; outputTokens?: unknown }
-  const input = typeof inputTokens === "number" ? inputTokens : 0
-  const output = typeof outputTokens === "number" ? outputTokens : 0
-  if (typeof inputTokens !== "number" && typeof outputTokens !== "number") return null
-  return clampTokens(input + output)
-}
-
 /** Signs out after a 401, unless a newer sign-in already replaced the token used here. */
 async function clearProToken(token: string): Promise<void> {
   const current = await proItem.getValue()
@@ -202,7 +186,6 @@ export async function runProStreamRequest(req: StreamRequest, deps: ProStreamDep
     }
     if (signal.aborted) return
     const res = await streamRequest(token, body, signal, deps.fetchImpl)
-    let tokens: number | null = null
     for await (const chunk of readUiChunks(res)) {
       if (signal.aborted) return
       if (chunk.type === "error") {
@@ -210,8 +193,8 @@ export async function runProStreamRequest(req: StreamRequest, deps: ProStreamDep
         return
       }
       if (chunk.type === "finish") {
-        tokens = usageFromFinish(chunk) ?? tokens
-        // Usage is recorded here; the server's metadata must not end up in the stored chat.
+        // Pro usage is counted on the server (shown in Settings from /me), not in the local
+        // BYOK usage store; its metadata must not end up in the stored chat either.
         const { messageMetadata: _serverMeta, ...finish } = chunk
         post({ type: "chunk", chunk: finish })
         continue
@@ -219,13 +202,6 @@ export async function runProStreamRequest(req: StreamRequest, deps: ProStreamDep
       post({ type: "chunk", chunk })
     }
     if (signal.aborted) return
-    if (tokens !== null && deps.recordUsage) {
-      try {
-        await deps.recordUsage(req.kind, tokens)
-      } catch (e) {
-        console.error("Failed to record usage", e)
-      }
-    }
     post({ type: "done" })
   } catch (e) {
     if (signal.aborted) return
@@ -293,7 +269,6 @@ export function registerStreamPortHandler(): void {
             token,
             post,
             signal: controller.signal,
-            recordUsage: defaultRecordUsage,
           })
           return
         }
