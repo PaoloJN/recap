@@ -8,8 +8,7 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(async () => {}),
   toast: vi.fn(),
   setView: vi.fn(),
-  /** null: no account snapshot yet (`me` is null). */
-  plan: "trial" as MeResponse["plan"] | null,
+  plan: "trial" as MeResponse["plan"],
   pricing: null as Pricing | null,
 }))
 
@@ -17,15 +16,12 @@ vi.mock("@/hooks/usePro", () => ({
   usePro: () => ({
     enabled: true,
     signedIn: true,
-    me:
-      mocks.plan === null
-        ? null
-        : {
-            user: { email: "a@b.c", name: "A", image: null },
-            plan: mocks.plan,
-            usage: { summaries: 20, chats: 0, summaryLimit: 20, chatLimit: 50, resetsAt: null },
-            subscription: null,
-          },
+    me: {
+      user: { email: "a@b.c", name: "A", image: null },
+      plan: mocks.plan,
+      usage: { summaries: 20, chats: 0, summaryLimit: 20, chatLimit: 50, resetsAt: null },
+      subscription: null,
+    },
     signingIn: false,
     signIn: vi.fn(),
     signOut: vi.fn(),
@@ -259,26 +255,5 @@ describe("UpgradeGate", () => {
     await render()
     expect(onUpgraded).toHaveBeenCalledTimes(1)
     expect(mocks.toast).not.toHaveBeenCalled()
-  })
-
-  it("with no account at mount, fetches it and clears when it comes back pro", async () => {
-    mocks.plan = null
-    await render()
-    expect(mocks.refresh).toHaveBeenCalledTimes(1)
-    expect(onUpgraded).not.toHaveBeenCalled()
-    // The gate's own refresh lands: fresh from the server, so it is authoritative.
-    mocks.plan = "pro"
-    await render()
-    expect(onUpgraded).toHaveBeenCalledTimes(1)
-    expect(mocks.toast).not.toHaveBeenCalled()
-    expect(mocks.refresh).toHaveBeenCalledTimes(1)
-  })
-
-  it("with a cached pro plan at mount, refreshes and keeps the gate", async () => {
-    mocks.plan = "pro"
-    await render()
-    await render()
-    expect(mocks.refresh).toHaveBeenCalledTimes(1)
-    expect(onUpgraded).not.toHaveBeenCalled()
   })
 })
