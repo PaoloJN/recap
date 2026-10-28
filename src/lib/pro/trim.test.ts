@@ -1,6 +1,6 @@
 import type { ModelMessage } from "ai"
 import { describe, expect, it } from "vitest"
-import { trimForPro } from "./trim"
+import { PRO_LIMITS, trimForPro } from "./trim"
 
 const user = (content: string): ModelMessage => ({ role: "user", content })
 const assistant = (content: string): ModelMessage => ({ role: "assistant", content })
@@ -61,10 +61,44 @@ describe("trimForPro", () => {
       assistant("y".repeat(10)),
       user("z".repeat(10)),
     ]
-    expect(trimForPro("s".repeat(30), messages, { chars: 100, messages: 40 })).toEqual(
-      messages.slice(2),
-    )
-    expect(trimForPro("s".repeat(20), messages, { chars: 100, messages: 40 })).toEqual(messages)
+    expect(
+      trimForPro("s".repeat(30), messages, { chars: 100, messages: 40, bytes: 480_000 }),
+    ).toEqual(messages.slice(2))
+    expect(
+      trimForPro("s".repeat(20), messages, { chars: 100, messages: 40, bytes: 480_000 }),
+    ).toEqual(messages)
+  })
+
+  it("drops oldest turns to keep the UTF-8 JSON body within the byte budget (CJK)", () => {
+    // Just under the char limit, but 3 UTF-8 bytes per char: the JSON body tips over the budget.
+    const cjk = (c: string) => c.repeat(39_990)
+    const messages = [
+      user(cjk("一")),
+      assistant(cjk("二")),
+      user(cjk("三")),
+      assistant(cjk("四")),
+      user("q"),
+    ]
+    const system = "s"
+    expect(chars(system, messages)).toBeLessThanOrEqual(PRO_LIMITS.chars)
+    const body = (m: ModelMessage[]) =>
+      new TextEncoder().encode(JSON.stringify({ kind: "chat", system, messages: m })).length
+    expect(body(messages)).toBeGreaterThan(PRO_LIMITS.bytes)
+
+    const out = trimForPro(system, messages)
+    expect(out).toEqual(messages.slice(2))
+    expect(body(out)).toBeLessThanOrEqual(PRO_LIMITS.bytes)
+    expect(PRO_LIMITS.bytes).toBe(480_000)
+  })
+
+  it("measures the byte budget exactly, envelope included", () => {
+    const messages = [user("é".repeat(100)), assistant("ok"), user("q")]
+    const body = (m: ModelMessage[]) =>
+      new TextEncoder().encode(JSON.stringify({ kind: "chat", system: "s", messages: m })).length
+    const exact = body(messages)
+    const limits = { chars: 160_000, messages: 40, bytes: exact }
+    expect(trimForPro("s", messages, limits)).toEqual(messages)
+    expect(trimForPro("s", messages, { ...limits, bytes: exact - 1 })).toEqual(messages.slice(2))
   })
 
   it("never returns an assistant-first list", () => {
@@ -76,14 +110,14 @@ describe("trimForPro", () => {
     expect(out.at(-1)).toBe(messages.at(-1))
 
     for (let n = 1; n <= 45; n++) {
-      const trimmed = trimForPro("sys", thread(n), { chars: 160_000, messages: 4 })
+      const trimmed = trimForPro("sys", thread(n), { chars: 160_000, messages: 4, bytes: 480_000 })
       expect(trimmed[0]?.role).toBe("user")
     }
   })
 
   it("handles consecutive same-role messages", () => {
     const messages = [user("a"), user("b"), assistant("c"), assistant("d"), user("e"), user("f")]
-    const out = trimForPro("", messages, { chars: 160_000, messages: 3 })
+    const out = trimForPro("", messages, { chars: 160_000, messages: 3, bytes: 480_000 })
     expect(out[0]?.role).toBe("user")
     expect(out.at(-1)).toBe(messages.at(-1))
     expect(out.length).toBeLessThanOrEqual(3)
