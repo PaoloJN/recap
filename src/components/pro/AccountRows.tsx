@@ -14,8 +14,30 @@ import { useProSignIn } from "./useProSignIn"
 const SECONDARY = cn(SMALL_BUTTON, "bg-secondary text-foreground hover:bg-muted")
 const GHOST = cn(SMALL_BUTTON, "px-[10px] text-foreground hover:bg-secondary")
 
-function openPage(path: string) {
+// At most one pending "refresh when back" listener per page. It outlives Settings on purpose:
+// `refresh` is page-wide, so the account still updates if the user left Settings meanwhile.
+let returnListener: (() => void) | null = null
+
+/** Test hook: drop a pending return listener. */
+export function resetReturnRefreshForTests(): void {
+  if (returnListener) document.removeEventListener("visibilitychange", returnListener)
+  returnListener = null
+}
+
+/**
+ * Opens a Recap Pro account page in a new tab. The next time this tab becomes visible (back from
+ * checkout or billing), the account is refetched whatever its age, then the listener goes away.
+ */
+function openPage(path: string, refresh: () => Promise<void>) {
   window.open(proUrl(path), "_blank", "noopener")
+  resetReturnRefreshForTests()
+  const onVisibility = () => {
+    if (document.visibilityState !== "visible") return
+    resetReturnRefreshForTests()
+    void refresh()
+  }
+  returnListener = onVisibility
+  document.addEventListener("visibilitychange", onVisibility)
 }
 
 /** 24px round avatar: the Google photo, or the first letter of the name/email on a muted circle. */
@@ -74,7 +96,7 @@ function SignInRow() {
 
 /** Settings › Model rows for Recap Pro: account, plan with Upgrade/Manage billing, Sign out. */
 export function AccountRows() {
-  const { signedIn, me, signOut } = usePro()
+  const { signedIn, me, signOut, refresh } = usePro()
   const toast = useToast()
 
   if (!signedIn) return <SignInRow />
@@ -97,13 +119,17 @@ export function AccountRows() {
           note={planLine(me, Date.now())}
           control={
             me.plan === "pro" ? (
-              <button type="button" onClick={() => openPage("/account")} className={SECONDARY}>
+              <button
+                type="button"
+                onClick={() => openPage("/account", refresh)}
+                className={SECONDARY}
+              >
                 Manage billing
               </button>
             ) : (
               <button
                 type="button"
-                onClick={() => openPage("/account?upgrade=monthly")}
+                onClick={() => openPage("/account?upgrade=monthly", refresh)}
                 className={SECONDARY}
               >
                 Upgrade

@@ -2,7 +2,7 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { MeResponse } from "@/lib/pro/types"
-import { AccountRows } from "./AccountRows"
+import { AccountRows, resetReturnRefreshForTests } from "./AccountRows"
 
 const mocks = vi.hoisted(() => ({
   signedIn: true,
@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   signOut: vi.fn(async () => {}),
   signIn: vi.fn(async () => {}),
   toast: vi.fn(),
+  refresh: vi.fn(async () => {}),
 }))
 
 vi.mock("@/hooks/usePro", () => ({
@@ -20,7 +21,7 @@ vi.mock("@/hooks/usePro", () => ({
     signingIn: false,
     signIn: vi.fn(),
     signOut: mocks.signOut,
-    refresh: vi.fn(async () => {}),
+    refresh: mocks.refresh,
   }),
 }))
 vi.mock("./useProSignIn", () => ({
@@ -48,6 +49,14 @@ function me(plan: MeResponse["plan"], image: string | null = null): MeResponse {
 
 let root: Root
 let el: HTMLDivElement
+let visibility: DocumentVisibilityState = "visible"
+
+async function setVisible(next: DocumentVisibilityState) {
+  visibility = next
+  await act(async () => {
+    document.dispatchEvent(new Event("visibilitychange"))
+  })
+}
 
 async function render() {
   await act(async () => root.render(<AccountRows />))
@@ -65,6 +74,10 @@ describe("AccountRows", () => {
     mocks.signOut.mockClear()
     mocks.signIn.mockClear()
     mocks.toast.mockClear()
+    mocks.refresh.mockClear()
+    resetReturnRefreshForTests()
+    visibility = "visible"
+    vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility)
     vi.spyOn(window, "open").mockImplementation(() => null)
     el = document.createElement("div")
     root = createRoot(el)
@@ -131,5 +144,33 @@ describe("AccountRows", () => {
     await act(async () => img?.dispatchEvent(new Event("error")))
     expect(el.querySelector("img")).toBeNull()
     expect(el.querySelector("[data-avatar]")?.textContent).toBe("A")
+  })
+
+  it("refetches the account once when the tab comes back after Upgrade", async () => {
+    await render()
+    await setVisible("hidden")
+    await setVisible("visible")
+    expect(mocks.refresh).not.toHaveBeenCalled()
+
+    await act(async () => button("Upgrade")?.click())
+    await setVisible("hidden")
+    expect(mocks.refresh).not.toHaveBeenCalled()
+    await setVisible("visible")
+    expect(mocks.refresh).toHaveBeenCalledTimes(1)
+    // The listener removed itself.
+    await setVisible("hidden")
+    await setVisible("visible")
+    expect(mocks.refresh).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps one return listener across repeated clicks, even after leaving Settings", async () => {
+    await render()
+    await act(async () => button("Upgrade")?.click())
+    await act(async () => button("Upgrade")?.click())
+    act(() => root.unmount())
+    root = createRoot(el)
+    await setVisible("hidden")
+    await setVisible("visible")
+    expect(mocks.refresh).toHaveBeenCalledTimes(1)
   })
 })
