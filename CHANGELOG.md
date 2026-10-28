@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Recap Pro, an optional build-time tier: sign in with Google, a free trial (20 summaries, 50 chat messages), then a paid plan managed at recapai.dev. "Use my own key" stays available.
+- Recap Pro account, plan and usage in Settings, with Upgrade, Manage billing and Sign out.
+- Clear messages when the trial runs out, a limit is reached or the session expires, each with a way back to your own key.
+- Builds set `WXT_PRO_ORIGIN` to turn Recap Pro on; without it the extension is bring-your-own-key only, as before. Pro builds add the `identity` permission and host access to the Pro origin.
+
 ## 2.0.0 — 2026-10-26
 
 - Ground-up rebuild on WXT, React 19, TypeScript and the Vercel AI SDK.

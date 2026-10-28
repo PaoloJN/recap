@@ -1,6 +1,7 @@
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "wxt"
 import { twPropertyDefaults } from "./src/build/tw-property-defaults"
+import { proManifestAdditions } from "./src/lib/pro/manifest"
 import { normalizeProOrigin } from "./src/lib/pro/origin"
 
 const REM_BASE_PX = 14
@@ -22,17 +23,17 @@ export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   manifest: ({ browser }) => {
     // Read lazily: WXT loads .env files after evaluating this file but before calling this.
-    const proOrigin = normalizeProOrigin(process.env.WXT_PRO_ORIGIN)
+    const pro = proManifestAdditions(normalizeProOrigin(process.env.WXT_PRO_ORIGIN))
     return {
       name: "Recap AI",
       version: "2.0.0",
-      permissions: proOrigin ? ["storage", "identity"] : ["storage"],
+      permissions: ["storage", ...pro.permissions],
       host_permissions: [
         "https://api.openai.com/*",
         "https://api.anthropic.com/*",
         "https://generativelanguage.googleapis.com/*",
         "https://openrouter.ai/*",
-        ...(proOrigin ? [`${proOrigin}/*`] : []),
+        ...pro.host_permissions,
       ],
       icons: {
         16: "icon/16.png",
