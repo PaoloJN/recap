@@ -22,8 +22,8 @@ export function resetUpgradeToastForTests(): void {
 }
 
 /**
- * After the upgrade page opens, refetches the account every 5 s for 2 minutes while this tab is
- * visible. One poller per hook, however often `start` is called (a repeat click only extends the
+ * After the upgrade page opens, refetches the account every 5 s for 2 minutes of visible time,
+ * and right away when the tab becomes visible again while an upgrade is pending. One poller per hook, however often `start` is called (a repeat click only extends the
  * window). When the plan changes from trial/expired to "pro" while mounted (from a poll, or
  * usePro's own refresh after a checkout that took longer), polling stops and `onPro(toast)` runs;
  * `toast` is true once per page, for the first gate to see it after a poll was started.
@@ -48,20 +48,34 @@ export function useUpgradePoll(
     deadline.current = Date.now() + UPGRADE_POLL_WINDOW_MS
     if (timer.current !== null) return
     timer.current = setInterval(() => {
-      if (Date.now() > deadline.current) {
-        stop()
-        // Ended without an upgrade while the user is on YouTube: forget the toast. Ending while
-        // hidden means checkout is likely still open, so a later "pro" still earns the toast.
-        if (document.visibilityState === "visible") upgradeToastPending = false
+      // Paused while the YouTube tab is in the background (the user is in checkout): only
+      // visible time counts against the window, so polling resumes on return.
+      if (document.visibilityState !== "visible") {
+        deadline.current += UPGRADE_POLL_MS
         return
       }
-      // Paused while the YouTube tab is in the background; usePro refreshes on return anyway.
-      if (document.visibilityState !== "visible") return
+      if (Date.now() > deadline.current) {
+        stop()
+        // Ended without an upgrade: forget the toast; a later click starts over.
+        upgradeToastPending = false
+        return
+      }
       void latest.current.refresh()
     }, UPGRADE_POLL_MS)
   }, [stop])
 
   useEffect(() => stop, [stop])
+
+  // Coming back from checkout: refetch right away, whatever usePro's staleness rule says.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (upgradeToastPending && document.visibilityState === "visible") {
+        void latest.current.refresh()
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => document.removeEventListener("visibilitychange", onVisibility)
+  }, [])
 
   // Only a change to "pro" seen while mounted counts. A cached "pro" (or one that first loads
   // here) may be stale, e.g. a lapsed subscription behind a real 402: refetch instead of clearing.
