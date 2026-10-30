@@ -98,4 +98,51 @@ describe("Panel in a Recap Pro build", () => {
     expect([...el.querySelectorAll("button")].some((b) => b.textContent === "Sign in")).toBe(true)
     expect(el.textContent).toContain("$4.99/month")
   })
+
+  it("finds a sign-in another page started and polls it to the end, past the gate", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    try {
+      const replies: string[] = ["pending", "pending", "signed-in", "pending", "done"]
+      const polls: string[] = []
+      vi.spyOn(fakeBrowser.runtime, "sendMessage").mockImplementation((async (message: {
+        type: string
+      }) => {
+        if (message.type !== "pro-link-poll") return undefined
+        const state = replies.shift() ?? "idle"
+        polls.push(state)
+        if (state === "signed-in") {
+          const { proItem } = await import("@/lib/storage")
+          await proItem.setValue({ token: "tok", me: null, fetchedAt: Date.now() })
+        }
+        return { state }
+      }) as unknown as typeof fakeBrowser.runtime.sendMessage)
+      await seedSettings("openai", null)
+      const storage = await renderApp("summary")
+      // The mount probe found a pending flow: the gate waits for the other tab.
+      expect(polls).toEqual(["pending"])
+      expect(el.textContent).toContain("Finish signing in in the other tab")
+
+      const tick = () =>
+        act(async () => {
+          await vi.advanceTimersByTimeAsync(1500)
+          for (let i = 0; i < 10; i++) await Promise.resolve()
+        })
+      await tick()
+      await tick()
+      // Signed in: switched to Recap Pro, so the gate is gone, but polling goes on until done.
+      expect(polls).toEqual(["pending", "pending", "signed-in"])
+      expect((await storage.settingsItem.getValue()).provider).toBe("pro")
+      expect(el.textContent).not.toContain("Finish signing in in the other tab")
+      expect(el.textContent).toContain("Signed in to Recap Pro")
+      await tick()
+      await tick()
+      expect(polls).toEqual(["pending", "pending", "signed-in", "pending", "done"])
+      await tick()
+      await tick()
+      expect(polls).toHaveLength(5)
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
+  })
 })

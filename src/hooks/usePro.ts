@@ -30,8 +30,16 @@ export interface UsePro {
   linkPending: boolean
   /** Opens the website's sign-in in a new tab; `returnUrl` is the video to come back to. */
   startSignIn(returnUrl: string | null): Promise<ProLinkStartResult>
-  /** One claim attempt; poll while `linkPending`. */
-  pollLink(): Promise<ProLinkPollResult>
+  /**
+   * One claim attempt; poll while `linkPending`. Null when a cancel or a new sign-in happened
+   * while it was in flight: its answer no longer applies.
+   */
+  pollLink(): Promise<ProLinkPollResult | null>
+  /**
+   * One claim attempt while no sign-in is known to be pending here, to find a flow another page
+   * started. Like `pollLink`, but an `error` says nothing about a flow and leaves `linkPending` off.
+   */
+  probeLink(): Promise<ProLinkPollResult | null>
   reopenSignIn(): Promise<void>
   cancelSignIn(): Promise<void>
   signOut(): Promise<void>
@@ -79,11 +87,33 @@ function subscribeLink(listener: () => void): () => void {
 
 const getLinkPending = () => linkPending
 
+// Bumped by every start and cancel, so a poll answered after either is ignored: a reply to the
+// old flow must not bring a cancelled waiting state back.
+let linkGeneration = 0
+
 export function resetProLinkForTests(): void {
+  linkGeneration++
   setLinkPending(false)
 }
 
 const STILL_PENDING = new Set<ProLinkPollResult["state"]>(["pending", "signed-in", "error"])
+
+async function sendPoll(probe: boolean): Promise<ProLinkPollResult | null> {
+  if (!PRO_ENABLED) return { state: "idle" }
+  const generation = linkGeneration
+  const request: ProLinkPollRequest = { type: "pro-link-poll" }
+  let result: ProLinkPollResult = { state: "error" }
+  try {
+    result =
+      ((await browser.runtime.sendMessage(request)) as ProLinkPollResult | undefined) ?? result
+  } catch {
+    // The worker may be restarting; the flow survives in its storage, so poll again later.
+  }
+  if (generation !== linkGeneration) return null
+  if (probe && result.state === "error") return result
+  setLinkPending(STILL_PENDING.has(result.state))
+  return result
+}
 
 async function refreshIfStale(): Promise<void> {
   const { token, fetchedAt } = await proItem.getValue()
@@ -115,23 +145,15 @@ export function usePro(): UsePro {
     } catch {
       // Background unreachable: nothing was opened.
     }
-    if (result.ok) setLinkPending(true)
+    if (result.ok) {
+      linkGeneration++
+      setLinkPending(true)
+    }
     return result
   }, [])
 
-  const pollLink = useCallback(async (): Promise<ProLinkPollResult> => {
-    if (!PRO_ENABLED) return { state: "idle" }
-    const request: ProLinkPollRequest = { type: "pro-link-poll" }
-    let result: ProLinkPollResult = { state: "error" }
-    try {
-      result =
-        ((await browser.runtime.sendMessage(request)) as ProLinkPollResult | undefined) ?? result
-    } catch {
-      // The worker may be restarting; the flow survives in its storage, so poll again later.
-    }
-    setLinkPending(STILL_PENDING.has(result.state))
-    return result
-  }, [])
+  const pollLink = useCallback(() => sendPoll(false), [])
+  const probeLink = useCallback(() => sendPoll(true), [])
 
   const reopenSignIn = useCallback(async (): Promise<void> => {
     if (!PRO_ENABLED) return
@@ -145,6 +167,7 @@ export function usePro(): UsePro {
 
   const cancelSignIn = useCallback(async (): Promise<void> => {
     if (!PRO_ENABLED) return
+    linkGeneration++
     setLinkPending(false)
     const request: ProLinkCancelRequest = { type: "pro-link-cancel" }
     try {
@@ -179,6 +202,7 @@ export function usePro(): UsePro {
     linkPending: PRO_ENABLED && pending,
     startSignIn,
     pollLink,
+    probeLink,
     reopenSignIn,
     cancelSignIn,
     signOut,

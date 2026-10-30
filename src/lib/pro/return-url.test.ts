@@ -29,9 +29,9 @@ describe("currentReturnUrl", () => {
     expect(currentReturnUrl(none.href, none.doc)).toBe("https://www.youtube.com/watch?v=abc123")
   })
 
-  it("keeps a shorts path and drops its query", () => {
+  it("keeps a shorts path, without its query or a time", () => {
     const { href, doc } = page("https://www.youtube.com/shorts/xyz789?feature=share", 12.2)
-    expect(currentReturnUrl(href, doc)).toBe("https://www.youtube.com/shorts/xyz789?t=12")
+    expect(currentReturnUrl(href, doc)).toBe("https://www.youtube.com/shorts/xyz789")
   })
 
   it("is null off a video page", () => {
@@ -40,6 +40,9 @@ describe("currentReturnUrl", () => {
       "https://www.youtube.com/results?search_query=x",
       "https://www.youtube.com/watch",
       "https://www.youtube.com/shorts/",
+      "https://www.youtube.com/shorts/xyz789/comments",
+      "https://www.youtube.com/shorts/bad%20id",
+      "https://www.youtube.com/watch?v=bad%20id",
     ]) {
       const p = page(href, 30)
       expect(currentReturnUrl(p.href, p.doc)).toBeNull()

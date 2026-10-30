@@ -7,12 +7,21 @@ import { LINK_POLL_MS, useLinkPoll } from "./useLinkPoll"
 const mocks = vi.hoisted(() => ({
   results: [] as ProLinkPollResult["state"][],
   pollLink: vi.fn(),
+  probeLink: vi.fn(),
+  signedIn: false,
   setView: vi.fn(),
   toast: vi.fn(),
   updateSettings: vi.fn(async (_patch: unknown) => {}),
 }))
 
-vi.mock("@/hooks/usePro", () => ({ usePro: () => ({ pollLink: mocks.pollLink }) }))
+vi.mock("@/hooks/usePro", () => ({
+  usePro: () => ({
+    pollLink: mocks.pollLink,
+    probeLink: mocks.probeLink,
+    signedIn: mocks.signedIn,
+  }),
+}))
+vi.mock("@/lib/pro/config", () => ({ PRO_ENABLED: true }))
 vi.mock("@/hooks/useSettings", () => ({ updateSettings: mocks.updateSettings }))
 vi.mock("@/components/shell/NavigationContext", () => ({
   usePanelNav: () => ({ setView: mocks.setView }),
@@ -29,6 +38,14 @@ function Probe({ active }: { active: boolean }) {
 }
 
 let root: Root
+let visibility: DocumentVisibilityState = "visible"
+
+async function setVisible(next: DocumentVisibilityState) {
+  visibility = next
+  await act(async () => {
+    document.dispatchEvent(new Event("visibilitychange"))
+  })
+}
 
 const render = (active: boolean) => act(async () => root.render(<Probe active={active} />))
 
@@ -50,6 +67,11 @@ describe("useLinkPoll", () => {
     mocks.pollLink.mockImplementation(
       async (): Promise<ProLinkPollResult> => ({ state: mocks.results.shift() ?? "pending" }),
     )
+    mocks.probeLink.mockReset()
+    mocks.probeLink.mockResolvedValue({ state: "idle" })
+    mocks.signedIn = false
+    visibility = "visible"
+    vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility)
     mocks.setView.mockClear()
     mocks.toast.mockClear()
     mocks.updateSettings.mockClear()
@@ -59,6 +81,7 @@ describe("useLinkPoll", () => {
   afterEach(() => {
     act(() => root.unmount())
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it("polls every 1.5 s while active, and not at all while inactive", async () => {
@@ -109,12 +132,60 @@ describe("useLinkPoll", () => {
     expect(mocks.updateSettings).not.toHaveBeenCalled()
   })
 
-  it("stops quietly when there is no flow", async () => {
+  it("says sign-in failed, once, when the background dropped the flow", async () => {
+    mocks.results = ["error", "idle"]
+    await render(true)
+    await tick(4)
+    expect(mocks.pollLink).toHaveBeenCalledTimes(2)
+    expect(mocks.toast).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).toHaveBeenCalledWith("Couldn't sign in. Try again.")
+  })
+
+  it("stops quietly on idle once signed in (another page finished the flow)", async () => {
+    mocks.signedIn = true
     mocks.results = ["idle"]
     await render(true)
     await tick(3)
     expect(mocks.pollLink).toHaveBeenCalledTimes(1)
     expect(mocks.toast).not.toHaveBeenCalled()
+  })
+
+  it("ignores a reply made stale by a cancel or new start", async () => {
+    mocks.pollLink.mockResolvedValueOnce(null)
+    await render(true)
+    await tick(2)
+    expect(mocks.pollLink).toHaveBeenCalledTimes(2)
+    expect(mocks.toast).not.toHaveBeenCalled()
+  })
+
+  it("probes once on mount while inactive, and again when the page becomes visible", async () => {
+    await render(false)
+    expect(mocks.probeLink).toHaveBeenCalledTimes(1)
+    await tick(3)
+    await render(false)
+    expect(mocks.probeLink).toHaveBeenCalledTimes(1)
+    await setVisible("hidden")
+    expect(mocks.probeLink).toHaveBeenCalledTimes(1)
+    await setVisible("visible")
+    expect(mocks.probeLink).toHaveBeenCalledTimes(2)
+    expect(mocks.pollLink).not.toHaveBeenCalled()
+    expect(mocks.toast).not.toHaveBeenCalled()
+  })
+
+  it("does not probe while polling, nor again when polling ends", async () => {
+    await render(true)
+    await setVisible("visible")
+    expect(mocks.probeLink).not.toHaveBeenCalled()
+    await render(false)
+    expect(mocks.probeLink).not.toHaveBeenCalled()
+  })
+
+  it("announces a sign-in the probe itself finished", async () => {
+    mocks.probeLink.mockResolvedValueOnce({ state: "done" })
+    await render(false)
+    expect(mocks.updateSettings).toHaveBeenCalledWith({ provider: "pro" })
+    expect(mocks.setView).toHaveBeenCalledWith("main")
+    expect(mocks.toast).toHaveBeenCalledWith("Signed in to Recap Pro")
   })
 
   it("keeps polling through errors", async () => {

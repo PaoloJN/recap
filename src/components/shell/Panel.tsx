@@ -181,7 +181,8 @@ export function Panel() {
   const pro = usePro()
   // Here rather than in the waiting state: the gate unmounts once the key arrives ("signed-in"),
   // but polling must go on until "done" so the background can close the sign-in tab. One Panel
-  // per page, so one poller per page.
+  // per page, so one poller per page. While nothing is pending it probes on mount and on return
+  // to the tab, so a reloaded or freshly opened page can finish a sign-in another page started.
   useLinkPoll(pro.linkPending)
   const youtubeTheme = useTheme()
   const toast = useToast()

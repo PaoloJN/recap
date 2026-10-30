@@ -266,7 +266,7 @@ describe("usePro sign-in link", () => {
       await pro.startSignIn(null)
     })
     sendMessage.mockResolvedValueOnce({ state })
-    let result: ProLinkPollResult | undefined
+    let result: ProLinkPollResult | null | undefined
     await act(async () => {
       result = await pro.pollLink()
     })
@@ -282,12 +282,57 @@ describe("usePro sign-in link", () => {
       await pro.startSignIn(null)
     })
     sendMessage.mockRejectedValueOnce(new Error("Could not establish connection"))
-    let result: ProLinkPollResult | undefined
+    let result: ProLinkPollResult | null | undefined
     await act(async () => {
       result = await pro.pollLink()
     })
     expect(result).toEqual({ state: "error" })
     expect(pro.linkPending).toBe(true)
+  })
+
+  it("ignores a poll answered after a cancel", async () => {
+    await mount()
+    sendMessage.mockResolvedValueOnce({ ok: true })
+    await act(async () => {
+      await pro.startSignIn(null)
+    })
+    let answer: (r: ProLinkPollResult) => void = () => {}
+    sendMessage.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve
+        }),
+    )
+    let polled: Promise<ProLinkPollResult | null> = Promise.resolve(null)
+    act(() => {
+      polled = pro.pollLink()
+    })
+    sendMessage.mockResolvedValueOnce({ ok: true })
+    await act(async () => pro.cancelSignIn())
+    let result: ProLinkPollResult | null = { state: "idle" }
+    await act(async () => {
+      answer({ state: "pending" })
+      result = await polled
+    })
+    expect(result).toBeNull()
+    expect(pro.linkPending).toBe(false)
+  })
+
+  it.each([
+    ["pending", true],
+    ["signed-in", true],
+    ["error", false],
+    ["idle", false],
+  ] as const)("a %s probe leaves linkPending %s", async (state, pending) => {
+    await mount()
+    sendMessage.mockResolvedValueOnce({ state })
+    let result: ProLinkPollResult | null = null
+    await act(async () => {
+      result = await pro.probeLink()
+    })
+    expect(result).toEqual({ state })
+    expect(sendMessage).toHaveBeenCalledWith({ type: "pro-link-poll" })
+    expect(pro.linkPending).toBe(pending)
   })
 
   it("shares linkPending across every component using the hook", async () => {

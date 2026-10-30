@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   me: null as MeResponse | null,
   signOut: vi.fn(async () => {}),
   signIn: vi.fn(async () => {}),
+  cancelSignIn: vi.fn(async () => {}),
   toast: vi.fn(),
   refresh: vi.fn(async () => {}),
 }))
@@ -19,6 +20,7 @@ vi.mock("@/hooks/usePro", () => ({
     enabled: true,
     signedIn: mocks.signedIn,
     linkPending: mocks.linkPending,
+    cancelSignIn: mocks.cancelSignIn,
     me: mocks.me,
     signOut: mocks.signOut,
     refresh: mocks.refresh,
@@ -74,6 +76,7 @@ describe("AccountRows", () => {
     mocks.me = me("trial")
     mocks.signOut.mockClear()
     mocks.signIn.mockClear()
+    mocks.cancelSignIn.mockClear()
     mocks.toast.mockClear()
     mocks.refresh.mockClear()
     resetReturnRefreshForTests()
@@ -102,13 +105,17 @@ describe("AccountRows", () => {
     expect(mocks.signIn).toHaveBeenCalledTimes(1)
   })
 
-  it("says it is waiting while the sign-in tab is open", async () => {
+  it("says it is waiting while the sign-in tab is open, with Cancel instead of Sign in", async () => {
     mocks.signedIn = false
     mocks.me = null
     mocks.linkPending = true
     await render()
     expect(el.textContent).toContain("Waiting for sign-in…")
     expect(el.textContent).not.toContain("Not signed in")
+    expect(button("Sign in")).toBeUndefined()
+    await act(async () => button("Cancel")?.click())
+    expect(mocks.cancelSignIn).toHaveBeenCalledTimes(1)
+    expect(mocks.signIn).not.toHaveBeenCalled()
   })
 
   it("shows the account, trial plan and an Upgrade button", async () => {

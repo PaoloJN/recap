@@ -67,12 +67,12 @@ function Avatar({ user }: { user: MeResponse["user"] | null }) {
   )
 }
 
-function SignInRow({ waiting }: { waiting: boolean }) {
+function SignInRow() {
   const { signIn, signingIn } = useProSignIn()
   return (
     <SettingsRow
       title="Account"
-      note={waiting ? "Waiting for sign-in…" : "Not signed in"}
+      note="Not signed in"
       control={
         <button
           type="button"
@@ -90,12 +90,27 @@ function SignInRow({ waiting }: { waiting: boolean }) {
   )
 }
 
+/** While the sign-in tab is open: cancelling forgets the flow, so that tab can't sign in. */
+function WaitingRow({ cancel }: { cancel(): Promise<void> }) {
+  return (
+    <SettingsRow
+      title="Account"
+      note="Waiting for sign-in…"
+      control={
+        <button type="button" onClick={() => void cancel()} className={SECONDARY}>
+          Cancel
+        </button>
+      }
+    />
+  )
+}
+
 /** Settings › Model rows for Recap Pro: account, plan with Upgrade/Manage billing, Sign out. */
 export function AccountRows() {
-  const { signedIn, me, linkPending, signOut, refresh } = usePro()
+  const { signedIn, me, linkPending, cancelSignIn, signOut, refresh } = usePro()
   const toast = useToast()
 
-  if (!signedIn) return <SignInRow waiting={linkPending} />
+  if (!signedIn) return linkPending ? <WaitingRow cancel={cancelSignIn} /> : <SignInRow />
 
   const user = me?.user ?? null
   return (
