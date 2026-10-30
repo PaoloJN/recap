@@ -431,6 +431,102 @@ describe("pollLink", () => {
     expect(link()).toBeNull()
   })
 
+  it("a claimed flow past its local deadline clears quietly as idle", async () => {
+    const { deps, link } = setup(
+      {},
+      { token: "k", me: ME, fetchedAt: NOW },
+      { ...LINK, claimed: true, deadline: NOW },
+    )
+    expect(await pollLink(deps)).toEqual({ state: "idle" })
+    expect(deps.claimLink).not.toHaveBeenCalled()
+    expect(link()).toBeNull()
+  })
+
+  it("a claimed flow the server expired (410) clears quietly as idle", async () => {
+    const { deps, link } = setup(
+      { claimLink: vi.fn(async () => ({ status: "expired" }) as const) },
+      { token: "k", me: ME, fetchedAt: NOW },
+      { ...LINK, claimed: true },
+    )
+    expect(await pollLink(deps)).toEqual({ state: "idle" })
+    expect(link()).toBeNull()
+  })
+
+  it("a key held in the flow past the deadline is still delivered, then ends as idle", async () => {
+    const { deps, state, link } = setup({}, EMPTY, {
+      ...LINK,
+      claimed: true,
+      key: "k",
+      deadline: NOW,
+    })
+    expect(await pollLink(deps)).toEqual({ state: "idle" })
+    expect(state().token).toBe("k")
+    expect(deps.claimLink).not.toHaveBeenCalled()
+    expect(link()).toBeNull()
+  })
+
+  it("a claimed but unfinished flow polls until the deadline, then stops", async () => {
+    let now = NOW
+    const { deps, link } = setup(
+      {
+        claimLink: vi.fn(async () => ({ status: "claimed", finished: false }) as const),
+        now: () => now,
+      },
+      { token: "k", me: ME, fetchedAt: NOW },
+      { ...LINK, claimed: true },
+    )
+    expect(await pollLink(deps)).toEqual({ state: "signed-in" })
+    now = DEADLINE
+    expect(await pollLink(deps)).toEqual({ state: "idle" })
+    expect(link()).toBeNull()
+    expect(await pollLink(deps)).toEqual({ state: "idle" })
+    expect(deps.claimLink).toHaveBeenCalledTimes(1)
+  })
+
+  it("approved and finished closes the sign-in tab before loading me", async () => {
+    const order: string[] = []
+    const { deps, state } = setup(
+      {
+        claimLink: vi.fn(async () => ({ status: "approved", key: "k", finished: true }) as const),
+        fetchMe: vi.fn(async () => {
+          order.push("me")
+          return ME
+        }),
+        tabs: {
+          create: vi.fn(),
+          update: vi.fn(async () => {
+            order.push("focus")
+            return { windowId: 9 }
+          }),
+          remove: vi.fn(async () => {
+            order.push("close")
+          }),
+        },
+      },
+      EMPTY,
+      LINK,
+    )
+    expect(await pollLink(deps)).toEqual({ state: "done" })
+    expect(order).toEqual(["focus", "close", "me"])
+    expect(state()).toEqual({ token: "k", me: ME, fetchedAt: NOW })
+  })
+
+  it("approved and finished with a key rejected at once (401) is an error", async () => {
+    const { deps, state, link } = setup(
+      {
+        claimLink: vi.fn(async () => ({ status: "approved", key: "k", finished: true }) as const),
+        fetchMe: vi.fn(async () => {
+          throw new ProError("unauthorized", "nope")
+        }),
+      },
+      EMPTY,
+      LINK,
+    )
+    expect(await pollLink(deps)).toEqual({ state: "error" })
+    expect(state()).toEqual(EMPTY)
+    expect(link()).toBeNull()
+  })
+
   it("a network error keeps the flow", async () => {
     const { deps, link } = setup(
       {

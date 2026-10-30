@@ -335,6 +335,31 @@ describe("usePro sign-in link", () => {
     expect(pro.linkPending).toBe(pending)
   })
 
+  it("linkStartedHere is set by this page's start and cleared by a probe or cancel", async () => {
+    await mount()
+    expect(pro.linkStartedHere).toBe(false)
+    sendMessage.mockResolvedValueOnce({ ok: true })
+    await act(async () => {
+      await pro.startSignIn(null)
+    })
+    expect(pro.linkStartedHere).toBe(true)
+    sendMessage.mockResolvedValueOnce({ ok: true })
+    await act(async () => pro.cancelSignIn())
+    expect(pro.linkStartedHere).toBe(false)
+    sendMessage.mockResolvedValueOnce({ ok: true })
+    await act(async () => {
+      await pro.startSignIn(null)
+    })
+    expect(pro.linkStartedHere).toBe(true)
+    // A probe that finds a flow (here, after a reload's module reset) can't tell whose it is.
+    sendMessage.mockResolvedValueOnce({ state: "pending" })
+    await act(async () => {
+      await pro.probeLink()
+    })
+    expect(pro.linkPending).toBe(true)
+    expect(pro.linkStartedHere).toBe(false)
+  })
+
   it("shares linkPending across every component using the hook", async () => {
     root = createRoot(document.createElement("div"))
     await act(async () =>

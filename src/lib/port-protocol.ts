@@ -51,7 +51,7 @@ export type ProLinkStartResult = { ok: true } | { ok: false; message: string }
 
 /**
  * Where a sign-in link stands after one claim. `idle`: no flow (never started, cancelled or
- * cleared). `signed-in`: the key is stored but the website hasn't finished (e.g. in checkout).
+ * cleared, or a flow whose key was already delivered ran out of time). `signed-in`: the key is stored but the website hasn't finished (e.g. in checkout).
  * `done`: finished, the sign-in tab is closed and the flow cleared. `error`: a failed claim;
  * the flow is kept unless the server rejected it, in which case the next poll is `idle`.
  */

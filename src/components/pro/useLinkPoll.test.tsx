@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   pollLink: vi.fn(),
   probeLink: vi.fn(),
   signedIn: false,
+  startedHere: true,
   setView: vi.fn(),
   toast: vi.fn(),
   updateSettings: vi.fn(async (_patch: unknown) => {}),
@@ -19,6 +20,7 @@ vi.mock("@/hooks/usePro", () => ({
     pollLink: mocks.pollLink,
     probeLink: mocks.probeLink,
     signedIn: mocks.signedIn,
+    linkStartedHere: mocks.startedHere,
   }),
 }))
 vi.mock("@/lib/pro/config", () => ({ PRO_ENABLED: true }))
@@ -70,6 +72,7 @@ describe("useLinkPoll", () => {
     mocks.probeLink.mockReset()
     mocks.probeLink.mockResolvedValue({ state: "idle" })
     mocks.signedIn = false
+    mocks.startedHere = true
     visibility = "visible"
     vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility)
     mocks.setView.mockClear()
@@ -147,6 +150,38 @@ describe("useLinkPoll", () => {
     await render(true)
     await tick(3)
     expect(mocks.pollLink).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).not.toHaveBeenCalled()
+  })
+
+  it("stops quietly on expired once signed in (the key arrived, checkout never finished)", async () => {
+    mocks.signedIn = true
+    mocks.results = ["signed-in", "expired"]
+    await render(true)
+    await tick(4)
+    expect(mocks.pollLink).toHaveBeenCalledTimes(2)
+    expect(mocks.toast).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).toHaveBeenCalledWith("Signed in to Recap Pro")
+    expect(mocks.toast).not.toHaveBeenCalledWith("Sign-in timed out. Try again.")
+  })
+
+  it("stops quietly on idle after signed-in (a claimed flow ran out of time)", async () => {
+    mocks.results = ["signed-in", "pending", "idle"]
+    await render(true)
+    await tick(2)
+    mocks.signedIn = true
+    await render(true)
+    await tick(3)
+    expect(mocks.pollLink).toHaveBeenCalledTimes(3)
+    expect(mocks.toast).toHaveBeenCalledTimes(1)
+    expect(mocks.toast).toHaveBeenCalledWith("Signed in to Recap Pro")
+  })
+
+  it("stays quiet on idle for a flow another page started (cancelled there)", async () => {
+    mocks.startedHere = false
+    mocks.results = ["pending", "idle"]
+    await render(true)
+    await tick(4)
+    expect(mocks.pollLink).toHaveBeenCalledTimes(2)
     expect(mocks.toast).not.toHaveBeenCalled()
   })
 

@@ -168,25 +168,37 @@ async function finish(deps: ProAuthDeps, link: ProLink): Promise<ProLinkPollResu
 
 /**
  * Moves a claimed key from the flow into `proItem`, then drops it from the flow. Idempotent, so a
- * worker that died part-way just runs it again on the next poll. Returns the updated flow, or
- * null (flow cleared) when the server rejects the fresh key.
+ * worker that died part-way just runs it again on the next poll. Returns the updated flow.
  */
-async function deliverKey(
-  deps: ProAuthDeps,
-  link: ProLink & { key: string },
-): Promise<ProLink | null> {
+async function storeKey(deps: ProAuthDeps, link: ProLink & { key: string }): Promise<ProLink> {
   const { key, ...delivered } = link
   if ((await deps.store.getValue()).token !== key) {
     await deps.store.setValue({ token: key, me: null, fetchedAt: 0 })
   }
   await updateLink(deps, link.code, delivered)
-  const result = await refresh(deps)
-  // Any failure but 401 still leaves a valid key; `me` loads on the next refresh.
-  if (!result.ok && result.code === "unauthorized") {
-    await updateLink(deps, link.code, null)
-    return null
-  }
   return delivered
+}
+
+/**
+ * Loads `me` for a freshly stored key. False (flow cleared) when the server rejects the key; any
+ * other failure still leaves a valid key, and `me` loads on the next refresh.
+ */
+async function checkKey(deps: ProAuthDeps, code: string): Promise<boolean> {
+  const result = await refresh(deps)
+  if (!result.ok && result.code === "unauthorized") {
+    await updateLink(deps, code, null)
+    return false
+  }
+  return true
+}
+
+/** Stores a key still held in the flow and loads `me`; null when the server rejects the key. */
+async function deliverKey(
+  deps: ProAuthDeps,
+  link: ProLink & { key: string },
+): Promise<ProLink | null> {
+  const delivered = await storeKey(deps, link)
+  return (await checkKey(deps, link.code)) ? delivered : null
 }
 
 /** After a claim of ours: hands over a key still held in the flow, then finishes or waits. */
@@ -195,13 +207,24 @@ async function afterClaim(
   link: ProLink,
   finished: boolean,
 ): Promise<ProLinkPollResult> {
-  let current = link
-  if (link.key !== undefined) {
-    const delivered = await deliverKey(deps, { ...link, key: link.key })
-    if (!delivered) return { state: "error" }
-    current = delivered
+  if (link.key === undefined) return finished ? finish(deps, link) : { state: "signed-in" }
+  const delivered = await storeKey(deps, { ...link, key: link.key })
+  if (finished) {
+    // Back to the video first: the website sends the sign-in tab to the video after 2 s, and a
+    // `me` round trip before closing it would often lose that race.
+    const done = await finish(deps, delivered)
+    return (await checkKey(deps, link.code)) ? done : { state: "error" }
   }
-  return finished ? finish(deps, current) : { state: "signed-in" }
+  return (await checkKey(deps, link.code)) ? { state: "signed-in" } : { state: "error" }
+}
+
+/**
+ * Ends a flow the clock or the server expired. Once this browser holds the key the user is signed
+ * in, and only checkout was left unfinished, so the flow just ends quietly.
+ */
+async function endExpired(deps: ProAuthDeps, link: ProLink): Promise<ProLinkPollResult> {
+  await updateLink(deps, link.code, null)
+  return link.claimed ? { state: "idle" } : { state: "expired" }
 }
 
 async function runPoll(deps: ProAuthDeps): Promise<ProLinkPollResult> {
@@ -214,10 +237,9 @@ async function runPoll(deps: ProAuthDeps): Promise<ProLinkPollResult> {
     if (!delivered) return { state: "error" }
     link = delivered
   }
-  if (!(link.deadline > deps.now())) {
-    await updateLink(deps, link.code, null)
-    return { state: "expired" }
-  }
+  // A claimed flow keeps polling only so the sign-in tab can close on "finished"; the deadline
+  // ends it too, so an abandoned checkout doesn't poll forever.
+  if (!(link.deadline > deps.now())) return endExpired(deps, link)
   let claim: LinkClaim
   try {
     claim = await deps.claimLink(link.code, link.verifier)
@@ -232,8 +254,7 @@ async function runPoll(deps: ProAuthDeps): Promise<ProLinkPollResult> {
     case "pending":
       return { state: "pending" }
     case "expired":
-      await updateLink(deps, link.code, null)
-      return { state: "expired" }
+      return endExpired(deps, link)
     case "approved": {
       // Crash-safe order: one write records `claimed` together with the key, before the key goes
       // anywhere else. If the worker dies after it, the next poll finds the key in the flow and

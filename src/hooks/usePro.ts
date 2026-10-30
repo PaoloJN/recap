@@ -28,6 +28,8 @@ export interface UsePro {
   me: MeResponse | null
   /** A sign-in tab is open and the background is waiting for the website to approve it. */
   linkPending: boolean
+  /** The pending sign-in was started by this page, not found by a probe. */
+  linkStartedHere: boolean
   /** Opens the website's sign-in in a new tab; `returnUrl` is the video to come back to. */
   startSignIn(returnUrl: string | null): Promise<ProLinkStartResult>
   /**
@@ -91,8 +93,21 @@ const getLinkPending = () => linkPending
 // old flow must not bring a cancelled waiting state back.
 let linkGeneration = 0
 
+// Whether this page started the current flow. A flow a probe found belongs to another page, which
+// owns its failures.
+let linkStartedHere = false
+
+function setLinkStartedHere(value: boolean): void {
+  if (linkStartedHere === value) return
+  linkStartedHere = value
+  for (const listener of linkListeners) listener()
+}
+
+const getLinkStartedHere = () => linkStartedHere
+
 export function resetProLinkForTests(): void {
   linkGeneration++
+  setLinkStartedHere(false)
   setLinkPending(false)
 }
 
@@ -111,6 +126,7 @@ async function sendPoll(probe: boolean): Promise<ProLinkPollResult | null> {
   }
   if (generation !== linkGeneration) return null
   if (probe && result.state === "error") return result
+  if (probe) setLinkStartedHere(false)
   setLinkPending(STILL_PENDING.has(result.state))
   return result
 }
@@ -123,6 +139,7 @@ async function refreshIfStale(): Promise<void> {
 export function usePro(): UsePro {
   const [state] = useStorageItem(proItem)
   const pending = useSyncExternalStore(subscribeLink, getLinkPending, getLinkPending)
+  const startedHere = useSyncExternalStore(subscribeLink, getLinkStartedHere, getLinkStartedHere)
 
   useEffect(() => {
     if (!PRO_ENABLED) return
@@ -147,6 +164,7 @@ export function usePro(): UsePro {
     }
     if (result.ok) {
       linkGeneration++
+      setLinkStartedHere(true)
       setLinkPending(true)
     }
     return result
@@ -168,6 +186,7 @@ export function usePro(): UsePro {
   const cancelSignIn = useCallback(async (): Promise<void> => {
     if (!PRO_ENABLED) return
     linkGeneration++
+    setLinkStartedHere(false)
     setLinkPending(false)
     const request: ProLinkCancelRequest = { type: "pro-link-cancel" }
     try {
@@ -200,6 +219,7 @@ export function usePro(): UsePro {
     signedIn,
     me: PRO_ENABLED ? (state?.me ?? null) : null,
     linkPending: PRO_ENABLED && pending,
+    linkStartedHere: PRO_ENABLED && startedHere,
     startSignIn,
     pollLink,
     probeLink,

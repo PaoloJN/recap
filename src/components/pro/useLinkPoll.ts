@@ -18,18 +18,19 @@ const SIGN_IN_FAILED = "Couldn't sign in. Try again."
  * first) it switches the provider to Recap Pro, returns to the main view and toasts, once per
  * sign-in. It keeps polling after "signed-in" so the background can close the sign-in tab on
  * "done", stops on "done", "expired" or "idle", and polls on through errors. An "idle" means the
- * background dropped the flow (a rejected code or key) unless we are now signed in.
+ * background dropped the flow (a rejected code or key) unless we are now signed in; it is only
+ * reported by the page that started the flow, since another page may have cancelled it.
  *
  * While not `active`, it probes once on mount and each time the page becomes visible, so a page
  * that didn't start the flow (reloaded, or opened by the website after the video tab closed) can
  * still find and finish it.
  */
 export function useLinkPoll(active: boolean): void {
-  const { pollLink, probeLink, signedIn } = usePro()
+  const { pollLink, probeLink, signedIn, linkStartedHere } = usePro()
   const { setView } = usePanelNav()
   const toast = useToast()
-  const latest = useRef({ pollLink, probeLink, signedIn, setView, toast })
-  latest.current = { pollLink, probeLink, signedIn, setView, toast }
+  const latest = useRef({ pollLink, probeLink, signedIn, linkStartedHere, setView, toast })
+  latest.current = { pollLink, probeLink, signedIn, linkStartedHere, setView, toast }
   // Probe on mount only, not each time polling ends: right after a cancel, the background may not
   // have dropped the flow yet, and a probe would bring the waiting state back.
   const mountProbed = useRef(false)
@@ -96,12 +97,15 @@ export function useLinkPoll(active: boolean): void {
           return
         case "expired":
           stop()
-          latest.current.toast("Sign-in timed out. Try again.")
+          if (!latest.current.signedIn) latest.current.toast("Sign-in timed out. Try again.")
           return
         case "idle":
           stop()
-          // Signed in already: another page finished this flow.
-          if (!latest.current.signedIn) latest.current.toast(SIGN_IN_FAILED)
+          // Quiet when signed in (another page finished this flow, or it ran out after the key
+          // arrived) or when another page started it (that page may have cancelled it).
+          if (!latest.current.signedIn && latest.current.linkStartedHere) {
+            latest.current.toast(SIGN_IN_FAILED)
+          }
           return
         default:
         // "pending", "error" or a stale reply: poll again.

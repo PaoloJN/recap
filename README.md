@@ -83,7 +83,7 @@ To work on Recap Pro against a local recap-website:
 WXT_PRO_ORIGIN=http://localhost:3000 pnpm dev
 ```
 
-Or put `WXT_PRO_ORIGIN=http://localhost:3000` in `.env.local` (see `.env.example`). The local server accepts any extension redirect in development. In production the extension's redirect origin must be on the server's `EXTENSION_REDIRECT_ALLOWLIST`; see the recap-website README.
+Or put `WXT_PRO_ORIGIN=http://localhost:3000` in `.env.local` (see `.env.example`).
 
 ## Tech stack
 
