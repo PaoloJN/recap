@@ -18,8 +18,8 @@
 ## Global Constraints
 
 - **Repos and branches:**
-  - Backend tasks (B*) run in `/Users/paolonessim/Projects/recap-website` on branch `tab-sign-in`; create it from `main` if missing.
-  - Extension tasks (E*) run in `/Users/paolonessim/Projects/youtube-ai-extension` on branch `pro`.
+  - Backend tasks (1–4) run in `/Users/paolonessim/Projects/recap-website` on branch `tab-sign-in`; create it from `main` if missing.
+  - Extension tasks (5–6) run in `/Users/paolonessim/Projects/youtube-ai-extension` on branch `pro`.
   - Never push or merge.
 - **Verification:**
   - Backend: `pnpm check && pnpm typecheck && pnpm test` must pass.
@@ -46,7 +46,7 @@
 
 ---
 
-### Task B1: Link store and return-URL validation (backend)
+### Task 1: Link store and return-URL validation (backend)
 
 **Files:**
 - Create: `src/db/schema/link.ts`; export it from `src/db/schema/index.ts`
@@ -108,7 +108,7 @@
 - [ ] **Step 2: Implement both modules and the schema, then `pnpm db:generate`.** Commit the migration.
 - [ ] **Step 3: Verify (backend command), then commit.** Message: `feat: one-time extension link store and YouTube return-URL validation`.
 
-### Task B2: Link API routes (backend)
+### Task 2: Link API routes (backend)
 
 **Files:**
 - Create: `src/lib/api/link.ts`, `src/lib/api/link.test.ts`
@@ -152,7 +152,7 @@
 - [ ] **Step 2: Implement the handlers and routes.**
 - [ ] **Step 3: Verify, then commit.** Message: `feat: link start, claim, approve and finish endpoints`.
 
-### Task B3: Sign-in → plan picker → return pages; remove the popup path (backend)
+### Task 3: Sign-in → plan picker → return pages; remove the popup path (backend)
 
 **Files:**
 - Modify: `src/app/(site)/sign-in/page.tsx`, `SignInButton.tsx`
@@ -203,7 +203,7 @@
 - [ ] **Step 2: Implement the pages, delete the popup path, and update the README and `.env.example`.**
 - [ ] **Step 3: Verify, then commit.** Message: `feat: sign in through a normal tab with plan picker and return to the video`.
 
-### Task B4: Sign out everywhere (backend)
+### Task 4: Sign out everywhere (backend)
 
 **Files:**
 - Create: `src/lib/api/sign-out-everywhere.ts` and its test.
@@ -225,7 +225,7 @@
 - [ ] **Step 2: Implement.**
 - [ ] **Step 3: Verify, then commit.** Message: `feat: sign out everywhere from the account page`.
 
-### Task E1: Background link flow; drop identity (extension)
+### Task 5: Background link flow; drop identity (extension)
 
 **Files:**
 - Rewrite: `src/background/pro-auth.ts`, `src/background/pro-auth.test.ts`
@@ -279,7 +279,7 @@
 - [ ] **Step 2: Implement.**
 - [ ] **Step 3: Verify (extension command), then commit.** Message: `feat: sign in to Recap Pro through a normal tab instead of a popup window`.
 
-### Task E2: Panel sign-in and waiting states (extension)
+### Task 6: Panel sign-in and waiting states (extension)
 
 **Files:**
 - Modify:
