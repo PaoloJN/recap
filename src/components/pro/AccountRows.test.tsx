@@ -18,8 +18,6 @@ vi.mock("@/hooks/usePro", () => ({
     enabled: true,
     signedIn: mocks.signedIn,
     me: mocks.me,
-    signingIn: false,
-    signIn: vi.fn(),
     signOut: mocks.signOut,
     refresh: mocks.refresh,
   }),

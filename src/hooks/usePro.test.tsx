@@ -3,10 +3,10 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { browser } from "wxt/browser"
 import { fakeBrowser } from "wxt/testing/fake-browser"
-import type { ProAuthResult } from "@/lib/port-protocol"
+import type { ProLinkPollResult, ProLinkStartResult } from "@/lib/port-protocol"
 import type { MeResponse, ProState } from "@/lib/pro/types"
 import { proItem } from "@/lib/storage"
-import { usePro } from "./usePro"
+import { resetProLinkForTests, usePro } from "./usePro"
 
 const cfg = vi.hoisted(() => ({ enabled: true }))
 const api = vi.hoisted(() => ({ fetchPricing: vi.fn() }))
@@ -43,6 +43,12 @@ function Probe() {
   return null
 }
 
+let other: Pro
+function Other() {
+  other = usePro()
+  return null
+}
+
 async function mount() {
   root = createRoot(document.createElement("div"))
   await act(async () => root?.render(<Probe />))
@@ -72,6 +78,7 @@ beforeEach(async () => {
   vi.useFakeTimers({ toFake: ["Date"] })
   vi.setSystemTime(NOW)
   cfg.enabled = true
+  resetProLinkForTests()
   api.fetchPricing.mockReset()
   sendMessage = vi.fn(async (message: { type: string }) => {
     if (message.type === "pro-refresh") {
@@ -201,83 +208,132 @@ describe("usePro refresh policy", () => {
   })
 })
 
-describe("usePro sign-in and sign-out", () => {
-  it("returns the background result and toggles signingIn", async () => {
-    await mount()
-    let release: (r: ProAuthResult) => void = () => {}
-    sendMessage.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          release = resolve
-        }),
-    )
-    let p: Promise<ProAuthResult> | undefined
-    await act(async () => {
-      p = pro.signIn()
-    })
-    expect(pro.signingIn).toBe(true)
-    await act(async () => {
-      await seed({ token: "tok" })
-      release({ ok: true })
-      await p
-    })
-    expect(await p).toEqual({ ok: true })
-    expect(pro.signingIn).toBe(false)
-    expect(sendMessage).toHaveBeenCalledWith({ type: "pro-sign-in" })
-  })
+describe("usePro sign-in link", () => {
+  const FAILED: ProLinkStartResult = { ok: false, message: "Couldn't sign in. Try again." }
+  const VIDEO = "https://www.youtube.com/watch?v=abc&t=42"
 
-  it("passes a cancel through", async () => {
+  it("startSignIn sends the return URL and marks the link pending", async () => {
     await mount()
-    const cancelled: ProAuthResult = {
-      ok: false,
-      reason: "cancelled",
-      message: "Sign-in cancelled.",
-    }
-    sendMessage.mockResolvedValueOnce(cancelled)
-    let result: ProAuthResult | undefined
+    sendMessage.mockResolvedValueOnce({ ok: true })
+    let result: ProLinkStartResult | undefined
     await act(async () => {
-      result = await pro.signIn()
-    })
-    expect(result).toEqual(cancelled)
-    expect(pro.signingIn).toBe(false)
-  })
-
-  it("maps a rejected message to a failure and resets signingIn", async () => {
-    await mount()
-    sendMessage.mockRejectedValueOnce(new Error("The message port closed before a response"))
-    let result: ProAuthResult | undefined
-    await act(async () => {
-      result = await pro.signIn()
-    })
-    expect(result).toEqual({ ok: false, reason: "failed", message: "Couldn't sign in. Try again." })
-    expect(pro.signingIn).toBe(false)
-  })
-
-  it("treats a rejected message as success when a token was stored meanwhile", async () => {
-    await mount()
-    sendMessage.mockImplementationOnce(async () => {
-      await seed({ token: "tok" })
-      throw new Error("The message port closed before a response")
-    })
-    let result: ProAuthResult | undefined
-    await act(async () => {
-      result = await pro.signIn()
+      result = await pro.startSignIn(VIDEO)
     })
     expect(result).toEqual({ ok: true })
-    expect(pro.signingIn).toBe(false)
+    expect(sendMessage).toHaveBeenCalledWith({ type: "pro-link-start", returnUrl: VIDEO })
+    expect(pro.linkPending).toBe(true)
   })
 
-  it("does not count a token that was already stored before the call as success", async () => {
-    await seed({ token: "old" })
+  it("startSignIn passes a failure through and stays idle", async () => {
     await mount()
-    sendMessage.mockRejectedValueOnce(new Error("The message port closed before a response"))
-    let result: ProAuthResult | undefined
+    sendMessage.mockResolvedValueOnce({ ok: false, message: "Can't reach Recap Pro." })
+    let result: ProLinkStartResult | undefined
     await act(async () => {
-      result = await pro.signIn()
+      result = await pro.startSignIn(null)
     })
-    expect(result).toEqual({ ok: false, reason: "failed", message: "Couldn't sign in. Try again." })
+    expect(result).toEqual({ ok: false, message: "Can't reach Recap Pro." })
+    expect(sendMessage).toHaveBeenCalledWith({ type: "pro-link-start", returnUrl: null })
+    expect(pro.linkPending).toBe(false)
   })
 
+  it("startSignIn maps a rejected or empty reply to a failure", async () => {
+    await mount()
+    sendMessage.mockRejectedValueOnce(new Error("Could not establish connection"))
+    let result: ProLinkStartResult | undefined
+    await act(async () => {
+      result = await pro.startSignIn(null)
+    })
+    expect(result).toEqual(FAILED)
+    sendMessage.mockResolvedValueOnce(undefined)
+    await act(async () => {
+      result = await pro.startSignIn(null)
+    })
+    expect(result).toEqual(FAILED)
+    expect(pro.linkPending).toBe(false)
+  })
+
+  it.each([
+    ["pending", true],
+    ["signed-in", true],
+    ["error", true],
+    ["done", false],
+    ["expired", false],
+    ["idle", false],
+  ] as const)("a %s poll leaves linkPending %s", async (state, pending) => {
+    await mount()
+    sendMessage.mockResolvedValueOnce({ ok: true })
+    await act(async () => {
+      await pro.startSignIn(null)
+    })
+    sendMessage.mockResolvedValueOnce({ state })
+    let result: ProLinkPollResult | undefined
+    await act(async () => {
+      result = await pro.pollLink()
+    })
+    expect(result).toEqual({ state })
+    expect(sendMessage).toHaveBeenCalledWith({ type: "pro-link-poll" })
+    expect(pro.linkPending).toBe(pending)
+  })
+
+  it("a rejected poll is an error and keeps the link pending", async () => {
+    await mount()
+    sendMessage.mockResolvedValueOnce({ ok: true })
+    await act(async () => {
+      await pro.startSignIn(null)
+    })
+    sendMessage.mockRejectedValueOnce(new Error("Could not establish connection"))
+    let result: ProLinkPollResult | undefined
+    await act(async () => {
+      result = await pro.pollLink()
+    })
+    expect(result).toEqual({ state: "error" })
+    expect(pro.linkPending).toBe(true)
+  })
+
+  it("shares linkPending across every component using the hook", async () => {
+    root = createRoot(document.createElement("div"))
+    await act(async () =>
+      root?.render(
+        <>
+          <Probe />
+          <Other />
+        </>,
+      ),
+    )
+    sendMessage.mockResolvedValueOnce({ ok: true })
+    await act(async () => {
+      await pro.startSignIn(null)
+    })
+    expect(other.linkPending).toBe(true)
+  })
+
+  it("reopenSignIn asks the background", async () => {
+    await mount()
+    sendMessage.mockResolvedValueOnce({ ok: true })
+    await act(async () => pro.reopenSignIn())
+    expect(sendMessage).toHaveBeenCalledWith({ type: "pro-link-reopen" })
+  })
+
+  it("reopenSignIn survives a rejected message", async () => {
+    await mount()
+    sendMessage.mockRejectedValueOnce(new Error("Could not establish connection"))
+    await act(async () => expect(pro.reopenSignIn()).resolves.toBeUndefined())
+  })
+
+  it("cancelSignIn asks the background and clears linkPending, even if unreachable", async () => {
+    await mount()
+    sendMessage.mockResolvedValueOnce({ ok: true })
+    await act(async () => {
+      await pro.startSignIn(null)
+    })
+    sendMessage.mockRejectedValueOnce(new Error("Could not establish connection"))
+    await act(async () => expect(pro.cancelSignIn()).resolves.toBeUndefined())
+    expect(sendMessage).toHaveBeenCalledWith({ type: "pro-link-cancel" })
+    expect(pro.linkPending).toBe(false)
+  })
+})
+
+describe("usePro sign-out", () => {
   it("signOut asks the background and clears state", async () => {
     await seed({ token: "tok", me: ME, fetchedAt: NOW })
     await mount()
@@ -321,9 +377,13 @@ describe("usePro when Pro is disabled", () => {
     expect(pro.enabled).toBe(false)
     expect(pro.signedIn).toBe(false)
     expect(pro.me).toBeNull()
+    expect(pro.linkPending).toBe(false)
     await act(async () => {
       await pro.refresh()
-      await pro.signIn()
+      await pro.startSignIn(null)
+      await pro.pollLink()
+      await pro.reopenSignIn()
+      await pro.cancelSignIn()
       await pro.signOut()
     })
     expect(sendMessage).not.toHaveBeenCalled()

@@ -1,27 +1,30 @@
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { usePro } from "@/hooks/usePro"
 import { updateSettings } from "@/hooks/useSettings"
 
 /**
- * "Continue with Google" for the gates: signs in (or reuses a session
- * that already exists), switches the provider to Recap Pro and returns to the main view.
- * A cancelled window resets silently; a failure shows a toast.
+ * "Sign in" for the gates. Signed out, it opens the website's sign-in tab (a failure shows a
+ * toast). Signed in, it switches the provider to Recap Pro and returns to the main view.
  */
 export function useProSignIn(): { signIn(): Promise<void>; signingIn: boolean } {
   const pro = usePro()
   const { setView } = usePanelNav()
   const toast = useToast()
-  const { signedIn, signIn: proSignIn, signingIn } = pro
+  const { signedIn, startSignIn } = pro
+  const [signingIn, setSigningIn] = useState(false)
 
   const signIn = useCallback(async () => {
     if (!signedIn) {
-      const result = await proSignIn()
-      if (!result.ok) {
-        if (result.reason === "failed") toast("Couldn't sign in. Try again.")
-        return
+      setSigningIn(true)
+      try {
+        const result = await startSignIn(null)
+        if (!result.ok) toast(result.message)
+      } finally {
+        setSigningIn(false)
       }
+      return
     }
     try {
       await updateSettings({ provider: "pro" })
@@ -32,7 +35,7 @@ export function useProSignIn(): { signIn(): Promise<void>; signingIn: boolean } 
     }
     setView("main")
     toast("Signed in to Recap Pro")
-  }, [signedIn, proSignIn, setView, toast])
+  }, [signedIn, startSignIn, setView, toast])
 
   return { signIn, signingIn }
 }

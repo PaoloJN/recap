@@ -22,8 +22,6 @@ vi.mock("@/hooks/usePro", () => ({
       usage: { summaries: 20, chats: 0, summaryLimit: 20, chatLimit: 50, resetsAt: null },
       subscription: null,
     },
-    signingIn: false,
-    signIn: vi.fn(),
     signOut: vi.fn(),
     refresh: mocks.refresh,
   }),

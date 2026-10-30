@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from "vitest"
-import { disconnect, fetchMe, fetchPricing, ProError, streamRequest, toProError } from "./api"
+import {
+  claimLink,
+  disconnect,
+  fetchMe,
+  fetchPricing,
+  ProError,
+  startLink,
+  streamRequest,
+  toProError,
+} from "./api"
 import type { MeResponse } from "./types"
 
 vi.mock("./config", () => ({
@@ -211,5 +220,102 @@ describe("streamRequest", () => {
       (e: unknown) => e,
     )
     expect(err).toBe(abort)
+  })
+})
+
+describe("startLink", () => {
+  it("POSTs the challenge and browser as JSON and returns the code", async () => {
+    const body = { code: "c0de", expiresAt: "2026-10-30T12:30:00.000Z" }
+    const fetchImpl = vi.fn(async () => json(200, body))
+    await expect(startLink("chal", "firefox", fetchImpl)).resolves.toEqual(body)
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe("https://pro.test/api/v1/link")
+    expect(init.method).toBe("POST")
+    expect(new Headers(init.headers).get("content-type")).toBe("application/json")
+    expect(new Headers(init.headers).has("x-api-key")).toBe(false)
+    expect(JSON.parse(init.body as string)).toEqual({ challenge: "chal", browser: "firefox" })
+  })
+
+  it("throws bad_request on 400", async () => {
+    const fetchImpl = vi.fn(async () => json(400, { error: "bad_request", message: "Bad" }))
+    await expect(startLink("chal", "chrome", fetchImpl)).rejects.toMatchObject({
+      code: "bad_request",
+    })
+  })
+
+  it("maps a network rejection to network", async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("Failed to fetch")
+    })
+    await expect(startLink("chal", "chrome", fetchImpl)).rejects.toMatchObject({ code: "network" })
+  })
+
+  it("rejects a 2xx body without a code", async () => {
+    const fetchImpl = vi.fn(async () => json(200, { expiresAt: "x" }))
+    await expect(startLink("chal", "chrome", fetchImpl)).rejects.toMatchObject({
+      code: "internal_error",
+    })
+  })
+})
+
+describe("claimLink", () => {
+  it("POSTs the code and verifier as JSON", async () => {
+    const fetchImpl = vi.fn(async () => json(200, { status: "pending" }))
+    await expect(claimLink("c0de", "ver", fetchImpl)).resolves.toEqual({ status: "pending" })
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe("https://pro.test/api/v1/link/claim")
+    expect(init.method).toBe("POST")
+    expect(new Headers(init.headers).get("content-type")).toBe("application/json")
+    expect(JSON.parse(init.body as string)).toEqual({ code: "c0de", verifier: "ver" })
+  })
+
+  it.each([
+    [{ status: "approved", key: "k", finished: false }],
+    [{ status: "approved", key: "k", finished: true }],
+    [{ status: "claimed", finished: false }],
+    [{ status: "claimed", finished: true }],
+  ])("returns %j", async (body) => {
+    await expect(
+      claimLink(
+        "c",
+        "v",
+        vi.fn(async () => json(200, body)),
+      ),
+    ).resolves.toEqual(body)
+  })
+
+  it("maps 410 to expired", async () => {
+    const fetchImpl = vi.fn(async () => json(410, { error: "expired", message: "Expired" }))
+    await expect(claimLink("c", "v", fetchImpl)).resolves.toEqual({ status: "expired" })
+  })
+
+  it("throws bad_request on 400", async () => {
+    const fetchImpl = vi.fn(async () => json(400, { error: "bad_request", message: "Bad" }))
+    await expect(claimLink("c", "v", fetchImpl)).rejects.toMatchObject({ code: "bad_request" })
+  })
+
+  it("maps a network rejection to network", async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("Failed to fetch")
+    })
+    const err = await claimLink("c", "v", fetchImpl).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ProError)
+    expect(err).toMatchObject({ code: "network" })
+  })
+
+  it.each([
+    [{ status: "approved", finished: true }],
+    [{ status: "approved", key: "", finished: true }],
+    [{ status: "claimed" }],
+    [{ status: "weird" }],
+    [null],
+  ])("rejects a malformed body %j", async (body) => {
+    await expect(
+      claimLink(
+        "c",
+        "v",
+        vi.fn(async () => json(200, body)),
+      ),
+    ).rejects.toMatchObject({ code: "internal_error" })
   })
 })

@@ -1,7 +1,7 @@
 import type { UIMessage } from "ai"
 import { storage } from "wxt/utils/storage"
 import { PRO_ENABLED } from "@/lib/pro/config"
-import type { ProState } from "@/lib/pro/types"
+import type { ProLink, ProState } from "@/lib/pro/types"
 import { BYOK_PROVIDER_IDS, PROVIDER_IDS, PROVIDERS } from "./providers"
 import {
   ANSWER_LANGUAGES,
@@ -102,6 +102,14 @@ export const apiKeysItem = storage.defineItem<ApiKeys>("local:apiKeys", { fallba
 
 export const proItem = storage.defineItem<ProState>("local:pro", {
   fallback: { token: null, me: null, fetchedAt: 0 },
+})
+
+/**
+ * The sign-in link in progress. Background only: session storage survives an MV3 worker restart
+ * but not a browser restart, and content scripts can't read it (the panel asks the background).
+ */
+export const proLinkItem = storage.defineItem<ProLink | null>("session:proLink", {
+  fallback: null,
 })
 
 export interface PanelState {

@@ -1,6 +1,6 @@
 import type { ModelMessage } from "ai"
 import { proUrl } from "./config"
-import type { MeResponse, Pricing, ProErrorCode } from "./types"
+import type { LinkClaim, LinkStart, MeResponse, Pricing, ProErrorCode } from "./types"
 
 export class ProError extends Error {
   readonly code: ProErrorCode
@@ -91,16 +91,36 @@ function isAbortError(error: unknown): boolean {
 }
 
 /** fetch that maps transport failures to ProError("network") and lets aborts through. */
-async function send(fetchImpl: typeof fetch, url: string, init?: RequestInit): Promise<Response> {
-  let res: Response
+async function request(
+  fetchImpl: typeof fetch,
+  url: string,
+  init?: RequestInit,
+): Promise<Response> {
   try {
-    res = await fetchImpl(url, init)
+    return await fetchImpl(url, init)
   } catch (error) {
     if (isAbortError(error)) throw error
     throw new ProError("network", NETWORK_MESSAGE)
   }
+}
+
+/** `request` that also throws the mapped ProError for a non-2xx response. */
+async function send(fetchImpl: typeof fetch, url: string, init?: RequestInit): Promise<Response> {
+  const res = await request(fetchImpl, url, init)
   if (!res.ok) throw await toProError(res)
   return res
+}
+
+function postJson(body: unknown): RequestInit {
+  return {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  }
+}
+
+function serverFault(): ProError {
+  return new ProError("internal_error", DEFAULT_MESSAGES.internal_error)
 }
 
 /** Parses a 2xx JSON body; a body that isn't JSON is a server fault, not a crash. */
@@ -108,7 +128,7 @@ async function readJson<T>(res: Response): Promise<T> {
   try {
     return (await res.json()) as T
   } catch {
-    throw new ProError("internal_error", DEFAULT_MESSAGES.internal_error)
+    throw serverFault()
   }
 }
 
@@ -147,4 +167,40 @@ export function streamRequest(
     body: JSON.stringify(body),
     signal,
   })
+}
+
+/** Opens a one-time sign-in link for this browser. Only the challenge is sent. */
+export async function startLink(
+  challenge: string,
+  browser: "chrome" | "firefox",
+  fetchImpl: typeof fetch = fetch,
+): Promise<LinkStart> {
+  const res = await send(fetchImpl, proUrl("/api/v1/link"), postJson({ challenge, browser }))
+  const body = await readJson<Partial<LinkStart> | null>(res)
+  if (typeof body?.code !== "string" || typeof body.expiresAt !== "string") throw serverFault()
+  return { code: body.code, expiresAt: body.expiresAt }
+}
+
+/** Claims the link with the verifier: pending, the key (exactly once), or already claimed. */
+export async function claimLink(
+  code: string,
+  verifier: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<LinkClaim> {
+  const res = await request(fetchImpl, proUrl("/api/v1/link/claim"), postJson({ code, verifier }))
+  if (res.status === 410) return { status: "expired" }
+  if (!res.ok) throw await toProError(res)
+  const body = await readJson<Record<string, unknown> | null>(res)
+  switch (body?.status) {
+    case "pending":
+      return { status: "pending" }
+    case "approved":
+      if (typeof body.key !== "string" || body.key === "" || typeof body.finished !== "boolean")
+        break
+      return { status: "approved", key: body.key, finished: body.finished }
+    case "claimed":
+      if (typeof body.finished !== "boolean") break
+      return { status: "claimed", finished: body.finished }
+  }
+  throw serverFault()
 }

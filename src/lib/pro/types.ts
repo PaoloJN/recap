@@ -36,3 +36,27 @@ export interface ProState {
   me: MeResponse | null
   fetchedAt: number
 }
+
+/** `POST /api/v1/link` response. */
+export interface LinkStart {
+  code: string
+  expiresAt: string
+}
+
+/** `POST /api/v1/link/claim` outcome; a 410 is `expired`. */
+export type LinkClaim =
+  | { status: "pending" }
+  | { status: "approved"; key: string; finished: boolean }
+  | { status: "claimed"; finished: boolean }
+  | { status: "expired" }
+
+/** A sign-in in progress, held by the background (`session:proLink`). */
+export interface ProLink {
+  code: string
+  verifier: string
+  signInUrl: string
+  signInTabId: number | null
+  sourceTabId: number | null
+  expiresAt: string
+  claimed: boolean
+}

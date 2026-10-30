@@ -5,8 +5,8 @@ describe("proManifestAdditions", () => {
   it("adds nothing without a Pro origin", () => {
     expect(proManifestAdditions(null)).toEqual({ permissions: [] })
   })
-  it("adds only identity, never host access to the Pro origin", () => {
-    expect(proManifestAdditions("https://recapai.dev")).toEqual({ permissions: ["identity"] })
+  it("adds no permissions and no host access for a Pro origin", () => {
+    expect(proManifestAdditions("https://recapai.dev")).toEqual({ permissions: [] })
     expect(proManifestAdditions("http://localhost:3000")).not.toHaveProperty("host_permissions")
   })
 })
