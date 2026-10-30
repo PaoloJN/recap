@@ -18,6 +18,8 @@ const EMPTY: ProState = { token: null, me: null, fetchedAt: 0 }
 const SIGN_IN_FAILED = "Couldn't sign in. Try again."
 const NETWORK_MESSAGE = "Can't reach Recap Pro. Check your connection."
 const SIGNED_OUT_MESSAGE = "You're not signed in to Recap Pro."
+/** How long a link lives on the server; measured locally so a wrong device clock can't skew it. */
+export const LINK_TTL_MS = 30 * 60_000
 
 /** The few tab and window calls sign-in needs; none of them needs a permission. */
 export interface TabsApi {
@@ -115,7 +117,7 @@ export async function startSignIn(
     signInUrl,
     signInTabId,
     sourceTabId,
-    expiresAt: started.expiresAt,
+    deadline: deps.now() + LINK_TTL_MS,
     claimed: false,
   })
   return { ok: true }
@@ -138,30 +140,81 @@ async function focusTab(deps: ProAuthDeps, tabId: number): Promise<void> {
   }
 }
 
-/** Closes the sign-in tab and returns to the video, ignoring tabs that are already gone. */
+/**
+ * Returns to the video and closes the sign-in tab, then clears the flow. The sign-in tab is
+ * closed only once the video tab is in front: if the video tab is gone, the website opens the
+ * video in the sign-in tab itself, so that tab stays.
+ */
 async function finish(deps: ProAuthDeps, link: ProLink): Promise<ProLinkPollResult> {
-  if (link.signInTabId !== null) {
+  let backOnVideo = false
+  if (link.sourceTabId !== null) {
+    try {
+      await focusTab(deps, link.sourceTabId)
+      backOnVideo = true
+    } catch {
+      // The video tab is gone.
+    }
+  }
+  if (backOnVideo && link.signInTabId !== null) {
     try {
       await deps.tabs.remove(link.signInTabId)
     } catch {
       // Already closed.
     }
   }
-  if (link.sourceTabId !== null) {
-    try {
-      await focusTab(deps, link.sourceTabId)
-    } catch {
-      // The video tab is gone; the website opens the video itself.
-    }
-  }
   await updateLink(deps, link.code, null)
   return { state: "done" }
 }
 
+/**
+ * Moves a claimed key from the flow into `proItem`, then drops it from the flow. Idempotent, so a
+ * worker that died part-way just runs it again on the next poll. Returns the updated flow, or
+ * null (flow cleared) when the server rejects the fresh key.
+ */
+async function deliverKey(
+  deps: ProAuthDeps,
+  link: ProLink & { key: string },
+): Promise<ProLink | null> {
+  const { key, ...delivered } = link
+  if ((await deps.store.getValue()).token !== key) {
+    await deps.store.setValue({ token: key, me: null, fetchedAt: 0 })
+  }
+  await updateLink(deps, link.code, delivered)
+  const result = await refresh(deps)
+  // Any failure but 401 still leaves a valid key; `me` loads on the next refresh.
+  if (!result.ok && result.code === "unauthorized") {
+    await updateLink(deps, link.code, null)
+    return null
+  }
+  return delivered
+}
+
+/** After a claim of ours: hands over a key still held in the flow, then finishes or waits. */
+async function afterClaim(
+  deps: ProAuthDeps,
+  link: ProLink,
+  finished: boolean,
+): Promise<ProLinkPollResult> {
+  let current = link
+  if (link.key !== undefined) {
+    const delivered = await deliverKey(deps, { ...link, key: link.key })
+    if (!delivered) return { state: "error" }
+    current = delivered
+  }
+  return finished ? finish(deps, current) : { state: "signed-in" }
+}
+
 async function runPoll(deps: ProAuthDeps): Promise<ProLinkPollResult> {
-  const link = await deps.link.getValue()
+  let link = await deps.link.getValue()
   if (!link) return { state: "idle" }
-  if (!(Date.parse(link.expiresAt) > deps.now())) {
+  // A worker that died after the claim left the key in the flow: deliver it before anything else
+  // (expiry included), so a successful claim is never lost.
+  if (link.key !== undefined) {
+    const delivered = await deliverKey(deps, { ...link, key: link.key })
+    if (!delivered) return { state: "error" }
+    link = delivered
+  }
+  if (!(link.deadline > deps.now())) {
     await updateLink(deps, link.code, null)
     return { state: "expired" }
   }
@@ -182,24 +235,22 @@ async function runPoll(deps: ProAuthDeps): Promise<ProLinkPollResult> {
       await updateLink(deps, link.code, null)
       return { state: "expired" }
     case "approved": {
-      await deps.store.setValue({ token: claim.key, me: null, fetchedAt: 0 })
-      const claimed = { ...link, claimed: true }
-      await updateLink(deps, link.code, claimed)
-      const result = await refresh(deps)
-      // Any failure but 401 still leaves a valid key; `me` loads on the next refresh.
-      if (!result.ok && result.code === "unauthorized") {
-        await updateLink(deps, link.code, null)
-        return { state: "error" }
-      }
-      return claim.finished ? finish(deps, claimed) : { state: "signed-in" }
+      // Crash-safe order: one write records `claimed` together with the key, before the key goes
+      // anywhere else. If the worker dies after it, the next poll finds the key in the flow and
+      // delivers it (the server then answers `claimed`, which we now recognise as ours). Saving
+      // the key to `proItem` first would leave a window where a restart sees `claimed` without
+      // a local claim and reports `error` for a successful sign-in.
+      const held: ProLink = { ...link, claimed: true, key: claim.key }
+      await updateLink(deps, link.code, held)
+      return afterClaim(deps, held, claim.finished)
     }
     case "claimed":
-      // Claimed, but not by us (or we lost the key before saving it): nothing left to hand over.
+      // Claimed, but not by us: nothing left to hand over.
       if (!link.claimed) {
         await updateLink(deps, link.code, null)
         return { state: "error" }
       }
-      return claim.finished ? finish(deps, link) : { state: "signed-in" }
+      return afterClaim(deps, link, claim.finished)
   }
 }
 

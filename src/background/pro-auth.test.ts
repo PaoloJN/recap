@@ -4,6 +4,7 @@ import { ProError } from "@/lib/pro/api"
 import type { LinkClaim, MeResponse, ProLink, ProState } from "@/lib/pro/types"
 import {
   cancelSignIn,
+  LINK_TTL_MS,
   type ProAuthDeps,
   pollLink,
   refresh,
@@ -20,7 +21,9 @@ vi.mock("@/lib/pro/config", () => ({
 }))
 
 const NOW = Date.parse("2026-10-30T12:00:00Z")
-const LATER = "2026-10-30T12:30:00.000Z"
+// The server's expiresAt; deliberately unlike the local deadline, which is all the flow uses.
+const LATER = "2026-10-30T13:30:00.000Z"
+const DEADLINE = NOW + 30 * 60_000
 const VIDEO = "https://www.youtube.com/watch?v=abc&t=42"
 
 const ME: MeResponse = {
@@ -38,7 +41,7 @@ const LINK: ProLink = {
   signInUrl: "https://recap.test/sign-in?link=c0de",
   signInTabId: 7,
   sourceTabId: 3,
-  expiresAt: LATER,
+  deadline: DEADLINE,
   claimed: false,
 }
 
@@ -94,9 +97,10 @@ describe("startSignIn", () => {
       signInUrl: url,
       signInTabId: 7,
       sourceTabId: 3,
-      expiresAt: LATER,
+      deadline: DEADLINE,
       claimed: false,
     })
+    expect(LINK_TTL_MS).toBe(30 * 60_000)
   })
 
   it("omits return when there is none", async () => {
@@ -242,7 +246,7 @@ describe("pollLink", () => {
     expect(link()).toBeNull()
   })
 
-  it("a source tab that can't be focused still clears the flow and returns done", async () => {
+  it("a source tab that can't be focused leaves the sign-in tab open, clears and returns done", async () => {
     const { deps, link } = setup(
       {
         claimLink: vi.fn(async () => ({ status: "approved", key: "k", finished: true }) as const),
@@ -251,6 +255,27 @@ describe("pollLink", () => {
           update: vi.fn(async () => {
             throw new Error("No tab with id: 3")
           }),
+          remove: vi.fn(async () => {}),
+        },
+      },
+      EMPTY,
+      LINK,
+    )
+    expect(await pollLink(deps)).toEqual({ state: "done" })
+    expect(deps.tabs.update).toHaveBeenCalledWith(3, { active: true })
+    // The website may now be showing the video in the sign-in tab.
+    expect(deps.tabs.remove).not.toHaveBeenCalled()
+    expect(deps.windows.update).not.toHaveBeenCalled()
+    expect(link()).toBeNull()
+  })
+
+  it("a sign-in tab that is already closed still returns done", async () => {
+    const { deps, link } = setup(
+      {
+        claimLink: vi.fn(async () => ({ status: "approved", key: "k", finished: true }) as const),
+        tabs: {
+          create: vi.fn(),
+          update: vi.fn(async () => ({ windowId: 9 })),
           remove: vi.fn(async () => {
             throw new Error("No tab with id: 7")
           }),
@@ -260,11 +285,35 @@ describe("pollLink", () => {
       LINK,
     )
     expect(await pollLink(deps)).toEqual({ state: "done" })
-    expect(deps.windows.update).not.toHaveBeenCalled()
+    expect(deps.tabs.update).toHaveBeenCalledWith(3, { active: true })
+    expect(deps.tabs.remove).toHaveBeenCalledWith(7)
     expect(link()).toBeNull()
   })
 
-  it("a window that can't be focused still returns done", async () => {
+  it("focuses the source tab before closing the sign-in tab", async () => {
+    const order: string[] = []
+    const { deps } = setup(
+      {
+        claimLink: vi.fn(async () => ({ status: "approved", key: "k", finished: true }) as const),
+        tabs: {
+          create: vi.fn(),
+          update: vi.fn(async () => {
+            order.push("focus")
+            return { windowId: 9 }
+          }),
+          remove: vi.fn(async () => {
+            order.push("remove")
+          }),
+        },
+      },
+      EMPTY,
+      LINK,
+    )
+    await pollLink(deps)
+    expect(order).toEqual(["focus", "remove"])
+  })
+
+  it("a window that can't be focused still closes the sign-in tab and returns done", async () => {
     const { deps, link } = setup(
       {
         claimLink: vi.fn(async () => ({ status: "approved", key: "k", finished: true }) as const),
@@ -278,7 +327,80 @@ describe("pollLink", () => {
       LINK,
     )
     expect(await pollLink(deps)).toEqual({ state: "done" })
+    expect(deps.tabs.remove).toHaveBeenCalledWith(7)
     expect(link()).toBeNull()
+  })
+
+  it("without a source tab the sign-in tab stays open", async () => {
+    const { deps, link } = setup(
+      { claimLink: vi.fn(async () => ({ status: "approved", key: "k", finished: true }) as const) },
+      EMPTY,
+      { ...LINK, sourceTabId: null },
+    )
+    expect(await pollLink(deps)).toEqual({ state: "done" })
+    expect(deps.tabs.update).not.toHaveBeenCalled()
+    expect(deps.tabs.remove).not.toHaveBeenCalled()
+    expect(link()).toBeNull()
+  })
+
+  it("a worker that dies right after the claim still finishes the sign-in on the next poll", async () => {
+    const linkStore = memory<ProLink | null>(LINK)
+    const first = setup(
+      {
+        link: linkStore,
+        claimLink: vi.fn(async () => ({ status: "approved", key: "k", finished: false }) as const),
+        store: {
+          getValue: async () => EMPTY,
+          setValue: async () => {
+            throw new Error("worker terminated")
+          },
+        },
+      },
+      EMPTY,
+      null,
+    )
+    await expect(pollLink(first.deps)).rejects.toThrow("worker terminated")
+    expect(linkStore.get()).toEqual({ ...LINK, claimed: true, key: "k" })
+    // Restarted worker: the server now answers `claimed`.
+    const second = setup(
+      {
+        link: linkStore,
+        claimLink: vi.fn(async () => ({ status: "claimed", finished: true }) as const),
+      },
+      EMPTY,
+      null,
+    )
+    expect(await pollLink(second.deps)).toEqual({ state: "done" })
+    expect(second.state()).toEqual({ token: "k", me: ME, fetchedAt: NOW })
+    expect(second.deps.tabs.remove).toHaveBeenCalledWith(7)
+    expect(linkStore.get()).toBeNull()
+  })
+
+  it("a key left in the flow is delivered even when the next claim fails", async () => {
+    const { deps, state, link } = setup(
+      {
+        claimLink: vi.fn(async () => {
+          throw new ProError("network", "offline")
+        }),
+      },
+      EMPTY,
+      { ...LINK, claimed: true, key: "k" },
+    )
+    expect(await pollLink(deps)).toEqual({ state: "error" })
+    expect(state().token).toBe("k")
+    expect(link()).toEqual({ ...LINK, claimed: true })
+  })
+
+  it("delivering a key again doesn't reset an account already loaded", async () => {
+    const { deps, state } = setup(
+      { claimLink: vi.fn(async () => ({ status: "claimed", finished: false }) as const) },
+      { token: "k", me: ME, fetchedAt: 5 },
+      { ...LINK, claimed: true, key: "k" },
+    )
+    expect(await pollLink(deps)).toEqual({ state: "signed-in" })
+    // Only refresh writes: the key itself isn't stored a second time.
+    expect(deps.store.setValue).toHaveBeenCalledTimes(1)
+    expect(state()).toEqual({ token: "k", me: ME, fetchedAt: NOW })
   })
 
   it("skips tabs it doesn't know", async () => {
@@ -302,8 +424,8 @@ describe("pollLink", () => {
     expect(link()).toBeNull()
   })
 
-  it("a flow past expiresAt clears without calling the server", async () => {
-    const { deps, link } = setup({}, EMPTY, { ...LINK, expiresAt: "2026-10-30T11:59:59.000Z" })
+  it("a flow past its local deadline clears without calling the server", async () => {
+    const { deps, link } = setup({}, EMPTY, { ...LINK, deadline: NOW })
     expect(await pollLink(deps)).toEqual({ state: "expired" })
     expect(deps.claimLink).not.toHaveBeenCalled()
     expect(link()).toBeNull()

@@ -1,8 +1,6 @@
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "wxt"
 import { twPropertyDefaults } from "./src/build/tw-property-defaults"
-import { proManifestAdditions } from "./src/lib/pro/manifest"
-import { normalizeProOrigin } from "./src/lib/pro/origin"
 
 const REM_BASE_PX = 14
 const YOUTUBE_MATCHES = ["*://www.youtube.com/*"]
@@ -23,13 +21,13 @@ export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   // Port 3000 belongs to a local recap-website (WXT_PRO_ORIGIN=http://localhost:3000).
   dev: { server: { port: 3001 } },
+  // Recap Pro adds no permissions: sign-in runs in a normal tab (tabs.create/update/remove and
+  // windows.update need none) and the Pro API answers with CORS `*`, so no host permission either.
   manifest: ({ browser }) => {
-    // Read lazily: WXT loads .env files after evaluating this file but before calling this.
-    const pro = proManifestAdditions(normalizeProOrigin(process.env.WXT_PRO_ORIGIN))
     return {
       name: "Recap AI",
       version: "2.0.0",
-      permissions: ["storage", ...pro.permissions],
+      permissions: ["storage"],
       host_permissions: [
         "https://api.openai.com/*",
         "https://api.anthropic.com/*",
@@ -50,7 +48,12 @@ export default defineConfig({
         },
       },
       ...(browser === "firefox"
-        ? { browser_specific_settings: { gecko: { id: "recap-ai@paolojn.github.io" } } }
+        ? {
+            browser_specific_settings: {
+              // 115 is the first Firefox with storage.session in MV2 (Recap Pro sign-in).
+              gecko: { id: "recap-ai@paolojn.github.io", strict_min_version: "115.0" },
+            },
+          }
         : {}),
     }
   },

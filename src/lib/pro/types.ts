@@ -57,6 +57,9 @@ export interface ProLink {
   signInUrl: string
   signInTabId: number | null
   sourceTabId: number | null
-  expiresAt: string
+  /** Local-clock deadline (epoch ms), set at start; the server's 410 stays authoritative. */
+  deadline: number
   claimed: boolean
+  /** The claimed key until it is safely in `proItem` (see `runPoll`). */
+  key?: string
 }
