@@ -6,6 +6,7 @@ import { largeButton, primaryButton, secondaryButton } from "@/components/summar
 import { usePricing } from "@/hooks/usePricing"
 import { usePro } from "@/hooks/usePro"
 import { proUrl } from "@/lib/pro/config"
+import { connectPath, currentReturnUrl } from "@/lib/pro/return-url"
 import type { MeResponse } from "@/lib/pro/types"
 import { cn } from "@/lib/utils"
 import { GateLayout } from "./GateLayout"
@@ -133,7 +134,7 @@ export function UpgradeGate({
         type="button"
         className={cn(primaryButton, largeButton, "w-full")}
         onClick={() => {
-          window.open(proUrl("/account?upgrade=monthly"), "_blank", "noopener")
+          window.open(proUrl(connectPath(currentReturnUrl())), "_blank", "noopener")
           startPolling()
         }}
       >

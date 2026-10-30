@@ -95,7 +95,7 @@ describe("Panel in a Recap Pro build", () => {
     await seedSettings("openai", null)
     await renderApp("summary")
     expect(api.fetchPricing).toHaveBeenCalled()
-    expect(el.textContent).toContain("Continue with Google")
+    expect([...el.querySelectorAll("button")].some((b) => b.textContent === "Sign in")).toBe(true)
     expect(el.textContent).toContain("$4.99/month")
   })
 })

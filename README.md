@@ -49,11 +49,11 @@ The transcript tab works without a key.
 
 ## Recap Pro
 
-Recap Pro is an optional way to use Recap without your own key. Sign in with Google, get a free trial (20 summaries and 50 chat messages per account), then move to a paid plan managed at [recapai.dev](https://recapai.dev). "Use my own key" stays available at any point.
+Recap Pro is an optional way to use Recap without your own key. Sign in at recapai.dev (it opens in a normal tab and brings you back to the video), get a free trial (20 summaries and 50 chat messages per account), then move to a paid plan managed at [recapai.dev](https://recapai.dev). "Use my own key" stays available at any point.
 
-Pro is turned on at build time. Release builds include it when the repository's `WXT_PRO_ORIGIN` variable is set. If you build from source without `WXT_PRO_ORIGIN`, you get the bring-your-own-key extension only: no Recap Pro option, no `identity` permission, no requests to recapai.dev.
+Pro is turned on at build time. Release builds include it when the repository's `WXT_PRO_ORIGIN` variable is set. If you build from source without `WXT_PRO_ORIGIN`, you get the bring-your-own-key extension only: no Recap Pro option, no requests to recapai.dev.
 
-A Pro build adds one permission: `identity`, for Google sign-in through the browser's sign-in window. It needs no host access to recapai.dev; the Pro server allows the extension's requests through CORS.
+A Pro build adds no permission. Sign-in opens recapai.dev in a normal tab, and the Pro server allows the extension's requests through CORS, so no host access to recapai.dev is needed. The Firefox build needs Firefox 115 or later.
 
 ## Privacy
 

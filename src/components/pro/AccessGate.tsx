@@ -2,10 +2,12 @@ import { ClosedCaptioning, Gift, SignIn, Sparkle } from "@phosphor-icons/react"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { largeButton, secondaryButton } from "@/components/summary/buttons"
 import { usePricing } from "@/hooks/usePricing"
+import { usePro } from "@/hooks/usePro"
 import { trialPriceLine } from "@/lib/pro/plan-copy"
 import { cn } from "@/lib/utils"
 import { GateLayout, type GateRow } from "./GateLayout"
-import { GoogleButton } from "./GoogleButton"
+import { SignInButton } from "./SignInButton"
+import { SignInWaiting } from "./SignInWaiting"
 
 const ROWS: GateRow[] = [
   { icon: Gift, title: "20 free summaries" },
@@ -17,10 +19,12 @@ const ROWS: GateRow[] = [
 export function AccessGate({ verb }: { verb: "summarize videos" | "chat with videos" }) {
   const { setView, selectTab } = usePanelNav()
   const pricing = usePricing()
+  const { linkPending } = usePro()
+  if (linkPending) return <SignInWaiting />
   return (
     <GateLayout icon={SignIn} title={`Sign in to ${verb}`} rows={ROWS}>
       <div className="flex flex-col gap-[8px]">
-        <GoogleButton />
+        <SignInButton />
         <p className="text-center text-[12px] leading-[16px] text-muted-foreground">
           {trialPriceLine(pricing)}
         </p>

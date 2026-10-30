@@ -7,6 +7,7 @@ import { ConnectView } from "@/components/onboarding/ConnectView"
 import { access, gateFor } from "@/components/pro/access"
 import { NoAccessGate } from "@/components/pro/NoAccessGate"
 import { useClearOnSignIn } from "@/components/pro/useClearOnSignIn"
+import { useLinkPoll } from "@/components/pro/useLinkPoll"
 import { useRefreshOnGateError } from "@/components/pro/useRefreshOnGateError"
 import { useSignedOut } from "@/components/pro/useSignedOut"
 import { NoCaptions } from "@/components/summary/NoCaptions"
@@ -178,6 +179,10 @@ export function Panel() {
   const [storedSettings] = useSettings()
   const [apiKeys] = useStorageItem(apiKeysItem)
   const pro = usePro()
+  // Here rather than in the waiting state: the gate unmounts once the key arrives ("signed-in"),
+  // but polling must go on until "done" so the background can close the sign-in tab. One Panel
+  // per page, so one poller per page.
+  useLinkPoll(pro.linkPending)
   const youtubeTheme = useTheme()
   const toast = useToast()
   const container = usePortalContainer()

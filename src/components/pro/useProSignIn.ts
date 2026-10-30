@@ -3,10 +3,12 @@ import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { usePro } from "@/hooks/usePro"
 import { updateSettings } from "@/hooks/useSettings"
+import { currentReturnUrl } from "@/lib/pro/return-url"
 
 /**
- * "Sign in" for the gates. Signed out, it opens the website's sign-in tab (a failure shows a
- * toast). Signed in, it switches the provider to Recap Pro and returns to the main view.
+ * "Sign in" for the gates. Signed out, it opens the website's sign-in tab, coming back to this
+ * video afterwards (a failure shows a toast). Signed in, it switches the provider to Recap Pro
+ * and returns to the main view.
  */
 export function useProSignIn(): { signIn(): Promise<void>; signingIn: boolean } {
   const pro = usePro()
@@ -19,7 +21,7 @@ export function useProSignIn(): { signIn(): Promise<void>; signingIn: boolean } 
     if (!signedIn) {
       setSigningIn(true)
       try {
-        const result = await startSignIn(null)
+        const result = await startSignIn(currentReturnUrl())
         if (!result.ok) toast(result.message)
       } finally {
         setSigningIn(false)

@@ -6,9 +6,9 @@ import { useToast } from "@/components/shell/ToastContext"
 import { usePro } from "@/hooks/usePro"
 import { proUrl } from "@/lib/pro/config"
 import { planLine } from "@/lib/pro/plan-copy"
+import { connectPath, currentReturnUrl } from "@/lib/pro/return-url"
 import type { MeResponse } from "@/lib/pro/types"
 import { cn } from "@/lib/utils"
-import { GoogleMark } from "./GoogleMark"
 import { useProSignIn } from "./useProSignIn"
 
 const SECONDARY = cn(SMALL_BUTTON, "bg-secondary text-foreground hover:bg-muted")
@@ -67,12 +67,12 @@ function Avatar({ user }: { user: MeResponse["user"] | null }) {
   )
 }
 
-function SignInRow() {
+function SignInRow({ waiting }: { waiting: boolean }) {
   const { signIn, signingIn } = useProSignIn()
   return (
     <SettingsRow
       title="Account"
-      note="Not signed in"
+      note={waiting ? "Waiting for sign-in…" : "Not signed in"}
       control={
         <button
           type="button"
@@ -82,12 +82,8 @@ function SignInRow() {
           }}
           className={SECONDARY}
         >
-          {signingIn ? (
-            <CircleNotch className="animate-spin" aria-hidden />
-          ) : (
-            <GoogleMark size={14} />
-          )}
-          Sign in with Google
+          {signingIn ? <CircleNotch className="animate-spin" aria-hidden /> : null}
+          Sign in
         </button>
       }
     />
@@ -96,10 +92,10 @@ function SignInRow() {
 
 /** Settings › Model rows for Recap Pro: account, plan with Upgrade/Manage billing, Sign out. */
 export function AccountRows() {
-  const { signedIn, me, signOut, refresh } = usePro()
+  const { signedIn, me, linkPending, signOut, refresh } = usePro()
   const toast = useToast()
 
-  if (!signedIn) return <SignInRow />
+  if (!signedIn) return <SignInRow waiting={linkPending} />
 
   const user = me?.user ?? null
   return (
@@ -129,7 +125,7 @@ export function AccountRows() {
             ) : (
               <button
                 type="button"
-                onClick={() => openPage("/account?upgrade=monthly", refresh)}
+                onClick={() => openPage(connectPath(currentReturnUrl()), refresh)}
                 className={SECONDARY}
               >
                 Upgrade

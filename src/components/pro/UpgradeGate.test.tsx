@@ -109,15 +109,26 @@ describe("UpgradeGate", () => {
     await advance(10_000)
     expect(mocks.refresh).not.toHaveBeenCalled()
     await clickUpgrade()
-    expect(window.open).toHaveBeenCalledWith(
-      "https://recap.test/account?upgrade=monthly",
-      "_blank",
-      "noopener",
-    )
+    expect(window.open).toHaveBeenCalledWith("https://recap.test/connect", "_blank", "noopener")
     await advance(5_000)
     expect(mocks.refresh).toHaveBeenCalledTimes(1)
     await advance(10_000)
     expect(mocks.refresh).toHaveBeenCalledTimes(3)
+  })
+
+  it("passes the video to come back to after picking a plan", async () => {
+    window.history.pushState(null, "", "/watch?v=abc123&list=PL1")
+    try {
+      await render()
+      await clickUpgrade()
+      expect(window.open).toHaveBeenCalledWith(
+        `https://recap.test/connect?return=${encodeURIComponent(`${location.origin}/watch?v=abc123`)}`,
+        "_blank",
+        "noopener",
+      )
+    } finally {
+      window.history.pushState(null, "", "/")
+    }
   })
 
   it("stops when the plan turns pro, toasts and clears the gate", async () => {

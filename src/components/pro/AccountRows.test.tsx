@@ -6,6 +6,7 @@ import { AccountRows, resetReturnRefreshForTests } from "./AccountRows"
 
 const mocks = vi.hoisted(() => ({
   signedIn: true,
+  linkPending: false,
   me: null as MeResponse | null,
   signOut: vi.fn(async () => {}),
   signIn: vi.fn(async () => {}),
@@ -17,6 +18,7 @@ vi.mock("@/hooks/usePro", () => ({
   usePro: () => ({
     enabled: true,
     signedIn: mocks.signedIn,
+    linkPending: mocks.linkPending,
     me: mocks.me,
     signOut: mocks.signOut,
     refresh: mocks.refresh,
@@ -68,6 +70,7 @@ describe("AccountRows", () => {
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     mocks.signedIn = true
+    mocks.linkPending = false
     mocks.me = me("trial")
     mocks.signOut.mockClear()
     mocks.signIn.mockClear()
@@ -86,16 +89,26 @@ describe("AccountRows", () => {
     vi.restoreAllMocks()
   })
 
-  it("offers Google sign-in and no plan row when signed out", async () => {
+  it("offers sign-in and no plan row when signed out", async () => {
     mocks.signedIn = false
     mocks.me = null
     await render()
-    const signIn = button("Sign in with Google")
+    const signIn = button("Sign in")
     expect(signIn).toBeDefined()
+    expect(el.textContent).toContain("Not signed in")
     expect(el.textContent).not.toContain("Trial")
     expect(button("Sign out")).toBeUndefined()
     await act(async () => signIn?.click())
     expect(mocks.signIn).toHaveBeenCalledTimes(1)
+  })
+
+  it("says it is waiting while the sign-in tab is open", async () => {
+    mocks.signedIn = false
+    mocks.me = null
+    mocks.linkPending = true
+    await render()
+    expect(el.textContent).toContain("Waiting for sign-in…")
+    expect(el.textContent).not.toContain("Not signed in")
   })
 
   it("shows the account, trial plan and an Upgrade button", async () => {
@@ -104,12 +117,23 @@ describe("AccountRows", () => {
     expect(el.textContent).toContain("Signed in")
     expect(el.textContent).toContain("Trial · 12 of 20 summaries, 40 of 50 messages left")
     await act(async () => button("Upgrade")?.click())
-    expect(window.open).toHaveBeenCalledWith(
-      "https://recap.test/account?upgrade=monthly",
-      "_blank",
-      "noopener",
-    )
+    expect(window.open).toHaveBeenCalledWith("https://recap.test/connect", "_blank", "noopener")
     expect(button("Manage billing")).toBeUndefined()
+  })
+
+  it("passes the video to Upgrade to come back to", async () => {
+    window.history.pushState(null, "", "/shorts/xyz789")
+    try {
+      await render()
+      await act(async () => button("Upgrade")?.click())
+      expect(window.open).toHaveBeenCalledWith(
+        `https://recap.test/connect?return=${encodeURIComponent(`${location.origin}/shorts/xyz789`)}`,
+        "_blank",
+        "noopener",
+      )
+    } finally {
+      window.history.pushState(null, "", "/")
+    }
   })
 
   it("shows Upgrade when the trial has ended", async () => {
