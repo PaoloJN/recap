@@ -1,7 +1,7 @@
 {
   "name": "recap",
   "displayName": "Recap AI",
-  "description": "Recap AI for YouTube: summaries, a searchable transcript and chat about the video, powered by your own OpenAI, Anthropic, Google or OpenRouter key.",
+  "description": "Recap AI for YouTube: summaries, a searchable transcript and chat about the video. Use Recap Pro or your own OpenAI, Anthropic, Google or OpenRouter key.",
   "author": "Paolo Nessim",
   "repository": {
     "type": "git",
