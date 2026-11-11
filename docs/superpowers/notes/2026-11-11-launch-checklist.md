@@ -7,9 +7,9 @@ Owner key: **P** = Paolo (accounts, dashboards, cards), **C** = Claude (code).
 
 ## 1. Merge what's built
 
-- [ ] **C** Merge extension `pro` into `main` and push (36 commits).
-- [ ] **C** Merge website `tab-sign-in` into `main` and push (8 commits).
-- [ ] **C** Commit `docs/superpowers/notes/2026-10-29-roadmap-and-growth.md`; delete the empty `notes.md`.
+- [x] **C** Merge extension `pro` into `main` and push (36 commits).
+- [x] **C** Merge website `tab-sign-in` into `main` and push (8 commits).
+- [x] **C** Commit `docs/superpowers/notes/2026-10-29-roadmap-and-growth.md`; delete the empty `notes.md`.
 
 ## 2. Production accounts and infra
 
@@ -26,19 +26,19 @@ Owner key: **P** = Paolo (accounts, dashboards, cards), **C** = Claude (code).
 - [ ] **P** Vercel env vars (production): every key from `.env.example`, with
       `POLAR_ENVIRONMENT=production`, `NEXT_PUBLIC_APP_URL=https://recapai.dev`,
       `BETTER_AUTH_SECRET` freshly generated, `NEXT_PUBLIC_STORE_URL` left empty until step 6.
-- [ ] **P** Run `pnpm db:migrate` against the production database.
+- [ ] **P** Run `pnpm db:migrate` against the production database (migrations 0000 to 0003, the last adds `uninstall_feedback`).
 - [ ] **P** Deploy. Confirm `https://recapai.dev` loads, `/sign-in` signs in with Google, `/pricing`
       lists both plans, `/account` shows the signed-in user.
 
 ## 3. Extension changes before the store build
 
-- [ ] **C** Onboarding: lead with "Try Recap Pro free" and put "Use my own key" second.
-- [ ] **C** Welcome page opened once on install (`runtime.onInstalled`, reason `install`).
-- [ ] **C** Uninstall survey URL (`runtime.setUninstallURL`) pointing at a short form on recapai.dev.
-- [ ] **C** Review prompt: once, after the third successful summary, linking to the store review page.
+- [x] **C** Onboarding: Pro builds already lead with Sign in (free trial) and put "Use my own key" second.
+- [x] **C** Welcome page opened once on install (`runtime.onInstalled`, reason `install`).
+- [x] **C** Uninstall survey URL (`runtime.setUninstallURL`) pointing at a short form on recapai.dev.
+- [x] **C** Review prompt: once, after the third successful summary, linking to the store review page.
 - [ ] **C** Implement the Pro screen redesign from Claude Design (when Paolo hands it over; can
       ship after launch if it is not ready).
-- [ ] **C** Bump the version to 2.1.0 in `package.json` and `wxt.config.ts`; update the changelog.
+- [x] **C** Bump the version to 2.1.0 in `package.json` and `wxt.config.ts`; update the changelog.
 - [ ] **P** Set the GitHub repo variable `WXT_PRO_ORIGIN=https://recapai.dev` on `PaoloJN/recap`.
 - [ ] **C** Tag `v2.1.0`, let `release.yml` build the zips, download the Chrome zip from the release.
 - [ ] **P** Load the release zip unpacked in Chrome and run the manual checklist in
@@ -53,7 +53,7 @@ Owner key: **P** = Paolo (accounts, dashboards, cards), **C** = Claude (code).
       Make them in Claude Design using the `claude-design-graphic` brief.
 - [ ] **P** Small promo tile 440x280 and marquee 1400x560 (optional but needed for the Featured badge).
 - [ ] **P** 30-second demo video uploaded to YouTube, unlisted is fine.
-- [ ] **C** Privacy policy at `recapai.dev/privacy` covers both modes: keys stay local for BYOK; for
+- [x] **C** Privacy policy at `recapai.dev/privacy` covers both modes: keys stay local for BYOK; for
       Pro, the transcript and chat messages go to recapai.dev and the model provider, what is
       stored (account, usage counts, device keys) and for how long. Terms mention refunds and cancellation.
 - [ ] **P** Store privacy disclosures: single purpose statement, justification for `storage` and each
