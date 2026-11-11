@@ -3,11 +3,12 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { fakeBrowser } from "wxt/testing/fake-browser"
 import { DEFAULT_SETTINGS, type Settings, summariesItem } from "@/lib/storage"
-import { openStream, readTextFromUIStream } from "@/lib/transport"
+import { openStream, readTextFromUIStream, StreamError } from "@/lib/transport"
 import type { VideoContext } from "@/lib/types"
 import { type SummaryState, useSummary } from "./useSummary"
 
-vi.mock("@/lib/transport", () => ({
+vi.mock("@/lib/transport", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/transport")>()),
   openStream: vi.fn(() => new ReadableStream()),
   readTextFromUIStream: vi.fn(),
 }))
@@ -175,5 +176,61 @@ describe("useSummary", () => {
     await act(async () => state.setFeedback("up"))
     await flush()
     expect(state.feedback).toBe("up")
+  })
+
+  it("keeps the partial text visible when an error follows the first token", async () => {
+    await mount()
+    vi.mocked(readTextFromUIStream).mockImplementation(async (_s, onText) => {
+      onText?.("Partial answer")
+      throw new StreamError("Recap Pro lost the model mid-answer. Try again.", {
+        code: "model_unavailable",
+      })
+    })
+    await act(async () => state.generate())
+    await flush()
+    expect(state.status).toBe("error")
+    expect(state.text).toBe("Partial answer")
+    expect(state.receivedFirstToken).toBe(true)
+    expect(state.errorCode).toBe("model_unavailable")
+    expect(await summariesItem.getValue()).toEqual({})
+  })
+
+  it("has no text when the error comes before any token, and exposes code and reset date", async () => {
+    await mount()
+    vi.mocked(readTextFromUIStream).mockRejectedValue(
+      new StreamError("Limit reached.", {
+        code: "limit_reached",
+        resetsAt: "2026-11-01T00:00:00Z",
+      }),
+    )
+    await act(async () => state.generate())
+    await flush()
+    expect(state.status).toBe("error")
+    expect(state.text).toBe("")
+    expect(state.errorCode).toBe("limit_reached")
+    expect(state.resetsAt).toBe("2026-11-01T00:00:00Z")
+  })
+
+  it("plain errors carry no code; clearError returns to idle and a retry clears the code", async () => {
+    await mount()
+    vi.mocked(readTextFromUIStream).mockRejectedValueOnce(new Error("boom"))
+    await act(async () => state.generate())
+    await flush()
+    expect(state.error).toBe("boom")
+    expect(state.errorCode).toBeNull()
+    await act(async () => state.clearError())
+    expect(state.status).toBe("idle")
+    expect(state.error).toBeNull()
+
+    vi.mocked(readTextFromUIStream).mockRejectedValueOnce(
+      new StreamError("Upgrade.", { code: "upgrade_required" }),
+    )
+    await act(async () => state.generate())
+    await flush()
+    expect(state.errorCode).toBe("upgrade_required")
+    vi.mocked(readTextFromUIStream).mockReturnValue(new Promise<string>(() => {}))
+    await act(async () => state.generate({ force: true }))
+    expect(state.status).toBe("streaming")
+    expect(state.errorCode).toBeNull()
   })
 })

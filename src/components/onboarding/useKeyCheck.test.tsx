@@ -2,7 +2,7 @@ import { act } from "react"
 import { createRoot } from "react-dom/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { KeyCheckResult } from "@/lib/port-protocol"
-import type { ProviderId } from "@/lib/types"
+import type { ByokProviderId } from "@/lib/types"
 import { type KeyCheckState, useKeyCheck } from "./useKeyCheck"
 
 declare global {
@@ -10,7 +10,7 @@ declare global {
 }
 
 let state: KeyCheckState
-let stub: (p: ProviderId, k: string) => Promise<KeyCheckResult>
+let stub: (p: ByokProviderId, k: string) => Promise<KeyCheckResult>
 
 function Probe() {
   state = useKeyCheck(stub)

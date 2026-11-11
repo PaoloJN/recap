@@ -45,7 +45,7 @@ export function NoKeyGate({ verb }: { verb: "summarize videos" | "chat with vide
         <button
           type="button"
           className={cn(primaryButton, largeButton, "w-full")}
-          onClick={() => setView("onboarding")}
+          onClick={() => setView("onboarding", { screen: "key" })}
         >
           Add API key
         </button>

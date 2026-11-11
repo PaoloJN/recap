@@ -1,6 +1,7 @@
 import type { ChatTransport, UIMessage, UIMessageChunk } from "ai"
 import { browser } from "wxt/browser"
 import { STREAM_PORT_NAME, type StreamPortMessage, type StreamRequest } from "./port-protocol"
+import type { ProErrorCode } from "./pro/types"
 import type { AnswerLanguage, ModelSelection, VideoContext } from "./types"
 
 export interface PortLike {
@@ -17,6 +18,19 @@ export interface PortLike {
 }
 
 export type PortFactory = () => PortLike
+
+/** A stream failure. `message` is user-facing; `code` is set for Recap Pro errors. */
+export class StreamError extends Error {
+  readonly code?: ProErrorCode
+  readonly resetsAt?: string
+
+  constructor(message: string, opts: { code?: ProErrorCode; resetsAt?: string } = {}) {
+    super(message)
+    this.name = "StreamError"
+    if (opts.code !== undefined) this.code = opts.code
+    if (opts.resetsAt !== undefined) this.resetsAt = opts.resetsAt
+  }
+}
 
 const defaultConnect: PortFactory = () => browser.runtime.connect({ name: STREAM_PORT_NAME })
 
@@ -50,13 +64,17 @@ export function openStream(
           })
         } else {
           settle(() => {
-            controller.error(new Error(m.message))
+            controller.error(new StreamError(m.message, { code: m.code, resetsAt: m.resetsAt }))
             port.disconnect()
           })
         }
       }
       const onDisconnect = () => {
-        settle(() => controller.error(new Error("Connection to the extension was lost")))
+        settle(() =>
+          controller.error(
+            new StreamError("Connection to the extension was lost", { code: "network" }),
+          ),
+        )
       }
       const onAbort = () => {
         settle(() => {

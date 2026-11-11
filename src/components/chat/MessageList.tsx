@@ -1,4 +1,6 @@
 import type { ChatStatus, UIMessage } from "ai"
+import type { ReactNode } from "react"
+import { errorInfo, inlineErrorCopy } from "@/components/pro/access"
 import type { ChatMessageMetadata } from "@/lib/types"
 import { AssistantMessage } from "./AssistantMessage"
 import { UserBubble } from "./UserBubble"
@@ -19,6 +21,12 @@ export interface MessageListProps {
   onRegenerate(): void
   onFeedback(id: string): void
   onRetry(): void
+  /** Starts a new chat; offered instead of Retry when the thread is too long for Recap Pro. */
+  onNewChat(): void
+  /** Whether the thread runs on Recap Pro, whose errors get copy by code. */
+  pro: boolean
+  /** Replaces the inline error (upgrade, limit and signed-out gates). */
+  errorGate?: ReactNode
 }
 
 export function MessageList({
@@ -29,12 +37,17 @@ export function MessageList({
   onRegenerate,
   onFeedback,
   onRetry,
+  onNewChat,
+  pro,
+  errorGate,
 }: MessageListProps) {
   const busy = status === "submitted" || status === "streaming"
   const last = messages.at(-1)
   const lastAssistantId = messages.findLast((m) => m.role === "assistant")?.id
   // Until the first chunk arrives there is no assistant message yet; show its dots.
   const pending = busy && last?.role !== "assistant"
+  const { code } = errorInfo(error)
+  const tooLarge = pro && code === "too_large"
 
   return (
     <div className="flex flex-col gap-[20px]">
@@ -73,20 +86,21 @@ export function MessageList({
           onFeedback={() => {}}
         />
       ) : null}
-      {error && !busy ? (
+      {error && !busy && errorGate ? errorGate : null}
+      {error && !busy && !errorGate ? (
         <div className="flex items-center gap-[8px] rounded-[12px] bg-danger-soft p-[12px]">
           <span
             role="alert"
             className="min-w-0 flex-1 text-[13px] leading-[19px] break-words text-foreground"
           >
-            {error.message}
+            {inlineErrorCopy(code, "chat", pro) ?? error.message}
           </span>
           <button
             type="button"
-            onClick={onRetry}
+            onClick={tooLarge ? onNewChat : onRetry}
             className="h-[28px] shrink-0 cursor-pointer rounded-[8px] px-[10px] text-[13px] font-medium text-foreground transition-colors duration-150 outline-none hover:bg-secondary focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
-            Retry
+            {tooLarge ? "New chat" : "Retry"}
           </button>
         </div>
       ) : null}

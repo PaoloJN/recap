@@ -18,8 +18,15 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Store builds include Recap Pro when the WXT_PRO_ORIGIN repository variable is set
+      # (e.g. https://recapai.dev; a variable, not a secret, since the origin is public).
+      # If it is unset, the release is a bring-your-own-key-only build.
       - run: pnpm zip
+        env:
+          WXT_PRO_ORIGIN: ${{ vars.WXT_PRO_ORIGIN }}
       - run: pnpm zip:firefox
+        env:
+          WXT_PRO_ORIGIN: ${{ vars.WXT_PRO_ORIGIN }}
       - uses: softprops/action-gh-release@v2
         with:
           files: .output/*.zip

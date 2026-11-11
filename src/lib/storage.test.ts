@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { fakeBrowser } from "wxt/testing/fake-browser"
 import {
   type ChatStore,
@@ -79,7 +79,7 @@ describe("mergeSettings", () => {
     expect(mergeSettings({ theme: "sepia", textSize: "xl", provider: "nope" })).toMatchObject({
       theme: "youtube",
       textSize: "m",
-      provider: "openai",
+      provider: DEFAULT_SETTINGS.provider,
     })
   })
   it("truncates custom instructions and ignores non-booleans", () => {
@@ -89,6 +89,50 @@ describe("mergeSettings", () => {
   })
   it("returns defaults for non-objects", () => {
     expect(mergeSettings(null)).toEqual(DEFAULT_SETTINGS)
+  })
+})
+
+// Pro on/off is a build-time constant, so these tests swap `@/lib/pro/config` with
+// `vi.doMock` (the non-hoisted vi.mock) and re-import storage after `vi.resetModules`.
+async function loadStorage(proEnabled: boolean) {
+  vi.resetModules()
+  vi.doMock("@/lib/pro/config", () => ({
+    PRO_ENABLED: proEnabled,
+    PRO_ORIGIN: proEnabled ? "https://recapai.dev" : null,
+    proUrl: (path: string) => `https://recapai.dev${path}`,
+  }))
+  return import("./storage")
+}
+
+describe("mergeSettings with Recap Pro", () => {
+  afterEach(() => {
+    vi.doUnmock("@/lib/pro/config")
+  })
+  it("keeps a stored pro provider when Pro is enabled", async () => {
+    const s = await loadStorage(true)
+    expect(s.mergeSettings({ provider: "pro" }).provider).toBe("pro")
+    expect(s.DEFAULT_SETTINGS.provider).toBe("pro")
+  })
+  it("falls back to openai for pro when Pro is disabled", async () => {
+    const s = await loadStorage(false)
+    expect(s.mergeSettings({ provider: "pro" }).provider).toBe("openai")
+    expect(s.DEFAULT_SETTINGS.provider).toBe("openai")
+  })
+  it("keeps a BYOK provider either way", async () => {
+    for (const enabled of [true, false]) {
+      const s = await loadStorage(enabled)
+      expect(s.mergeSettings({ provider: "anthropic" }).provider).toBe("anthropic")
+    }
+  })
+  it("pins the pro model to pro", async () => {
+    const s = await loadStorage(true)
+    const merged = s.mergeSettings({ models: { pro: "something-else", openai: "x" } })
+    expect(merged.models.pro).toBe("pro")
+    expect(merged.models.openai).toBe("x")
+  })
+  it("defines an empty Pro state", async () => {
+    const s = await loadStorage(false)
+    expect(await s.proItem.getValue()).toEqual({ token: null, me: null, fetchedAt: 0 })
   })
 })
 

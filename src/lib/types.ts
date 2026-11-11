@@ -1,4 +1,7 @@
-export type ProviderId = "openai" | "anthropic" | "google" | "openrouter"
+/** Providers that run on the user's own API key. */
+export type ByokProviderId = "openai" | "anthropic" | "google" | "openrouter"
+/** "pro" is the hosted Recap Pro tier; it exists only in builds with WXT_PRO_ORIGIN. */
+export type ProviderId = "pro" | ByokProviderId
 export type PanelTab = "summary" | "transcript" | "chat"
 export type SummaryStyle = "detailed" | "tldr" | "moments"
 export type ThemeSetting = "youtube" | "dark" | "light"
@@ -81,4 +84,8 @@ export interface VideoContext {
 export interface ModelSelection {
   provider: ProviderId
   model: string
+}
+
+export interface ByokModelSelection extends ModelSelection {
+  provider: ByokProviderId
 }

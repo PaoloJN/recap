@@ -2,13 +2,13 @@ import { Eye, EyeSlash } from "@phosphor-icons/react"
 import { useRef } from "react"
 import { secondaryButton } from "@/components/summary/buttons"
 import { PROVIDERS } from "@/lib/providers"
-import type { ProviderId } from "@/lib/types"
+import type { ByokProviderId } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 export type KeyFieldState = "idle" | "error" | "invalid" | "valid" | "checking"
 
 export interface KeyFieldProps {
-  provider: ProviderId
+  provider: ByokProviderId
   value: string
   onChange(value: string): void
   show: boolean

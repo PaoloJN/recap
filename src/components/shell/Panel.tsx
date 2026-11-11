@@ -4,7 +4,12 @@ import { useChatDraft } from "@/components/chat/ChatDraftContext"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { NewChatButton } from "@/components/chat/NewChatButton"
 import { ConnectView } from "@/components/onboarding/ConnectView"
-import { NoKeyGate } from "@/components/onboarding/NoKeyGate"
+import { access, gateFor } from "@/components/pro/access"
+import { NoAccessGate } from "@/components/pro/NoAccessGate"
+import { useClearOnSignIn } from "@/components/pro/useClearOnSignIn"
+import { useLinkPoll } from "@/components/pro/useLinkPoll"
+import { useRefreshOnGateError } from "@/components/pro/useRefreshOnGateError"
+import { useSignedOut } from "@/components/pro/useSignedOut"
 import { NoCaptions } from "@/components/summary/NoCaptions"
 import { SummaryActions } from "@/components/summary/SummaryActions"
 import { SummaryProvider } from "@/components/summary/SummaryContext"
@@ -13,6 +18,7 @@ import { useSummary } from "@/components/summary/useSummary"
 import { TranscriptPanel } from "@/components/transcript/TranscriptPanel"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { usePro } from "@/hooks/usePro"
 import { useSettings } from "@/hooks/useSettings"
 import { useShortcuts } from "@/hooks/useShortcuts"
 import { useStorageItem } from "@/hooks/useStorageItem"
@@ -109,11 +115,18 @@ function TranscriptGate({
 
 interface BodyProps {
   tab: PanelTab
-  hasKey: boolean
+  hasAccess: boolean
+  /**
+   * Settings and keys have loaded, so `hasAccess` is real. Until then no gate shows: the default
+   * provider would flash the sign-in gate (and fetch Recap Pro pricing) for a user with a key.
+   */
+  accessKnown: boolean
+  /** The Recap Pro session was lost (401 or sign-out) while this page was open. */
+  signedOut: boolean
   video: VideoState
 }
 
-function Body({ tab, hasKey, video }: BodyProps) {
+function Body({ tab, hasAccess, accessKnown, signedOut, video }: BodyProps) {
   // All three stay mounted so in-flight chat streams and transcript search/scroll survive tab
   // switches; inactive ones are hidden (a class, since the panels set their own display).
   const pane = (name: PanelTab) => (tab === name ? "contents" : "hidden")
@@ -121,8 +134,10 @@ function Body({ tab, hasKey, video }: BodyProps) {
     <>
       <div className={pane("summary")}>
         {/* SummaryPanel handles transcript loading, no captions and errors itself. */}
-        {!hasKey ? (
-          <NoKeyGate verb="summarize videos" />
+        {!hasAccess ? (
+          accessKnown ? (
+            <NoAccessGate verb="summarize videos" signedOut={signedOut} />
+          ) : null
         ) : video.pageError !== null ? (
           <PageError video={video} />
         ) : (
@@ -138,11 +153,11 @@ function Body({ tab, hasKey, video }: BodyProps) {
         )}
       </div>
       <div className={pane("chat")}>
-        {hasKey ? (
+        {hasAccess ? (
           <TranscriptGate video={video}>{() => <ChatPanel video={video} />}</TranscriptGate>
-        ) : (
-          <NoKeyGate verb="chat with videos" />
-        )}
+        ) : accessKnown ? (
+          <NoAccessGate verb="chat with videos" signedOut={signedOut} />
+        ) : null}
       </div>
     </>
   )
@@ -163,6 +178,12 @@ export function Panel() {
   } = nav
   const [storedSettings] = useSettings()
   const [apiKeys] = useStorageItem(apiKeysItem)
+  const pro = usePro()
+  // Here rather than in the waiting state: the gate unmounts once the key arrives ("signed-in"),
+  // but polling must go on until "done" so the background can close the sign-in tab. One Panel
+  // per page, so one poller per page. While nothing is pending it probes on mount and on return
+  // to the tab, so a reloaded or freshly opened page can finish a sign-in another page started.
+  useLinkPoll(pro.linkPending)
   const youtubeTheme = useTheme()
   const toast = useToast()
   const container = usePortalContainer()
@@ -185,8 +206,19 @@ export function Panel() {
   const provider = settings.provider
   const model = settings.models[provider]
   const selection = useMemo<ModelSelection>(() => ({ provider, model }), [provider, model])
-  const hasKey = Boolean(apiKeys?.[provider])
-  const summary = useSummary(video.context, selection, settings, open && hasKey)
+  const hasAccess = access(settings, apiKeys, pro) === "ok"
+  const accessKnown = storedSettings !== undefined && apiKeys !== undefined
+  const signedOut = useSignedOut(pro.signedIn) && provider === "pro"
+  const summary = useSummary(video.context, selection, settings, open && hasAccess)
+
+  // An error (or gate) from one provider says nothing about the next: switching clears it.
+  const { clearError: clearSummaryError } = summary
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs only when the provider changes
+  useEffect(() => {
+    clearSummaryError()
+  }, [provider])
+  useClearOnSignIn(pro.signedIn, summary.errorCode, clearSummaryError)
+  useRefreshOnGateError(summary.error, summary.errorCode, pro.refresh)
 
   // ⌥S on a collapsed card or a still-loading video: the transcript (and so the context) only
   // arrives after the card opens, so the request waits here, tied to the video it was made for.
@@ -199,10 +231,10 @@ export function Panel() {
       setPendingSummarize(null)
       return
     }
-    if (!hasKey || contextVideoId !== pendingSummarize || summaryStatus === "streaming") return
+    if (!hasAccess || contextVideoId !== pendingSummarize || summaryStatus === "streaming") return
     setPendingSummarize(null)
     generateSummary({ force: false })
-  }, [pendingSummarize, video.videoId, hasKey, contextVideoId, summaryStatus, generateSummary])
+  }, [pendingSummarize, video.videoId, hasAccess, contextVideoId, summaryStatus, generateSummary])
 
   const openTab = (t: PanelTab) => {
     setOpen(true)
@@ -213,12 +245,16 @@ export function Panel() {
   useShortcuts(video.videoId !== null, {
     "focus-chat": () => {
       openTab("chat")
-      if (hasKey) requestFocus()
+      if (hasAccess) requestFocus()
     },
     summarize: () => {
       openTab("summary")
       // Never restart a running summary; `generate` also ignores a request already in flight.
-      if (hasKey && summary.status !== "streaming") setPendingSummarize(video.videoId)
+      // Nor resend a request an upgrade, limit or signed-out gate is already answering.
+      const gated = summary.status === "error" && gateFor(summary.errorCode ?? undefined) !== null
+      if (hasAccess && summary.status !== "streaming" && !gated) {
+        setPendingSummarize(video.videoId)
+      }
     },
     "search-transcript": () => {
       openTab("transcript")
@@ -278,7 +314,7 @@ export function Panel() {
   }
 
   const status = collapsedStatus({
-    hasKey,
+    hasKey: hasAccess,
     pageError: video.pageError !== null,
     transcript: video.transcript.state,
     summary: summary.status,
@@ -298,7 +334,13 @@ export function Panel() {
   // Summary idle / error / no-captions / no-key screens are short: the card hugs them instead
   // of reserving the full scroll height. Everything that scrolls keeps the fixed 640px.
   const fitContent =
-    showMain && tab === "summary" && !(summary.status === "streaming" || summary.status === "done")
+    showMain &&
+    tab === "summary" &&
+    !(
+      summary.status === "streaming" ||
+      summary.status === "done" ||
+      (summary.status === "error" && summary.text.length > 0)
+    )
 
   return (
     <SummaryProvider value={summary}>
@@ -347,7 +389,7 @@ export function Panel() {
           <div className={showMain ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
             <TabRow
               right={
-                !hasKey ? null : tab === "summary" ? (
+                !hasAccess ? null : tab === "summary" ? (
                   <SummaryActions />
                 ) : tab === "chat" && hasMessages ? (
                   <NewChatButton />
@@ -360,7 +402,13 @@ export function Panel() {
                 transcriptScrolls ? "overflow-hidden" : "overflow-auto",
               )}
             >
-              <Body tab={tab} hasKey={hasKey} video={video} />
+              <Body
+                tab={tab}
+                hasAccess={hasAccess}
+                accessKnown={accessKnown}
+                signedOut={signedOut}
+                video={video}
+              />
             </div>
           </div>
         </div>

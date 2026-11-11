@@ -1,7 +1,7 @@
 import { browser } from "wxt/browser"
 import type { KeyCheckRequest, KeyCheckResult } from "@/lib/port-protocol"
-import { PROVIDERS } from "@/lib/providers"
-import type { ProviderId } from "@/lib/types"
+import { BYOK_PROVIDER_IDS, PROVIDERS } from "@/lib/providers"
+import type { ByokProviderId } from "@/lib/types"
 
 const OPENROUTER_AUTH_URL = "https://openrouter.ai/api/v1/auth/key"
 const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
@@ -18,7 +18,7 @@ function ids(body: unknown): string[] {
   return data.map((m) => m?.id).filter((id): id is string => typeof id === "string")
 }
 
-const ENDPOINTS: Record<ProviderId, Endpoint> = {
+const ENDPOINTS: Record<ByokProviderId, Endpoint> = {
   openai: {
     url: "https://api.openai.com/v1/models",
     headers: (key) => ({ Authorization: `Bearer ${key}` }),
@@ -61,7 +61,7 @@ async function readJson(res: Response): Promise<unknown> {
 }
 
 export async function validateKey(
-  provider: ProviderId,
+  provider: ByokProviderId,
   key: string,
   fetchFn: typeof fetch = fetch,
 ): Promise<KeyCheckResult> {
@@ -92,7 +92,12 @@ export async function validateKey(
 
 function isKeyCheckRequest(message: unknown): message is KeyCheckRequest {
   const m = message as Partial<KeyCheckRequest> | null
-  return m?.type === "validate-key" && typeof m.provider === "string" && typeof m.key === "string"
+  return (
+    m?.type === "validate-key" &&
+    typeof m.provider === "string" &&
+    BYOK_PROVIDER_IDS.includes(m.provider) &&
+    typeof m.key === "string"
+  )
 }
 
 export function registerKeyCheckHandler(): void {

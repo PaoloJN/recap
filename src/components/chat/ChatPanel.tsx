@@ -1,12 +1,18 @@
 import { useChat } from "@ai-sdk/react"
 import type { UIMessage } from "ai"
 import { useCallback, useEffect, useMemo, useRef } from "react"
+import { errorInfo, gateFor } from "@/components/pro/access"
+import { ProErrorGate } from "@/components/pro/ProErrorGate"
+import { useClearOnSignIn } from "@/components/pro/useClearOnSignIn"
+import { useRefreshOnGateError } from "@/components/pro/useRefreshOnGateError"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { useSummaryContext } from "@/components/summary/SummaryContext"
 import { Skeleton } from "@/components/ui/skeleton"
+import { usePro } from "@/hooks/usePro"
 import { useSettings } from "@/hooks/useSettings"
 import type { VideoState } from "@/hooks/useVideo"
+import { isByok } from "@/lib/providers"
 import { DEFAULT_SETTINGS } from "@/lib/storage"
 import { chunkBySentences, findActiveIndex } from "@/lib/transcript/parse"
 import { displayText } from "@/lib/transcript/text"
@@ -18,7 +24,7 @@ import { ChatEmptyState, pickSuggestions } from "./ChatEmptyState"
 import { Composer } from "./Composer"
 import { MessageList, messageMeta } from "./MessageList"
 import { ModelPicker } from "./ModelPicker"
-import { markStopped, shouldClearDraft, withMetadata } from "./thread"
+import { endsOnUnansweredQuestion, markStopped, shouldClearDraft, withMetadata } from "./thread"
 import { useChatHistory } from "./useChatHistory"
 
 const newMessageId = () => crypto.randomUUID()
@@ -85,6 +91,7 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
     consumeFocus,
     setHasMessages,
     newChatToken,
+    requestNewChat,
   } = useChatDraft()
 
   const selection = useMemo<ModelSelection>(
@@ -132,6 +139,19 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
     })
 
   const busy = status === "submitted" || status === "streaming"
+
+  // An error (or gate) from one provider says nothing about the next: switching clears it.
+  const provider = settings.provider
+  const providerRef = useRef(provider)
+  useEffect(() => {
+    if (providerRef.current === provider) return
+    providerRef.current = provider
+    clearError()
+  }, [provider, clearError])
+  const { signedIn, refresh: refreshPro } = usePro()
+  const errorCode = errorInfo(error).code
+  useClearOnSignIn(signedIn, errorCode, clearError)
+  useRefreshOnGateError(error, errorCode, refreshPro)
 
   useEffect(() => {
     setHasMessages(messages.length > 0)
@@ -279,6 +299,24 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
       })
   }, [newChatToken])
 
+  // An upgrade or limit gate cleared: drop the error and ask the stopped question again.
+  const onGateCleared = useCallback(() => {
+    clearError()
+    if (!busyRef.current && endsOnUnansweredQuestion(messagesRef.current)) void regenerate()
+  }, [clearError, regenerate])
+
+  // Upgrade, limit and signed-out errors show their gate under the thread instead of a Retry row.
+  const errorDetails = errorInfo(error)
+  const gate = gateFor(errorDetails.code)
+  const errorGate = gate ? (
+    <ProErrorGate
+      gate={gate}
+      kind="chat"
+      resetsAt={errorDetails.resetsAt}
+      onUpgraded={onGateCleared}
+    />
+  ) : undefined
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto p-[16px]">
@@ -297,6 +335,9 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
             onRegenerate={() => void regenerate()}
             onFeedback={onFeedback}
             onRetry={() => void regenerate()}
+            onNewChat={requestNewChat}
+            pro={!isByok(settings.provider)}
+            errorGate={errorGate}
           />
         )}
       </div>
@@ -310,7 +351,7 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
         busy={busy}
         onSend={() => ask(draft.trim())}
         onStop={() => void onStop()}
-        modelPicker={<ModelPicker />}
+        modelPicker={isByok(settings.provider) ? <ModelPicker /> : null}
         textareaRef={textareaRef}
       />
     </div>

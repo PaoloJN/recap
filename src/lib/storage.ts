@@ -1,9 +1,12 @@
 import type { UIMessage } from "ai"
 import { storage } from "wxt/utils/storage"
-import { PROVIDER_IDS, PROVIDERS } from "./providers"
+import { PRO_ENABLED } from "@/lib/pro/config"
+import type { ProLink, ProState } from "@/lib/pro/types"
+import { BYOK_PROVIDER_IDS, PROVIDER_IDS, PROVIDERS } from "./providers"
 import {
   ANSWER_LANGUAGES,
   type AnswerLanguage,
+  type ByokProviderId,
   type PanelTab,
   type ProviderId,
   type SummaryStyle,
@@ -27,11 +30,14 @@ export interface Settings {
 export const MAX_CUSTOM_INSTRUCTIONS = 500
 
 export const DEFAULT_SETTINGS: Settings = {
-  provider: "openai",
-  models: Object.fromEntries(PROVIDER_IDS.map((id) => [id, PROVIDERS[id].defaultModel])) as Record<
-    ProviderId,
-    string
-  >,
+  provider: PRO_ENABLED ? "pro" : "openai",
+  // Every provider has an entry, including "pro" (always "pro") in builds without Recap Pro.
+  models: {
+    pro: PROVIDERS.pro.defaultModel,
+    ...(Object.fromEntries(
+      BYOK_PROVIDER_IDS.map((id) => [id, PROVIDERS[id].defaultModel]),
+    ) as Record<ByokProviderId, string>),
+  },
   theme: "youtube",
   textSize: "m",
   language: "match",
@@ -63,7 +69,8 @@ export function mergeSettings(stored: unknown): Settings {
     typeof raw.models === "object" && raw.models !== null ? raw.models : {}
   ) as Record<string, unknown>
   const models = { ...DEFAULT_SETTINGS.models }
-  for (const id of PROVIDER_IDS) {
+  // Only BYOK models are user-chosen; the "pro" model stays fixed at its default.
+  for (const id of BYOK_PROVIDER_IDS) {
     const m = rawModels[id]
     if (typeof m === "string" && m !== "") models[id] = m
   }
@@ -89,9 +96,21 @@ export const settingsItem = storage.defineItem<Settings>("local:settings", {
   fallback: DEFAULT_SETTINGS,
 })
 
-export type ApiKeys = Partial<Record<ProviderId, string>>
+export type ApiKeys = Partial<Record<ByokProviderId, string>>
 
 export const apiKeysItem = storage.defineItem<ApiKeys>("local:apiKeys", { fallback: {} })
+
+export const proItem = storage.defineItem<ProState>("local:pro", {
+  fallback: { token: null, me: null, fetchedAt: 0 },
+})
+
+/**
+ * The sign-in link in progress. Background only: session storage survives an MV3 worker restart
+ * but not a browser restart, and content scripts can't read it (the panel asks the background).
+ */
+export const proLinkItem = storage.defineItem<ProLink | null>("session:proLink", {
+  fallback: null,
+})
 
 export interface PanelState {
   open: boolean

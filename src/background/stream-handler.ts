@@ -2,17 +2,21 @@ import {
   APICallError,
   convertToModelMessages,
   type LanguageModel,
+  type ModelMessage,
   RetryError,
   streamText,
   toUIMessageStream,
 } from "ai"
 import { browser } from "wxt/browser"
 import { STREAM_PORT_NAME, type StreamPortMessage, type StreamRequest } from "../lib/port-protocol"
+import { ProError, streamRequest } from "../lib/pro/api"
+import { readUiChunks } from "../lib/pro/sse"
+import { trimForPro } from "../lib/pro/trim"
 import { expandUserMessages } from "../lib/prompts/chat-messages"
 import { buildSummaryPrompt } from "../lib/prompts/summary"
 import { buildChatSystemPrompt } from "../lib/prompts/system"
-import { createModel, PROVIDERS } from "../lib/providers"
-import { recordUsage as addUsage, apiKeysItem, monthKey, usageItem } from "../lib/storage"
+import { createModel, isByok, PROVIDERS } from "../lib/providers"
+import { recordUsage as addUsage, apiKeysItem, monthKey, proItem, usageItem } from "../lib/storage"
 
 const INVALID_KEY = "Invalid API key. Check it in Settings."
 const RATE_LIMITED = "Rate limited by the provider. Try again shortly."
@@ -75,37 +79,38 @@ async function defaultRecordUsage(kind: "summary" | "chat", tokens: number): Pro
   await usageItem.setValue(addUsage(store, monthKey(new Date()), kind, tokens))
 }
 
+/** System prompt + model messages for a request. Shared by the BYOK and Recap Pro paths. */
+export async function buildStreamPrompt(
+  req: StreamRequest,
+): Promise<{ system: string; messages: ModelMessage[] }> {
+  if (req.kind === "chat") {
+    return {
+      system: buildChatSystemPrompt(req.context, req.language),
+      messages: await convertToModelMessages(expandUserMessages(req.messages)),
+    }
+  }
+  const { system, user } = buildSummaryPrompt(req.style, req.context, {
+    language: req.language,
+    customInstructions: req.customInstructions,
+  })
+  return { system, messages: [{ role: "user", content: user }] }
+}
+
 export async function runStreamRequest(req: StreamRequest, deps: StreamDeps): Promise<void> {
   const { model, post, signal } = deps
   try {
     let streamError: unknown
-    const onError = ({ error }: { error: unknown }) => {
-      streamError ??= error
-    }
-    const result =
-      req.kind === "chat"
-        ? streamText({
-            model,
-            system: buildChatSystemPrompt(req.context, req.language),
-            messages: await convertToModelMessages(expandUserMessages(req.messages)),
-            abortSignal: signal,
-            maxRetries: MAX_RETRIES,
-            onError,
-          })
-        : (() => {
-            const { system, user } = buildSummaryPrompt(req.style, req.context, {
-              language: req.language,
-              customInstructions: req.customInstructions,
-            })
-            return streamText({
-              model,
-              system,
-              prompt: user,
-              abortSignal: signal,
-              maxRetries: MAX_RETRIES,
-              onError,
-            })
-          })()
+    const { system, messages } = await buildStreamPrompt(req)
+    const result = streamText({
+      model,
+      system,
+      messages,
+      abortSignal: signal,
+      maxRetries: MAX_RETRIES,
+      onError: ({ error }: { error: unknown }) => {
+        streamError ??= error
+      },
+    })
     for await (const chunk of toUIMessageStream({ stream: result.stream })) {
       if (chunk.type === "error") {
         streamError ??= new Error(chunk.errorText)
@@ -128,6 +133,98 @@ export async function runStreamRequest(req: StreamRequest, deps: StreamDeps): Pr
     post({ type: "done" })
   } catch (e) {
     post({ type: "error", message: mapStreamError(e) })
+  }
+}
+
+// --- Recap Pro ---------------------------------------------------------------------------------
+
+const PRO_MID_STREAM = "Recap Pro lost the model mid-answer. Try again."
+const PRO_NETWORK = "Can't reach Recap Pro. Check your connection."
+const PRO_INTERNAL = "Recap Pro hit an error. Try again."
+
+interface ProStreamDeps {
+  token: string
+  post: (m: StreamPortMessage) => void
+  signal: AbortSignal
+  fetchImpl?: typeof fetch
+}
+
+/**
+ * The server accepts only user/assistant messages with string or text-part content. Keeps the
+ * text of each message and drops everything else (reasoning, files, tool calls, system).
+ */
+export function toProMessages(messages: ModelMessage[]): ModelMessage[] {
+  const out: ModelMessage[] = []
+  for (const m of messages) {
+    if (m.role !== "user" && m.role !== "assistant") continue
+    if (typeof m.content === "string") {
+      if (m.content !== "") out.push({ role: m.role, content: m.content })
+      continue
+    }
+    const content = m.content.flatMap((p) =>
+      p.type === "text" && p.text !== "" ? [{ type: "text" as const, text: p.text }] : [],
+    )
+    if (content.length > 0) out.push({ role: m.role, content })
+  }
+  return out
+}
+
+/** Signs out after a 401, unless a newer sign-in already replaced the token used here. */
+async function clearProToken(token: string): Promise<void> {
+  const current = await proItem.getValue()
+  if (current.token === token) await proItem.setValue({ token: null, me: null, fetchedAt: 0 })
+}
+
+export async function runProStreamRequest(req: StreamRequest, deps: ProStreamDeps): Promise<void> {
+  const { token, post, signal } = deps
+  try {
+    const { system, messages } = await buildStreamPrompt(req)
+    const body = {
+      kind: req.kind,
+      system,
+      messages: req.kind === "chat" ? trimForPro(system, toProMessages(messages)) : messages,
+    }
+    if (signal.aborted) return
+    const res = await streamRequest(token, body, signal, deps.fetchImpl)
+    for await (const chunk of readUiChunks(res)) {
+      if (signal.aborted) return
+      if (chunk.type === "error") {
+        post({ type: "error", code: "model_unavailable", message: PRO_MID_STREAM })
+        return
+      }
+      if (chunk.type === "finish") {
+        // Pro usage is counted on the server (shown in Settings from /me), not in the local
+        // BYOK usage store; its metadata must not end up in the stored chat either.
+        const { messageMetadata: _serverMeta, ...finish } = chunk
+        post({ type: "chunk", chunk: finish })
+        continue
+      }
+      post({ type: "chunk", chunk })
+    }
+    if (signal.aborted) return
+    post({ type: "done" })
+  } catch (e) {
+    if (signal.aborted) return
+    if (e instanceof ProError) {
+      if (e.code === "unauthorized") {
+        await clearProToken(token).catch((err) => console.error("Failed to clear Pro token", err))
+      }
+      post({
+        type: "error",
+        code: e.code,
+        message: e.message,
+        ...(e.resetsAt !== undefined ? { resetsAt: e.resetsAt } : {}),
+      })
+      return
+    }
+    // A body that fails mid-read is a dropped connection; anything else is our own fault.
+    const network = e instanceof TypeError
+    if (!network) console.error("Recap Pro stream failed", e)
+    post({
+      type: "error",
+      code: network ? "network" : "internal_error",
+      message: network ? PRO_NETWORK : PRO_INTERNAL,
+    })
   }
 }
 
@@ -161,17 +258,32 @@ export function registerStreamPortHandler(): void {
       const req = raw as StreamRequest
       const post = (m: StreamPortMessage) => safePost(port, () => disconnected, m)
       try {
+        const selection = req.selection
+        if (!isByok(selection.provider)) {
+          const { token } = await proItem.getValue()
+          if (!token) {
+            post({ type: "error", code: "unauthorized", message: "Sign in to use Recap Pro." })
+            return
+          }
+          await runProStreamRequest(req, {
+            token,
+            post,
+            signal: controller.signal,
+          })
+          return
+        }
+        const byok = { provider: selection.provider, model: selection.model }
         const keys = await apiKeysItem.getValue()
-        const key = keys[req.selection.provider]
+        const key = keys[byok.provider]
         if (!key) {
           post({
             type: "error",
-            message: `No API key configured for ${PROVIDERS[req.selection.provider].label}.`,
+            message: `No API key configured for ${PROVIDERS[byok.provider].label}.`,
           })
           return
         }
         await runStreamRequest(req, {
-          model: createModel(req.selection, key),
+          model: createModel(byok, key),
           post,
           signal: controller.signal,
           recordUsage: defaultRecordUsage,

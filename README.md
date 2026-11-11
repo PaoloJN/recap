@@ -1,6 +1,6 @@
 # Recap AI
 
-Recap AI for YouTube: summaries, a searchable transcript and chat about the video, in the sidebar, powered by your own OpenAI, Anthropic, Google or OpenRouter key.
+Recap AI for YouTube: summaries, a searchable transcript and chat about the video, in the sidebar, powered by your own OpenAI, Anthropic, Google or OpenRouter key, or optionally by Recap Pro.
 
 ![Screenshot](assets/screenshot.png)
 
@@ -47,11 +47,20 @@ Get a key here:
 
 The transcript tab works without a key.
 
+## Recap Pro
+
+Recap Pro is an optional way to use Recap without your own key. Sign in at recapai.dev (it opens in a normal tab and brings you back to the video), get a free trial (20 summaries and 50 chat messages per account), then move to a paid plan managed at [recapai.dev](https://recapai.dev). "Use my own key" stays available at any point.
+
+Pro is turned on at build time. Release builds include it when the repository's `WXT_PRO_ORIGIN` variable is set. If you build from source without `WXT_PRO_ORIGIN`, you get the bring-your-own-key extension only: no Recap Pro option, no requests to recapai.dev.
+
+A Pro build adds no permission. Sign-in opens recapai.dev in a normal tab, and the Pro server allows the extension's requests through CORS, so no host access to recapai.dev is needed. The Firefox build needs Firefox 115 or later.
+
 ## Privacy
 
 - Your key is stored in the extension's local storage on your device and sent only to the provider you pick.
-- Requests go only to YouTube and the provider you chose. There is no server of ours in between.
+- With your own key, requests go only to YouTube and the provider you chose. There is no server of ours in between.
 - No analytics, no telemetry, no tracking.
+- Recap Pro (only in builds that include it, and only while it is the selected provider): the transcript text and chat messages for each request are sent to recapai.dev and on to the model provider. The server stores request counts and token totals, not content. Your sign-in token is stored in the extension's local storage. Requests made with your own key never touch recapai.dev.
 - Transcripts come from YouTube's own transcript feature. It is undocumented and may change. If it breaks, the panel shows "no transcript".
 
 ## Development
@@ -67,6 +76,14 @@ pnpm build
 pnpm zip        # package into .output/ (add -b firefox or use zip:firefox for Firefox)
 pnpm icons      # regenerate extension icons
 ```
+
+To work on Recap Pro against a local recap-website:
+
+```sh
+WXT_PRO_ORIGIN=http://localhost:3000 pnpm dev
+```
+
+Or put `WXT_PRO_ORIGIN=http://localhost:3000` in `.env.local` (see `.env.example`).
 
 ## Tech stack
 

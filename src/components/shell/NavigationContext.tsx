@@ -3,13 +3,17 @@ import { useStorageItem } from "@/hooks/useStorageItem"
 import { panelStateItem } from "@/lib/storage"
 import type { PanelTab, PanelView } from "@/lib/types"
 
+/** The onboarding view's screen. Only the API key form remains; kept so call sites name it. */
+export type OnboardingScreen = "key"
+
 export interface PanelNav {
   open: boolean
   setOpen(v: boolean): void
   tab: PanelTab
   selectTab(tab: PanelTab): void
   view: PanelView
-  setView(view: PanelView): void
+  /** `screen` names the onboarding screen; the key form is the only one. */
+  setView(view: PanelView, opts?: { screen?: OnboardingScreen }): void
   /** Sub-header back: the connect view opened from Settings returns there, else to main. */
   goBack(): void
   optionsOpen: boolean
@@ -25,23 +29,30 @@ export interface PanelNav {
 
 const NavigationContext = createContext<PanelNav | null>(null)
 
+interface NavState {
+  view: PanelView
+  back: PanelView
+}
+
+const INITIAL_NAV: NavState = { view: "main", back: "main" }
+
 /** `open`/`tab` persist in `local:panel`; children render once that has loaded. */
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [panelState, setPanelState] = useStorageItem(panelStateItem)
-  const [nav, setNav] = useState<{ view: PanelView; back: PanelView }>({
-    view: "main",
-    back: "main",
-  })
+  const [nav, setNav] = useState<NavState>(INITIAL_NAV)
   const view = nav.view
   const setView = useCallback(
-    (next: PanelView) =>
-      setNav((cur) => ({
-        view: next,
-        back: next === "onboarding" && cur.view === "settings" ? "settings" : "main",
-      })),
+    (next: PanelView, _opts?: { screen?: OnboardingScreen }) =>
+      setNav((cur) => {
+        if (next === "onboarding" && cur.view === "onboarding") return cur
+        return {
+          view: next,
+          back: next === "onboarding" && cur.view === "settings" ? "settings" : "main",
+        }
+      }),
     [],
   )
-  const goBack = useCallback(() => setNav((cur) => ({ view: cur.back, back: "main" })), [])
+  const goBack = useCallback(() => setNav((cur) => ({ ...INITIAL_NAV, view: cur.back })), [])
   const [optionsOpen, setOptionsOpen] = useState(false)
   const [searchFocusPending, setSearchFocusPending] = useState(false)
 
