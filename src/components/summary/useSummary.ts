@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { errorInfo } from "@/components/pro/access"
 import { useStorageItem } from "@/hooks/useStorageItem"
 import type { ProErrorCode } from "@/lib/pro/types"
+import { recordSummaryForReview } from "@/lib/review"
 import {
   mergeSettings,
   type Settings,
@@ -139,6 +140,7 @@ export function useSummary(
                 createdAt: Date.now(),
               }),
             )
+            void recordSummaryForReview()
           }
           if (!isCurrent()) return
           settle(full)

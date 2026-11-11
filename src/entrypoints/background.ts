@@ -1,4 +1,5 @@
 import { browser } from "wxt/browser"
+import { registerInstallHandlers } from "@/background/install"
 import { registerProHandlers } from "@/background/pro-auth"
 import { registerStreamPortHandler } from "@/background/stream-handler"
 import { registerKeyCheckHandler } from "@/background/validate-key"
@@ -6,6 +7,7 @@ import type { ToggleMessage } from "@/lib/port-protocol"
 import { PRO_ENABLED } from "@/lib/pro/config"
 
 export default defineBackground(() => {
+  registerInstallHandlers()
   registerStreamPortHandler()
   registerKeyCheckHandler()
   if (PRO_ENABLED) registerProHandlers()

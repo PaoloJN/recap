@@ -15,6 +15,7 @@ import { SUMMARY_STYLES } from "@/lib/summary/styles"
 import { cn } from "@/lib/utils"
 import { primaryButton, smallButton } from "./buttons"
 import { NoCaptions } from "./NoCaptions"
+import { ReviewPrompt } from "./ReviewPrompt"
 import { useSummaryContext } from "./SummaryContext"
 import { SummaryDone } from "./SummaryDone"
 import { SummaryError } from "./SummaryError"
@@ -138,7 +139,17 @@ export function SummaryPanel({ video }: { video: VideoState }) {
           meta={`${modelLabel(provider, model)} · ${SUMMARY_STYLES[style].label} · ${language}`}
         />
       )
-      if (status !== "error") return done
+      if (status !== "error")
+        return (
+          <>
+            {done}
+            {status === "done" ? (
+              <div className="mt-[16px]">
+                <ReviewPrompt />
+              </div>
+            ) : null}
+          </>
+        )
       return (
         <>
           <PartialError

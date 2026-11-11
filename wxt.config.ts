@@ -26,7 +26,7 @@ export default defineConfig({
   manifest: ({ browser }) => {
     return {
       name: "Recap AI",
-      version: "2.0.0",
+      version: "2.1.0",
       permissions: ["storage"],
       host_permissions: [
         "https://api.openai.com/*",
