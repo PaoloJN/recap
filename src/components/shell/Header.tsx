@@ -1,4 +1,12 @@
-import { CaretDown, CaretUp, GearSix, Pause, Play } from "@phosphor-icons/react"
+import {
+  CaretDown,
+  CaretUp,
+  CornersIn,
+  CornersOut,
+  GearSix,
+  Pause,
+  Play,
+} from "@phosphor-icons/react"
 import type { ReactNode } from "react"
 import { usePlayer } from "@/hooks/usePlayer"
 import { formatMs } from "@/lib/timestamps"
@@ -14,6 +22,8 @@ export interface HeaderProps {
   onToggleOpen(): void
   onOpenSettings(): void
   moreMenu: ReactNode
+  /** Present while the card is open. Disabled in fullscreen and when the window is too narrow. */
+  focusMode?: { active: boolean; disabled: boolean; onToggle(): void }
 }
 
 /** Play state and time; subscribes to the player so only this subtree re-renders per tick. */
@@ -37,7 +47,9 @@ export function Header({
   onToggleOpen,
   onOpenSettings,
   moreMenu,
+  focusMode,
 }: HeaderProps) {
+  const FocusIcon = focusMode?.active ? CornersIn : CornersOut
   return (
     <div className="flex items-center gap-[12px] py-[12px] pr-[8px] pl-[16px]">
       <div className="flex size-[32px] shrink-0 items-center justify-center text-foreground">
@@ -59,6 +71,16 @@ export function Header({
         </span>
       </button>
       <div className="flex shrink-0 items-center">
+        {open && focusMode ? (
+          <IconButton
+            label={focusMode.active ? "Thu nhỏ" : "Phóng to chat"}
+            disabled={focusMode.disabled}
+            aria-pressed={focusMode.active}
+            onClick={focusMode.onToggle}
+          >
+            <FocusIcon />
+          </IconButton>
+        ) : null}
         <IconButton label="Settings" onClick={onOpenSettings}>
           <GearSix />
         </IconButton>

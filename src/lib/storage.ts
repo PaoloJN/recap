@@ -1,5 +1,6 @@
 import type { UIMessage } from "ai"
 import { storage } from "wxt/utils/storage"
+import type { LayoutPrefs } from "./layout/panel-layout"
 import { PROVIDER_IDS, PROVIDERS } from "./providers"
 import { REASONING_EFFORTS, type ReasoningEffort } from "./reasoning"
 import { cleanRole, MAX_ROLE } from "./tutor/prompts"
@@ -135,6 +136,11 @@ export interface PanelState {
 
 export const panelStateItem = storage.defineItem<PanelState>("local:panel", {
   fallback: { open: false, tab: "summary" },
+})
+
+/** Sidebar width and focus mode. Kept off `local:panel` so opening a tab cannot wipe it. */
+export const layoutItem = storage.defineItem<LayoutPrefs>("local:layout", {
+  fallback: { width: null, focus: false },
 })
 
 export interface StoredChat {

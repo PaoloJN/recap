@@ -44,23 +44,28 @@ export function MessageList({
         const meta = messageMeta(m)
         const text = messageText(m)
         if (m.role === "user") {
-          return <UserBubble key={m.id} text={text} at={meta.at} quote={meta.quote} />
+          return (
+            <div key={m.id} data-msg="">
+              <UserBubble text={text} at={meta.at} quote={meta.quote} />
+            </div>
+          )
         }
         if (m.role !== "assistant") return null
         return (
-          <AssistantMessage
-            key={m.id}
-            text={text}
-            streaming={busy && m.id === last?.id}
-            stopped={meta.stopped === true}
-            isLast={m.id === lastAssistantId}
-            busy={busy}
-            feedback={meta.feedback === "up"}
-            onCopy={() => onCopy(text)}
-            onRegenerate={onRegenerate}
-            onFeedback={() => onFeedback(m.id)}
-            onDeepen={onDeepen && text ? () => onDeepen(text) : undefined}
-          />
+          <div key={m.id} data-msg="">
+            <AssistantMessage
+              text={text}
+              streaming={busy && m.id === last?.id}
+              stopped={meta.stopped === true}
+              isLast={m.id === lastAssistantId}
+              busy={busy}
+              feedback={meta.feedback === "up"}
+              onCopy={() => onCopy(text)}
+              onRegenerate={onRegenerate}
+              onFeedback={() => onFeedback(m.id)}
+              onDeepen={onDeepen && text ? () => onDeepen(text) : undefined}
+            />
+          </div>
         )
       })}
       {pending ? (

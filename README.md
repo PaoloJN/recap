@@ -17,7 +17,8 @@ Recap AI for YouTube: summaries, a searchable transcript and chat about the vide
 - Auto-summarize (off by default), filler-word stripping, answer language and custom instructions. A fresh install answers in Tiếng Việt; change it under Settings → Answer language.
 - Text size (S, M, L) and theme (follow YouTube, dark or light).
 - Export a video's summary and chat as Markdown, or all chats in one file.
-- Shortcuts: `Alt+Y` toggle panel, `Alt+E` explain this moment, `Alt+C` focus chat, `Alt+S` summarize, `Alt+F` search transcript. `Alt+Y` and `Alt+E` can be rebound at `chrome://extensions/shortcuts`.
+- Drag the panel's left edge to widen the sidebar (360px to about 60% of the window). Double-click the edge to reset. **Phóng to chat** (`Alt+Shift+F`) parks the video at about 40% on the left and gives the chat the rest of the screen. `Esc` restores. Fullscreen leaves the YouTube player alone.
+- Shortcuts: `Alt+Y` toggle panel, `Alt+E` explain this moment, `Alt+Shift+F` phóng to chat, `Alt+C` focus chat, `Alt+S` summarize, `Alt+F` search transcript. `Alt+Y`, `Alt+E`, and `Alt+Shift+F` can be rebound at `chrome://extensions/shortcuts`.
 
 ## Install
 
@@ -111,6 +112,10 @@ Mọi nút dưới đây chỉ gọi model khi bấm. Không có lịch chạy n
 6. **Quiz**: bấm **Tạo 5 câu** (trắc nghiệm và tự luận). **Chấm bài** chấm trắc nghiệm tại máy và nhờ model chấm tự luận. Câu sai có mốc để xem lại.
 7. **Đào sâu**: nút trên câu trả lời của người thầy và trên thẻ khái niệm. OpenAI và ChatGPT dùng `web_search`; OpenRouter dùng model `:online`. Provider từ chối thì câu trả lời vẫn hiện, kèm dòng "không tra web được với provider này".
 8. **Reasoning effort** (Settings, cạnh Default model): **Tự động** không gửi tham số. Low / Medium / High gửi `reasoning.effort` với model GPT-5/GPT-6 biết suy luận, `reasoning.effort` qua OpenRouter, hoặc ngân sách thinking của Anthropic và Google. Nếu API từ chối, gửi lại một lần không kèm tham số và ghi một dòng chú thích.
+
+### Bố cục panel
+
+Kéo cạnh trái của panel để đổi bề rộng cột bên phải (tối thiểu 360px, tối đa khoảng 60% cửa sổ). Double-click cạnh đó trả về 400px. Bề rộng và chế độ lưu trong `chrome.storage.local`. **Phóng to chat** (nút trên header, hoặc `Alt+Shift+F`) đưa video về khoảng 40% bên trái, video giữ tỉ lệ và dính khi cuộn, panel chiếm phần còn lại và cao gần hết cửa sổ. Tin nhắn rộng khoảng 75 ký tự. `Esc` hoặc bấm lại để trở về. Không bật được khi video đang toàn màn hình. Cửa sổ hẹp thì cột YouTube giữ nguyên.
 
 ### Gỡ cài đặt
 

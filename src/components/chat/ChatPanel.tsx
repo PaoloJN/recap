@@ -30,11 +30,10 @@ import { MessageList, messageMeta } from "./MessageList"
 import { ModelPicker } from "./ModelPicker"
 import { markStopped, shouldClearDraft, withMetadata } from "./thread"
 import { useChatHistory } from "./useChatHistory"
+import { usePreserveScroll } from "./usePreserveScroll"
 
 const newMessageId = () => crypto.randomUUID()
 const EXPLAIN_NOW_PROMPT = "Explain what's happening here."
-/** Within this distance of the bottom, new content keeps the list pinned to the bottom. */
-const STICK_PX = 40
 
 function ChatSkeleton() {
   return (
@@ -181,10 +180,7 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
   // Scrolling: stay pinned to the bottom while the user is there; jump down on send.
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinnedRef = useRef(true)
-  const onScroll = () => {
-    const el = scrollRef.current
-    if (el) pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX
-  }
+  usePreserveScroll(scrollRef, pinnedRef)
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-pin on every message/stream update
   useEffect(() => {
     const el = scrollRef.current
@@ -380,25 +376,27 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
           </p>
         ) : null}
       </div>
-      <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto p-[16px]">
-        {messages.length === 0 && !busy ? (
-          <ChatEmptyState
-            suggestions={pickSuggestions(summary.parsed.questions)}
-            onExplainNow={explainNow}
-            onAsk={ask}
-          />
-        ) : (
-          <MessageList
-            messages={messages}
-            status={status}
-            error={error}
-            onCopy={onCopy}
-            onRegenerate={() => void regenerate()}
-            onFeedback={onFeedback}
-            onRetry={() => void regenerate()}
-            onDeepen={(text) => send(buildDeeperMessage(text.slice(0, 700)), null, true)}
-          />
-        )}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-[16px]">
+        <div className="recap-reading">
+          {messages.length === 0 && !busy ? (
+            <ChatEmptyState
+              suggestions={pickSuggestions(summary.parsed.questions)}
+              onExplainNow={explainNow}
+              onAsk={ask}
+            />
+          ) : (
+            <MessageList
+              messages={messages}
+              status={status}
+              error={error}
+              onCopy={onCopy}
+              onRegenerate={() => void regenerate()}
+              onFeedback={onFeedback}
+              onRetry={() => void regenerate()}
+              onDeepen={(text) => send(buildDeeperMessage(text.slice(0, 700)), null, true)}
+            />
+          )}
+        </div>
       </div>
       <Composer
         draft={draft}

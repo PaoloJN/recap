@@ -68,7 +68,10 @@ export type StreamPortMessage =
   | { type: "error"; message: string }
   | { type: "done" }
 
-export type ToggleMessage = { type: "toggle-panel" } | { type: "explain-moment" }
+export type ToggleMessage =
+  | { type: "toggle-panel" }
+  | { type: "explain-moment" }
+  | { type: "focus-mode" }
 
 export type KeyCheckRequest = { type: "validate-key"; provider: ProviderId; key: string }
 

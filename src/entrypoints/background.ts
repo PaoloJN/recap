@@ -14,7 +14,9 @@ export default defineBackground(() => {
         ? "toggle-panel"
         : command === "explain-moment"
           ? "explain-moment"
-          : null
+          : command === "focus-mode"
+            ? "focus-mode"
+            : null
     if (!type) return
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
     if (tab?.id != null) {

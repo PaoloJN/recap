@@ -41,9 +41,11 @@ import { CollapsedRow } from "./CollapsedRow"
 import { collapsedStatus } from "./collapsed-status"
 import { EmptyState } from "./EmptyState"
 import { Header } from "./Header"
+import { useLayout } from "./LayoutContext"
 import { MoreMenu } from "./MoreMenu"
 import { usePanelNav } from "./NavigationContext"
 import { DialogContainerContext, usePortalContainer } from "./PortalContainer"
+import { ResizeHandle } from "./ResizeHandle"
 import { SettingsVersion, SettingsView } from "./SettingsView"
 import { SubHeader } from "./SubHeader"
 import { TabRow } from "./TabRow"
@@ -241,6 +243,7 @@ export function Panel() {
   const youtubeTheme = useTheme()
   const toast = useToast()
   const container = usePortalContainer()
+  const layout = useLayout()
   const cardRef = useRef<HTMLDivElement | null>(null)
   const [card, setCard] = useState<HTMLDivElement | null>(null)
   const setCardRef = useCallback((el: HTMLDivElement | null) => {
@@ -402,14 +405,25 @@ export function Panel() {
       <DialogContainerContext.Provider value={card}>
         <div
           ref={setCardRef}
+          data-recap-card=""
+          data-recap-focus={layout.focus ? "true" : "false"}
           className={cn(
             "relative flex flex-col overflow-hidden rounded-[12px] border bg-background font-sans text-body text-foreground antialiased",
-            open && !fitContent ? "h-[640px]" : "h-auto",
-            fitContent && "max-h-[640px]",
+            layout.focus ? "h-full min-h-0" : open && !fitContent ? "h-[640px]" : "h-auto",
+            !layout.focus && fitContent && "max-h-[640px]",
             TEXT_SIZE_CLASS[settings.textSize],
             dark && "dark",
           )}
         >
+          {layout.canResize ? (
+            <ResizeHandle
+              widthPx={layout.widthPx}
+              maxPx={layout.maxPx}
+              onPreview={layout.previewWidth}
+              onCommit={layout.commitWidth}
+              onReset={layout.resetWidth}
+            />
+          ) : null}
           {open && view !== "main" ? (
             <SubHeader
               title={view === "settings" ? "Settings" : "Add API key"}
@@ -424,6 +438,15 @@ export function Panel() {
               open={open}
               onToggleOpen={() => setOpen(!open)}
               onOpenSettings={openSettings}
+              focusMode={
+                open
+                  ? {
+                      active: layout.focus,
+                      disabled: !layout.canToggle,
+                      onToggle: layout.toggleFocus,
+                    }
+                  : undefined
+              }
               moreMenu={
                 <MoreMenu videoId={videoId} onExport={exportMarkdown} onShortcuts={showShortcuts} />
               }
