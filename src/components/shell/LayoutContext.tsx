@@ -181,7 +181,10 @@ export function LayoutProvider({
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || !decision.focus) return
       const root = container.getRootNode()
-      if (root instanceof ShadowRoot && root.querySelector("[data-testid='diagram-node-menu']")) {
+      if (
+        root instanceof ShadowRoot &&
+        root.querySelector("[data-testid='diagram-node-menu'], [data-testid='diagram-fullscreen']")
+      ) {
         return
       }
       event.preventDefault()
