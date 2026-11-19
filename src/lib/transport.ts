@@ -1,6 +1,8 @@
 import type { ChatTransport, UIMessage, UIMessageChunk } from "ai"
 import { browser } from "wxt/browser"
 import { STREAM_PORT_NAME, type StreamPortMessage, type StreamRequest } from "./port-protocol"
+import type { ReasoningEffort } from "./reasoning"
+import type { TutorSettings } from "./tutor/types"
 import type { AnswerLanguage, ModelSelection, VideoContext } from "./types"
 
 export interface PortLike {
@@ -116,6 +118,11 @@ export class PortChatTransport implements ChatTransport<UIMessage> {
       context: VideoContext
       selection: ModelSelection
       language: AnswerLanguage
+      tutor?: TutorSettings
+      role?: string
+      customInstructions?: string
+      reasoningEffort?: ReasoningEffort
+      web?: boolean
     },
     private connect?: PortFactory,
   ) {}

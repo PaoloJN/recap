@@ -40,7 +40,7 @@ function stripSvg(svg: string): Element | null {
   return root
 }
 
-function DiagramSvg({ svg }: { svg: string }) {
+export function DiagramSvg({ svg }: { svg: string }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const host = ref.current

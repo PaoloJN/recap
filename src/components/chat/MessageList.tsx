@@ -19,6 +19,7 @@ export interface MessageListProps {
   onRegenerate(): void
   onFeedback(id: string): void
   onRetry(): void
+  onDeepen?(text: string): void
 }
 
 export function MessageList({
@@ -29,6 +30,7 @@ export function MessageList({
   onRegenerate,
   onFeedback,
   onRetry,
+  onDeepen,
 }: MessageListProps) {
   const busy = status === "submitted" || status === "streaming"
   const last = messages.at(-1)
@@ -57,6 +59,7 @@ export function MessageList({
             onCopy={() => onCopy(text)}
             onRegenerate={onRegenerate}
             onFeedback={() => onFeedback(m.id)}
+            onDeepen={onDeepen && text ? () => onDeepen(text) : undefined}
           />
         )
       })}
@@ -71,6 +74,7 @@ export function MessageList({
           onCopy={() => {}}
           onRegenerate={() => {}}
           onFeedback={() => {}}
+          onDeepen={undefined}
         />
       ) : null}
       {error && !busy ? (

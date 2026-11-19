@@ -17,7 +17,7 @@ Recap AI for YouTube: summaries, a searchable transcript and chat about the vide
 - Auto-summarize (off by default), filler-word stripping, answer language and custom instructions. A fresh install answers in Tiếng Việt; change it under Settings → Answer language.
 - Text size (S, M, L) and theme (follow YouTube, dark or light).
 - Export a video's summary and chat as Markdown, or all chats in one file.
-- Shortcuts: `Alt+Y` toggle panel, `Alt+C` focus chat, `Alt+S` summarize, `Alt+F` search transcript. `Alt+Y` can be rebound at `chrome://extensions/shortcuts`.
+- Shortcuts: `Alt+Y` toggle panel, `Alt+E` explain this moment, `Alt+C` focus chat, `Alt+S` summarize, `Alt+F` search transcript. `Alt+Y` and `Alt+E` can be rebound at `chrome://extensions/shortcuts`.
 
 ## Install
 
@@ -98,6 +98,19 @@ Lệnh build là `pnpm build` (WXT). Thư mục để nạp vào Chrome là `.ou
 3. Sơ đồ hiện thành hình trong panel. Danh sách bên dưới (thành phần → mốc thời gian) tua video khi bấm, cùng cơ chế tua với các timestamp khác.
 4. **Copy Mermaid** chép mã nguồn. **Download SVG** tải file ảnh. Menu **Export as Markdown** gắn sơ đồ vào file export nếu video đã có sơ đồ.
 5. Nếu Mermaid không parse được, extension hỏi model sửa cú pháp một lần. Vẫn lỗi thì panel hiện thông báo và mã thô.
+
+### Người thầy
+
+Mọi nút dưới đây chỉ gọi model khi bấm. Không có lịch chạy nền.
+
+1. **Chat**: chuyển **Hỏi đáp / Giảng giải / Socratic** và **Cơ bản / Kỹ sư / Chuyên gia**. Socratic hỏi một câu mỗi lượt rồi kiểm tra câu trả lời. Mốc thời gian trong câu trả lời tua video. Chế độ và mức được lưu trong Settings.
+2. **Vai trò của bạn** (Settings): chữ tự do, ví dụ `AI architect`. Để trống thì ví dụ theo kiểu kỹ sư phần mềm nói chung. Người thầy lấy ví dụ theo vai trò này.
+3. **Giảng đoạn này**: nút trong Chat, hoặc `Alt+E` (đổi được tại `chrome://extensions/shortcuts`). Lấy transcript ±60 giây quanh lúc đang phát, kèm tóm tắt nếu có, rồi mở Chat và stream bài giảng.
+4. **Khái niệm**: bấm **Trích khái niệm**. Mỗi thẻ có tên tiếng Anh, giải thích ngắn, vì sao quan trọng, mốc thời gian đầu tiên và khái niệm liên quan. Sơ đồ **Cần biết trước** vẽ bằng Mermaid. Bấm thẻ để người thầy giảng khái niệm đó. Kết quả lưu trong `chrome.storage.local` theo video, giống tóm tắt.
+5. **Góc nhìn tác giả** (cuối tab Khái niệm): bấm **Phân tích**. Bài viết bằng tiếng Việt, giữ thuật ngữ tiếng Anh. Tách **Tác giả nói** (có mốc thời gian) khỏi **Diễn giải**. Gồm luận điểm, giả định, bằng chứng so với ý kiến, chỗ bỏ sót hoặc thiên kiến, so với quan điểm phổ biến (tra web nếu provider cho phép, có link; nếu không thì ghi chú không tra web được), và ý nghĩa với vai trò của bạn.
+6. **Quiz**: bấm **Tạo 5 câu** (trắc nghiệm và tự luận). **Chấm bài** chấm trắc nghiệm tại máy và nhờ model chấm tự luận. Câu sai có mốc để xem lại.
+7. **Đào sâu**: nút trên câu trả lời của người thầy và trên thẻ khái niệm. OpenAI và ChatGPT dùng `web_search`; OpenRouter dùng model `:online`. Provider từ chối thì câu trả lời vẫn hiện, kèm dòng "không tra web được với provider này".
+8. **Reasoning effort** (Settings, cạnh Default model): **Tự động** không gửi tham số. Low / Medium / High gửi `reasoning.effort` với model GPT-5/GPT-6 biết suy luận, `reasoning.effort` qua OpenRouter, hoặc ngân sách thinking của Anthropic và Google. Nếu API từ chối, gửi lại một lần không kèm tham số và ghi một dòng chú thích.
 
 ### Gỡ cài đặt
 

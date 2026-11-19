@@ -25,6 +25,12 @@ export interface ChatDraft {
   /** Bumped by `requestNewChat`; the chat panel clears its thread when it changes. */
   newChatToken: number
   requestNewChat(): void
+  /** Ask the chat to explain the current moment once it is mounted for this video. */
+  explain: { nonce: number; videoId: string }
+  requestExplain(videoId: string): void
+  /** A prompt to send once chat is mounted. `web` asks for a web search on that turn. */
+  ask: { nonce: number; videoId: string; text: string; web: boolean }
+  requestAsk(videoId: string, text: string, web: boolean): void
   /** Clears draft, quote, attachTime and a pending focus request (on video change). */
   reset(): void
 }
@@ -41,11 +47,21 @@ export function ChatDraftProvider({ children }: { children: ReactNode }) {
   const [hasMessages, setHasMessages] = useState(false)
   const [newChatToken, setNewChatToken] = useState(0)
   const requestNewChat = useCallback(() => setNewChatToken((t) => t + 1), [])
+  const [explain, setExplain] = useState({ nonce: 0, videoId: "" })
+  const requestExplain = useCallback((videoId: string) => {
+    setExplain((cur) => ({ nonce: cur.nonce + 1, videoId }))
+  }, [])
+  const [ask, setAsk] = useState({ nonce: 0, videoId: "", text: "", web: false })
+  const requestAsk = useCallback((videoId: string, text: string, web: boolean) => {
+    setAsk((cur) => ({ nonce: cur.nonce + 1, videoId, text, web }))
+  }, [])
   const reset = useCallback(() => {
     setDraft("")
     setQuote(null)
     setAttachTime(false)
     setFocusPending(false)
+    setExplain({ nonce: 0, videoId: "" })
+    setAsk({ nonce: 0, videoId: "", text: "", web: false })
   }, [])
 
   const value = useMemo<ChatDraft>(
@@ -63,6 +79,10 @@ export function ChatDraftProvider({ children }: { children: ReactNode }) {
       setHasMessages,
       newChatToken,
       requestNewChat,
+      explain,
+      requestExplain,
+      ask,
+      requestAsk,
       reset,
     }),
     [
@@ -75,6 +95,10 @@ export function ChatDraftProvider({ children }: { children: ReactNode }) {
       hasMessages,
       newChatToken,
       requestNewChat,
+      explain,
+      requestExplain,
+      ask,
+      requestAsk,
       reset,
     ],
   )

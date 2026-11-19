@@ -11,7 +11,8 @@ import type { ToggleMessage } from "@/lib/port-protocol"
 import { panelStateItem } from "@/lib/storage"
 
 function isToggleMessage(msg: unknown): msg is ToggleMessage {
-  return (msg as ToggleMessage | undefined)?.type === "toggle-panel"
+  const type = (msg as ToggleMessage | undefined)?.type
+  return type === "toggle-panel" || type === "explain-moment"
 }
 
 export default defineContentScript({
@@ -40,6 +41,13 @@ export default defineContentScript({
 
     const onMessage = (msg: unknown) => {
       if (!isToggleMessage(msg)) return
+      if (msg.type === "explain-moment") {
+        void panelStateItem
+          .getValue()
+          .then((s) => panelStateItem.setValue({ ...s, open: true, tab: "chat" }))
+        document.dispatchEvent(new CustomEvent("recap-explain-moment"))
+        return
+      }
       void panelStateItem.getValue().then((s) => panelStateItem.setValue({ ...s, open: !s.open }))
     }
     browser.runtime.onMessage.addListener(onMessage)

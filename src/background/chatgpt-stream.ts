@@ -1,9 +1,16 @@
 import type { UIMessageChunk } from "ai"
 import { CHATGPT_RESPONSES_URL } from "@/lib/chatgpt/constants"
 import { friendlyChatGptError } from "@/lib/chatgpt/errors"
-import { responsesBodyForRequest } from "@/lib/chatgpt/request"
+import {
+  omitReasoning,
+  omitTools,
+  type ResponsesBody,
+  responsesBodyForRequest,
+} from "@/lib/chatgpt/request"
 import { readResponsesSse } from "@/lib/chatgpt/sse"
 import type { StreamPortMessage, StreamRequest } from "@/lib/port-protocol"
+import { isReasoningRejection, REASONING_NOTE } from "@/lib/reasoning"
+import { isWebToolRejection, WEB_NOTE } from "@/lib/tutor/web"
 import { authorizedFetch } from "./chatgpt-auth"
 
 function failureMessage(err: unknown): string {
@@ -37,23 +44,52 @@ function chunk(part: UIMessageChunk): StreamPortMessage {
   return { type: "chunk", chunk: part }
 }
 
-/** Summary, diagram, and chat all go through one Responses request. No AI SDK body. */
+async function postResponses(body: ResponsesBody, signal: AbortSignal): Promise<Response> {
+  return authorizedFetch(CHATGPT_RESPONSES_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "text/event-stream" },
+    body: JSON.stringify(body),
+    signal,
+  })
+}
+
+/** One retry drops a rejected `reasoning` or `web_search` field. The note is shown on the answer. */
+async function responsesWithFallback(
+  body: ResponsesBody,
+  signal: AbortSignal,
+): Promise<{ res: Response; note: string }> {
+  let next = body
+  let res = await postResponses(next, signal)
+  if (res.ok) return { res, note: "" }
+  const text = await res.text()
+  const reasoning = Boolean(next.reasoning) && isReasoningRejection(res.status, text)
+  const web = Boolean(next.tools) && isWebToolRejection(res.status, text)
+  if (!reasoning && !web) throw new Error(friendlyChatGptError(undefined, res.status) || text)
+  const notes: string[] = []
+  if (reasoning) {
+    next = omitReasoning(next)
+    notes.push(REASONING_NOTE)
+  }
+  if (web) {
+    next = omitTools(next)
+    notes.push(WEB_NOTE)
+  }
+  res = await postResponses(next, signal)
+  if (!res.ok || !res.body) {
+    throw new Error(friendlyChatGptError(res.ok ? undefined : await errorCode(res), res.status))
+  }
+  return { res, note: notes.join("\n\n") }
+}
+
+/** Summary, diagram, chat, and tutor tasks all go through one Responses request. */
 export async function runChatGptRequest(
   req: StreamRequest,
   deps: ChatGptStreamDeps,
 ): Promise<void> {
   const { post, signal } = deps
   try {
-    const body = responsesBodyForRequest(req)
-    const res = await authorizedFetch(CHATGPT_RESPONSES_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "text/event-stream" },
-      body: JSON.stringify(body),
-      signal,
-    })
-    if (!res.ok || !res.body) {
-      throw new Error(friendlyChatGptError(res.ok ? undefined : await errorCode(res), res.status))
-    }
+    const { res, note } = await responsesWithFallback(responsesBodyForRequest(req), signal)
+    if (!res.body) throw new Error(friendlyChatGptError(undefined, res.status))
     let started = false
     const tokens = await readResponsesSse(res.body, (delta) => {
       if (signal.aborted) return
@@ -66,6 +102,13 @@ export async function runChatGptRequest(
     if (signal.aborted) {
       post({ type: "error", message: "Stopped." })
       return
+    }
+    if (note) {
+      if (!started) {
+        post(chunk({ type: "text-start", id: TEXT_ID }))
+        started = true
+      }
+      post(chunk({ type: "text-delta", id: TEXT_ID, delta: `\n\n${note}` }))
     }
     if (started) post(chunk({ type: "text-end", id: TEXT_ID }))
     if (deps.recordUsage) {

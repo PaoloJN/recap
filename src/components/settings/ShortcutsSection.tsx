@@ -5,6 +5,7 @@ const SHORTCUTS = [
   ["Focus chat", "⌥ C"],
   ["Summarize video", "⌥ S"],
   ["Search transcript", "⌥ F"],
+  ["Giảng đoạn này", "⌥ E"],
 ] as const
 
 export function ShortcutsSection() {
@@ -12,7 +13,7 @@ export function ShortcutsSection() {
     <SettingsSection
       id="shortcuts"
       label="Keyboard shortcuts"
-      footnote="Change the toggle shortcut at chrome://extensions/shortcuts."
+      footnote="Change ⌥ Y and ⌥ E at chrome://extensions/shortcuts."
     >
       {SHORTCUTS.map(([label, keys]) => (
         <div key={label} className="flex items-center gap-[12px] px-[14px] py-[10px]">
