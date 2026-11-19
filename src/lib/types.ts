@@ -76,7 +76,7 @@ export interface WatchPageData {
 
 export type TranscriptStatus =
   | { state: "loading" }
-  | { state: "ready"; segments: TranscriptSegment[]; language: string }
+  | { state: "ready"; segments: TranscriptSegment[]; language: string; asr?: boolean }
   | { state: "unavailable" }
   | { state: "error"; message: string }
 

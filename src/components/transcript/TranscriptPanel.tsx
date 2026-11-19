@@ -78,6 +78,7 @@ export function TranscriptPanel({ video, active }: { video: VideoState; active: 
         <TranscriptView
           key={video.videoId ?? ""}
           transcript={transcript}
+          asr={transcript.asr === true}
           chapters={video.page?.chapters ?? NO_CHAPTERS}
           removeFillers={settings.removeFillers}
           initialFollow={settings.followPlayback}
@@ -89,6 +90,7 @@ export function TranscriptPanel({ video, active }: { video: VideoState; active: 
 
 interface TranscriptViewProps {
   transcript: ReadyTranscript
+  asr: boolean
   chapters: Chapter[]
   removeFillers: boolean
   initialFollow: boolean
@@ -98,6 +100,7 @@ interface TranscriptViewProps {
 /** Toolbar + list for one video; keyed by video id so search and Follow reset per video. */
 function TranscriptView({
   transcript,
+  asr,
   chapters,
   removeFillers,
   initialFollow,
@@ -185,6 +188,11 @@ function TranscriptView({
         onCopy={() => copy(transcriptToText(rows), "Transcript copied with timestamps")}
         inputRef={inputRef}
       />
+      {asr ? (
+        <p className="px-[16px] pb-[8px] text-[12px] leading-[16px] text-muted-foreground">
+          Auto-generated captions. Names may be misspelled.
+        </p>
+      ) : null}
       <TranscriptList
         rows={rows}
         items={items}

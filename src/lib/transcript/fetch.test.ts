@@ -47,6 +47,7 @@ describe("loadTranscript", () => {
     expect(res.state).toBe("ready")
     if (res.state === "ready") {
       expect(res.language).toBe("en")
+      expect(res.asr).toBe(false)
       expect(res.segments.length).toBeGreaterThan(0)
     }
     const body = JSON.parse(
@@ -58,6 +59,15 @@ describe("loadTranscript", () => {
       "gl",
       "hl",
     ])
+  })
+  it("marks ready captions when the picked track is auto-generated", async () => {
+    const fetchFn = vi.fn(async () => json(en))
+    const res = await loadTranscript(
+      page([{ languageCode: "en", name: "English (auto-generated)", kind: "asr" }]),
+      asFetch(fetchFn),
+      emptyDoc(),
+    )
+    expect(res).toMatchObject({ state: "ready", language: "en", asr: true })
   })
   it("unavailable with no caption tracks and no fetch", async () => {
     const fetchFn = vi.fn()
