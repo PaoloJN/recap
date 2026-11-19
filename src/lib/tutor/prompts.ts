@@ -81,6 +81,21 @@ export function buildMomentMessage(
   ].join("\n")
 }
 
+export function buildNodeExplainMessage(label: string, edges: readonly string[]): string {
+  return [
+    `Giải thích node "${label}" trong sơ đồ của video.`,
+    "Nói thành phần này làm gì trong ngữ cảnh video, đầu vào và đầu ra, nó nối với các thành phần lân cận thế nào, và vì sao nó có mặt.",
+    "Trích mốc thời gian trong video.",
+    ...(edges.length > 0 ? ["", "Các cạnh:", ...edges] : []),
+  ].join("\n")
+}
+
+export function buildNodeAskDraft(label: string, edges: readonly string[]): string {
+  return [`Hỏi về node "${label}".`, edges.length > 0 ? `Các cạnh: ${edges.join("; ")}` : ""]
+    .filter(Boolean)
+    .join("\n")
+}
+
 export function buildTeachMessage(name: string): string {
   return `Hãy giảng khái niệm "${name}" trong video này. Nói nó là gì, vì sao quan trọng, và lấy ví dụ sát vai trò của người xem. Trích mốc thời gian trong video.`
 }

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest"
 import type { VideoContext } from "@/lib/types"
 import { conceptMermaid, parseConcepts } from "./concepts"
-import { AUTHOR_HEADINGS, buildAuthorViewPrompt, tutorInstructions } from "./prompts"
+import {
+  AUTHOR_HEADINGS,
+  buildAuthorViewPrompt,
+  buildNodeAskDraft,
+  buildNodeExplainMessage,
+  tutorInstructions,
+} from "./prompts"
 import { gradeChoice, parseGrades, parseQuiz } from "./quiz"
 import { isWebToolRejection, openRouterOnlineModel, WEB_NOTE } from "./web"
 import { selectTranscriptWindow } from "./window"
@@ -48,6 +54,21 @@ describe("buildAuthorViewPrompt", () => {
     expect(system).not.toContain("software engineer")
     expect(system).not.toContain("Python")
     expect(system).not.toContain("CAIO")
+  })
+})
+
+describe("buildNodeExplainMessage", () => {
+  it("asks for the node's role, neighbors, and timestamps", () => {
+    const text = buildNodeExplainMessage("API Gateway", ["API Gateway -- HTTP --> Worker"])
+    expect(text).toContain('node "API Gateway"')
+    expect(text).toContain("đầu vào và đầu ra")
+    expect(text).toContain("thành phần lân cận")
+    expect(text).toContain("vì sao nó có mặt")
+    expect(text).toContain("mốc thời gian")
+    expect(text).toContain("API Gateway -- HTTP --> Worker")
+    expect(buildNodeAskDraft("API Gateway", ["API Gateway --> Worker"])).toContain(
+      "API Gateway --> Worker",
+    )
   })
 })
 

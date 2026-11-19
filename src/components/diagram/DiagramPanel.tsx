@@ -6,8 +6,11 @@ import {
   Stop,
   TreeStructure,
 } from "@phosphor-icons/react"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useChatDraft } from "@/components/chat/ChatDraftContext"
+import { DiagramFrame } from "@/components/diagram/DiagramFrame"
 import { IconButton } from "@/components/shell/IconButton"
+import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import {
   largeButton,
@@ -16,9 +19,18 @@ import {
   smallButton,
 } from "@/components/summary/buttons"
 import { useSeek } from "@/hooks/useSeek"
+import {
+  type DiagramGraphNode,
+  edgeLines,
+  nodeForLabel,
+  nodeFromDomId,
+  parseDiagramGraph,
+  secondsForLabel,
+} from "@/lib/diagram/graph"
 import { downloadBlob } from "@/lib/download"
 import { slugify } from "@/lib/export"
 import { formatMs } from "@/lib/timestamps"
+import { buildNodeAskDraft, buildNodeExplainMessage } from "@/lib/tutor/prompts"
 import type { DiagramLink } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import type { DiagramState } from "./useDiagram"
@@ -68,7 +80,13 @@ export function DiagramSvg({ svg }: { svg: string }) {
   )
 }
 
-function DiagramLinks({ links }: { links: DiagramLink[] }) {
+function DiagramLinks({
+  links,
+  onPick,
+}: {
+  links: DiagramLink[]
+  onPick?: (link: DiagramLink, anchor: HTMLElement) => void
+}) {
   const seek = useSeek()
   if (links.length === 0) return null
   return (
@@ -77,7 +95,9 @@ function DiagramLinks({ links }: { links: DiagramLink[] }) {
         <h3 className="text-[13px] leading-[18px] font-medium text-muted-foreground">
           In the video
         </h3>
-        <span className="text-[12px] leading-[16px] text-subtle-foreground">Click to jump</span>
+        <span className="text-[12px] leading-[16px] text-subtle-foreground">
+          {onPick ? "Bấm để chọn" : "Click to jump"}
+        </span>
       </div>
       <div className="-mx-[8px] flex flex-col">
         {links.map((link, i) => (
@@ -87,7 +107,7 @@ function DiagramLinks({ links }: { links: DiagramLink[] }) {
             type="button"
             data-testid="diagram-link"
             className="flex cursor-pointer items-baseline gap-[8px] rounded-[8px] p-[8px] text-left transition-colors duration-150 ease-out outline-none hover:bg-secondary focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            onClick={() => seek(link.seconds)}
+            onClick={(event) => (onPick ? onPick(link, event.currentTarget) : seek(link.seconds))}
           >
             <span className="min-w-0 flex-1 text-body text-pretty text-card-foreground">
               {link.label}
@@ -130,18 +150,124 @@ export function DiagramActions({ diagram }: { diagram: DiagramState }) {
   )
 }
 
+interface NodeMenuState {
+  node: DiagramGraphNode
+  edges: string[]
+  seconds: number | null
+  left: number
+  top: number
+}
+
+function NodeMenu({
+  menu,
+  onExplain,
+  onAsk,
+  onSeek,
+}: {
+  menu: NodeMenuState
+  onExplain(): void
+  onAsk(): void
+  onSeek(): void
+}) {
+  return (
+    <div
+      role="menu"
+      data-testid="diagram-node-menu"
+      className="absolute z-20 flex w-[200px] flex-col rounded-[10px] border bg-card p-[4px] shadow-pop"
+      style={{ left: menu.left, top: menu.top }}
+    >
+      <button type="button" role="menuitem" className={menuItem} onClick={onExplain}>
+        Giải thích node này
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className={menuItem}
+        disabled={menu.seconds === null}
+        onClick={onSeek}
+      >
+        Xem đoạn video
+      </button>
+      <button type="button" role="menuitem" className={menuItem} onClick={onAsk}>
+        Hỏi thầy
+      </button>
+    </div>
+  )
+}
+
+const menuItem =
+  "rounded-[8px] px-[8px] py-[8px] text-left text-[13px] leading-[18px] text-card-foreground outline-none hover:bg-secondary focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-default disabled:opacity-40"
+
 export function DiagramResult({
   svg,
   code,
   links,
   title,
+  interactive,
 }: {
   svg: string | null
   code: string
   links: DiagramLink[]
   title: string
+  interactive?: {
+    dark: boolean
+    onExplain(label: string, edges: string[]): void
+    onAsk(label: string, edges: string[]): void
+  }
 }) {
   const toast = useToast()
+  const seek = useSeek()
+  const hostRef = useRef<HTMLDivElement>(null)
+  const [menu, setMenu] = useState<NodeMenuState | null>(null)
+  const [frameFailed, setFrameFailed] = useState(false)
+  const graph = parseDiagramGraph(code)
+
+  useEffect(() => {
+    if (!menu) return
+    const close = (event: Event) => {
+      const insideMenu = event.composedPath().some((node) => {
+        return node instanceof HTMLElement && node.dataset.testid === "diagram-node-menu"
+      })
+      if (!insideMenu) setMenu(null)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenu(null)
+    }
+    document.addEventListener("pointerdown", close)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("pointerdown", close)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [menu])
+
+  const place = (
+    node: DiagramGraphNode,
+    seconds: number | null,
+    viewportX: number,
+    viewportY: number,
+  ) => {
+    const host = hostRef.current
+    if (!host) return
+    const box = host.getBoundingClientRect()
+    const width = 200
+    const left = Math.min(
+      Math.max(8, viewportX - box.left),
+      Math.max(8, host.clientWidth - width - 8),
+    )
+    const top = Math.max(8, viewportY - box.top)
+    setMenu({ node, edges: edgeLines(node, graph), seconds, left, top })
+  }
+
+  const openNode = (
+    node: DiagramGraphNode,
+    seconds: number | null,
+    viewportX: number,
+    viewportY: number,
+  ) => {
+    place(node, seconds, viewportX, viewportY)
+  }
+
   const copy = () => {
     navigator.clipboard.writeText(code).then(
       () => toast("Copied Mermaid"),
@@ -156,9 +282,36 @@ export function DiagramResult({
     )
     toast("Saved SVG")
   }
+  const explain = () => {
+    if (!menu || !interactive) return
+    interactive.onExplain(menu.node.label, menu.edges)
+    setMenu(null)
+  }
+  const ask = () => {
+    if (!menu || !interactive) return
+    interactive.onAsk(menu.node.label, menu.edges)
+    setMenu(null)
+  }
+  const watch = () => {
+    if (menu?.seconds === null || menu?.seconds === undefined) return
+    seek(menu.seconds)
+    setMenu(null)
+  }
+  const live = frameFailed ? undefined : interactive
   return (
-    <div className="flex flex-col gap-[16px]" data-testid="diagram-result">
-      {svg ? (
+    <div ref={hostRef} className="relative flex flex-col gap-[16px]" data-testid="diagram-result">
+      {live ? (
+        <DiagramFrame
+          code={code}
+          dark={live.dark}
+          onError={() => setFrameFailed(true)}
+          onNode={(domId, x, y) => {
+            const node = nodeFromDomId(domId, graph.nodes)
+            if (!node) return
+            openNode(node, secondsForLabel(node.label, links), x, y)
+          }}
+        />
+      ) : svg ? (
         <DiagramSvg svg={svg} />
       ) : (
         <div
@@ -167,7 +320,19 @@ export function DiagramResult({
           style={{ animation: "yt-pulse 1.4s infinite var(--ease-out)" }}
         />
       )}
-      <DiagramLinks links={links} />
+      <DiagramLinks
+        links={links}
+        onPick={
+          live
+            ? (link, anchor) => {
+                const rect = anchor.getBoundingClientRect()
+                const node = nodeForLabel(link.label, graph)
+                openNode(node, link.seconds, rect.left, rect.bottom)
+              }
+            : undefined
+        }
+      />
+      {menu ? <NodeMenu menu={menu} onExplain={explain} onAsk={ask} onSeek={watch} /> : null}
       <div className="flex flex-wrap gap-[8px]">
         <button type="button" className={cn(secondaryButton, smallButton)} onClick={copy}>
           <Copy aria-hidden />
@@ -187,14 +352,58 @@ export function DiagramResult({
   )
 }
 
+function LiveDiagram({
+  svg,
+  code,
+  links,
+  title,
+  videoId,
+  dark,
+}: {
+  svg: string | null
+  code: string
+  links: DiagramLink[]
+  title: string
+  videoId: string
+  dark: boolean
+}) {
+  const { requestAsk, setDraft, requestFocus } = useChatDraft()
+  const { selectTab } = usePanelNav()
+  return (
+    <DiagramResult
+      key={code}
+      svg={svg}
+      code={code}
+      links={links}
+      title={title}
+      interactive={{
+        dark,
+        onExplain: (label, edges) => {
+          requestAsk(videoId, buildNodeExplainMessage(label, edges), false)
+          selectTab("chat")
+        },
+        onAsk: (label, edges) => {
+          setDraft(buildNodeAskDraft(label, edges))
+          selectTab("chat")
+          requestFocus()
+        },
+      }}
+    />
+  )
+}
+
 export function DiagramBody({
   diagram,
   title,
   modelLabel,
+  videoId,
+  dark,
 }: {
   diagram: DiagramState
   title: string
   modelLabel: string
+  videoId: string
+  dark: boolean
 }) {
   const { status, code, links, svg, error, raw, generate } = diagram
   if (status === "streaming" || status === "fixing") {
@@ -233,7 +442,16 @@ export function DiagramBody({
     )
   }
   if (status === "done" && code) {
-    return <DiagramResult svg={svg} code={code} links={links} title={title} />
+    return (
+      <LiveDiagram
+        svg={svg}
+        code={code}
+        links={links}
+        title={title}
+        videoId={videoId}
+        dark={dark}
+      />
+    )
   }
   return (
     <div className="flex flex-col gap-[16px] px-[4px] py-[24px]">

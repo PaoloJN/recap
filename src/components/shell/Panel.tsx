@@ -129,6 +129,7 @@ interface BodyProps {
   modelLabel: string
   selection: ModelSelection
   settings: Settings
+  dark: boolean
 }
 
 function Body({
@@ -140,6 +141,7 @@ function Body({
   modelLabel,
   selection,
   settings,
+  dark,
 }: BodyProps) {
   // All three stay mounted so in-flight chat streams and transcript search/scroll survive tab
   // switches; inactive ones are hidden (a class, since the panels set their own display).
@@ -206,6 +208,8 @@ function Body({
                   diagram={diagram}
                   title={video.context?.metadata.title ?? "diagram"}
                   modelLabel={modelLabel}
+                  videoId={video.videoId ?? ""}
+                  dark={dark}
                 />
               </div>
             )}
@@ -464,6 +468,7 @@ export function Panel() {
                 modelLabel={PROVIDERS[provider].models.find((m) => m.id === model)?.label ?? model}
                 selection={selection}
                 settings={settings}
+                dark={dark}
               />
             </div>
           </div>

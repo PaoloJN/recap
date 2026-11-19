@@ -95,7 +95,7 @@ Lệnh build là `pnpm build` (WXT). Thư mục để nạp vào Chrome là `.ou
 
 1. Mở video có phụ đề (transcript).
 2. Mở panel, chọn tab **Sơ đồ**, bấm **Draw diagram**.
-3. Sơ đồ hiện thành hình trong panel. Danh sách bên dưới (thành phần → mốc thời gian) tua video khi bấm, cùng cơ chế tua với các timestamp khác.
+3. Sơ đồ hiện thành hình trong panel. Bấm một node trên hình, hoặc một dòng trong danh sách bên dưới, để mở menu: **Giải thích node này** (mở Chat và stream, theo vai trò, mức và reasoning effort), **Xem đoạn video** (tua tới mốc), và **Hỏi thầy** (điền sẵn nhãn node và các cạnh).
 4. **Copy Mermaid** chép mã nguồn. **Download SVG** tải file ảnh. Menu **Export as Markdown** gắn sơ đồ vào file export nếu video đã có sơ đồ.
 5. Nếu Mermaid không parse được, extension hỏi model sửa cú pháp một lần. Vẫn lỗi thì panel hiện thông báo và mã thô.
 
