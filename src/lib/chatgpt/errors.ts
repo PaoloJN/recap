@@ -16,8 +16,11 @@ export function friendlyChatGptError(code: string | undefined, status?: number):
 }
 
 export class ChatGptAuthError extends Error {
-  constructor(message: string) {
+  readonly code?: string
+
+  constructor(message: string, code?: string) {
     super(message)
     this.name = "ChatGptAuthError"
+    this.code = code
   }
 }

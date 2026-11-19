@@ -29,6 +29,29 @@ describe("parseAuthCallback", () => {
     if (!result.ok) expect(result.message).toContain("state")
   })
 
+  it("uses the saved client id when a re-auth callback omits client_id", () => {
+    const url = "http://127.0.0.1:1455/auth/callback?code=abc&state=state-1"
+    expect(parseAuthCallback(url, state, "oaiapp_saved")).toEqual({
+      ok: true,
+      code: "abc",
+      clientId: "oaiapp_saved",
+    })
+    expect(
+      parseAuthCallback(`${url}&client_id=dynamic_agent_client`, state, "oaiapp_saved"),
+    ).toEqual({
+      ok: true,
+      code: "abc",
+      clientId: "oaiapp_saved",
+    })
+  })
+
+  it("still fails a first sign-in when the callback has no client id", () => {
+    const url = "http://127.0.0.1:1455/auth/callback?code=abc&state=state-1"
+    const result = parseAuthCallback(url, state)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.message).toContain("client id")
+  })
+
   it("rejects the dynamic client id and a missing code", () => {
     expect(
       parseAuthCallback(

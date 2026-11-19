@@ -1,6 +1,7 @@
 import { browser } from "wxt/browser"
 import {
   CHATGPT_DIRECT_SCOPE,
+  CHATGPT_DYNAMIC_CLIENT_ID,
   CHATGPT_MODELS_URL,
   CHATGPT_REDIRECT_URI,
   CHATGPT_RESOURCE,
@@ -32,6 +33,7 @@ import {
 } from "./chatgpt-store"
 
 const LOGIN_TIMEOUT_MS = 5 * 60 * 1000
+const REAUTH_CLIENT = "ChatGPT không nhận client id đã lưu. Hãy đăng nhập lại."
 
 interface TokenResponse {
   access_token: string
@@ -73,14 +75,23 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenResponse
   })
   const text = await res.text()
   if (!res.ok) {
+    let code: string | undefined
     let detail = ""
     try {
-      const json = JSON.parse(text) as { error?: { message?: string } | string }
-      detail = typeof json.error === "string" ? json.error : (json.error?.message ?? "")
+      const json = JSON.parse(text) as {
+        error?: { message?: string; code?: string } | string
+      }
+      if (typeof json.error === "string") {
+        code = json.error
+        detail = json.error
+      } else if (json.error) {
+        code = json.error.code
+        detail = json.error.message ?? ""
+      }
     } catch {
       detail = ""
     }
-    throw new ChatGptAuthError(detail || `ChatGPT từ chối token (${res.status}).`)
+    throw new ChatGptAuthError(detail || `ChatGPT từ chối token (${res.status}).`, code)
   }
   let json: Partial<TokenResponse>
   try {
@@ -223,8 +234,19 @@ function listenForCallback(): {
   }
 }
 
+function warnCallbackParamNames(url: URL): void {
+  console.warn("ChatGPT callback query params:", [...url.searchParams.keys()])
+}
+
+async function forgetIssuedClient(hostId: string): Promise<void> {
+  await saveVault({ hostId })
+  await publish(false, REAUTH_CLIENT)
+}
+
 async function runLogin(): Promise<void> {
   const vault = await loadVault()
+  const savedClientId = vault.clientId
+  const reauth = Boolean(savedClientId && savedClientId !== CHATGPT_DYNAMIC_CLIENT_ID)
   const hostId = await ensureHostId()
   const { verifier, challenge } = await createPkcePair()
   const state = randomUrlToken()
@@ -252,16 +274,28 @@ async function runLogin(): Promise<void> {
     captured.cancel()
     if (tabId != null) await browser.tabs.remove(tabId).catch(() => {})
   }
-  const parsed = parseAuthCallback(callback.toString(), state)
-  if (!parsed.ok) throw new ChatGptAuthError(parsed.message)
-  const token = await tokenRequest({
-    grant_type: "authorization_code",
-    client_id: parsed.clientId,
-    code: parsed.code,
-    code_verifier: verifier,
-    redirect_uri: CHATGPT_REDIRECT_URI,
-    resource: CHATGPT_RESOURCE,
-  })
+  const parsed = parseAuthCallback(callback.toString(), state, savedClientId)
+  if (!parsed.ok) {
+    warnCallbackParamNames(callback)
+    throw new ChatGptAuthError(parsed.message)
+  }
+  let token: TokenResponse
+  try {
+    token = await tokenRequest({
+      grant_type: "authorization_code",
+      client_id: parsed.clientId,
+      code: parsed.code,
+      code_verifier: verifier,
+      redirect_uri: CHATGPT_REDIRECT_URI,
+      resource: CHATGPT_RESOURCE,
+    })
+  } catch (err) {
+    if (reauth && err instanceof ChatGptAuthError && err.code === "invalid_client") {
+      await forgetIssuedClient(hostId)
+      throw new ChatGptAuthError(REAUTH_CLIENT, "invalid_client")
+    }
+    throw err
+  }
   if (!token.id_token) throw new ChatGptAuthError("ChatGPT không trả id_token.")
   const returnedNonce = jwtStringClaim(token.id_token, "nonce")
   if (returnedNonce && returnedNonce !== nonce) {

@@ -58,8 +58,22 @@ export type CallbackResult =
 
 const STATE_MISMATCH = "Đăng nhập ChatGPT không khớp state. Hãy thử lại."
 
-/** Read `code`, `state`, and the issued client id from the loopback redirect. */
-export function parseAuthCallback(rawUrl: string, expectedState: string): CallbackResult {
+function issuedClientId(value: string | null | undefined): string | undefined {
+  const id = value?.trim()
+  if (!id || id === CHATGPT_DYNAMIC_CLIENT_ID) return undefined
+  return id
+}
+
+/**
+ * Read `code` and `state` from the loopback redirect.
+ * Prefer the callback's client id. On a re-sign-in the callback may omit it or echo
+ * `dynamic_agent_client`; then `fallbackClientId` is the saved issued id.
+ */
+export function parseAuthCallback(
+  rawUrl: string,
+  expectedState: string,
+  fallbackClientId?: string,
+): CallbackResult {
   let url: URL
   try {
     url = new URL(rawUrl)
@@ -82,10 +96,9 @@ export function parseAuthCallback(rawUrl: string, expectedState: string): Callba
   }
   const code = url.searchParams.get("code")?.trim()
   if (!code) return { ok: false, message: "ChatGPT không trả mã đăng nhập." }
-  const clientId = url.searchParams.get("client_id")?.trim()
-  if (!clientId || clientId === CHATGPT_DYNAMIC_CLIENT_ID) {
-    return { ok: false, message: "ChatGPT không trả client id của tài khoản." }
-  }
+  const clientId =
+    issuedClientId(url.searchParams.get("client_id")) ?? issuedClientId(fallbackClientId)
+  if (!clientId) return { ok: false, message: "ChatGPT không trả client id của tài khoản." }
   return { ok: true, code, clientId }
 }
 
