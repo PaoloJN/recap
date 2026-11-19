@@ -12,7 +12,7 @@ export function useChatGptSignedIn(): boolean {
 }
 
 /** Sign-in state plus the two account buttons. Tokens never reach this component. */
-export function ChatGptAuthButtons() {
+export function ChatGptAuthButtons({ onLogin }: { onLogin?: () => void | Promise<void> }) {
   const toast = useToast()
   const [session] = useStorageItem(chatgptSessionItem)
   const signedIn = Boolean(session?.signedIn)
@@ -25,8 +25,10 @@ export function ChatGptAuthButtons() {
     setBusy(true)
     try {
       const result = await requestChatGptLogin()
-      if (result.ok) toast("Đã đăng nhập ChatGPT")
-      else toast(result.message)
+      if (result.ok) {
+        toast("Đã đăng nhập ChatGPT")
+        await onLogin?.()
+      } else toast(result.message)
     } finally {
       setBusy(false)
     }

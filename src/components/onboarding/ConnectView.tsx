@@ -1,7 +1,7 @@
 import { CircleNotch, HardDrives, LockSimple, Trash } from "@phosphor-icons/react"
 import { RadioGroup } from "radix-ui"
 import { useRef, useState } from "react"
-import { ChatGptAuthButtons } from "@/components/settings/ChatGptAccount"
+import { ChatGptAuthButtons, useChatGptSignedIn } from "@/components/settings/ChatGptAccount"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { largeButton, primaryButton } from "@/components/summary/buttons"
@@ -29,6 +29,13 @@ export function ConnectView({ initialProvider }: { initialProvider: ProviderId }
   const { status, result, error, check, reset } = useKeyCheck()
   const info = PROVIDERS[provider]
   const isChatGpt = provider === "chatgpt"
+  const chatGptSignedIn = useChatGptSignedIn()
+
+  const continueWithChatGpt = async () => {
+    await updateSettings({ provider: "chatgpt" })
+    setView("main")
+    toast(`Connected to ${PROVIDERS.chatgpt.label}`)
+  }
 
   const edit = (next: string) => {
     setKey(next)
@@ -145,7 +152,7 @@ export function ConnectView({ initialProvider }: { initialProvider: ProviderId }
               Personal use only. Requests count against the same ChatGPT limits, and this login is a
               preview. Tokens stay in chrome.storage on this device.
             </p>
-            <ChatGptAuthButtons />
+            <ChatGptAuthButtons onLogin={continueWithChatGpt} />
           </div>
         ) : (
           <div className="flex flex-col gap-[8px]">
@@ -216,7 +223,17 @@ export function ConnectView({ initialProvider }: { initialProvider: ProviderId }
           </div>
         )}
 
-        {isChatGpt ? null : (
+        {isChatGpt ? (
+          chatGptSignedIn ? (
+            <button
+              type="button"
+              onClick={() => void continueWithChatGpt()}
+              className={cn(primaryButton, largeButton, "h-[40px] w-full")}
+            >
+              Dùng ChatGPT
+            </button>
+          ) : null
+        ) : (
           <button
             type="button"
             disabled={status === "checking" || saving}
