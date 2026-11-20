@@ -3,6 +3,7 @@ import { useStorageItem } from "@/hooks/useStorageItem"
 import { resolveDiagram } from "@/lib/diagram/assess"
 import { parseDiagram, renderDiagram, resetDiagramFrame } from "@/lib/diagram/bridge"
 import { extractMermaid, shortMermaidError } from "@/lib/diagram/parse"
+import type { VideoType } from "@/lib/prompts/video-type"
 import {
   diagramsItem,
   mergeSettings,
@@ -11,7 +12,7 @@ import {
   upsertDiagram,
 } from "@/lib/storage"
 import { openStream, readTextFromUIStream } from "@/lib/transport"
-import type { DiagramLink, ModelSelection, VideoContext } from "@/lib/types"
+import type { DiagramDetail, DiagramLink, ModelSelection, VideoContext } from "@/lib/types"
 
 export type DiagramStatus = "idle" | "streaming" | "fixing" | "done" | "error"
 
@@ -24,8 +25,11 @@ export interface DiagramState {
   error: string | null
   raw: string
   stored: StoredDiagram | undefined
+  detail: DiagramDetail
   /** Without `force`, a no-op when a diagram is stored or a request is already running. */
   generate(opts?: { force?: boolean }): void
+  /** Switch Gọn / Đầy đủ. Regenerates when a diagram is already on screen. */
+  setDetail(detail: DiagramDetail): void
   /** Reload the renderer and draw the reply already on screen. Asks the model only when there is none. */
   retry(): void
   stop(): void
@@ -44,6 +48,7 @@ export function useDiagram(
   selection: ModelSelection | null,
   rawSettings: Settings,
   dark: boolean,
+  videoType: VideoType | null = null,
 ): DiagramState {
   const settings = useMemo(() => mergeSettings(rawSettings), [rawSettings])
   const videoId = ctx?.metadata.videoId
@@ -59,7 +64,12 @@ export function useDiagram(
   const requestRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
   const sourceRef = useRef({ code: "", raw: "" })
+  const [detail, setDetailState] = useState<DiagramDetail>(
+    stored?.detail === "compact" ? "compact" : "full",
+  )
+  const detailRef = useRef<DiagramDetail>(detail)
   sourceRef.current = { code: liveCode, raw: raw }
+  detailRef.current = detail
 
   const cancel = useCallback(() => {
     requestRef.current += 1
@@ -79,6 +89,12 @@ export function useDiagram(
   }, [videoId, cancel])
 
   useEffect(() => cancel, [cancel])
+
+  useEffect(() => {
+    const next: DiagramDetail = stored?.detail === "compact" ? "compact" : "full"
+    detailRef.current = next
+    setDetailState(next)
+  }, [stored?.detail])
 
   const run = useCallback(() => {
     if (!ctx || !selection || videoId === undefined) return
@@ -103,6 +119,8 @@ export function useDiagram(
           language: settings.language,
           customInstructions: settings.customInstructions,
           reasoningEffort: settings.reasoningEffort,
+          detail: detailRef.current,
+          videoType,
           repair,
         },
         { signal },
@@ -144,6 +162,7 @@ export function useDiagram(
             language: settings.language,
             code: verdict.code,
             links: verdict.links,
+            detail: detailRef.current,
             createdAt: Date.now(),
           }),
         )
@@ -173,6 +192,7 @@ export function useDiagram(
     settings.language,
     settings.customInstructions,
     settings.reasoningEffort,
+    videoType,
     cancel,
   ])
 
@@ -183,6 +203,19 @@ export function useDiagram(
       run()
     },
     [ctx, selection, stored, run],
+  )
+
+  const setDetail = useCallback(
+    (next: DiagramDetail) => {
+      if (detailRef.current === next) return
+      detailRef.current = next
+      setDetailState(next)
+      const hasDiagram = Boolean(
+        stored || sourceRef.current.code || sourceRef.current.raw || abortRef.current,
+      )
+      if (hasDiagram) run()
+    },
+    [run, stored],
   )
 
   const stop = useCallback(() => {
@@ -252,7 +285,9 @@ export function useDiagram(
     error,
     raw,
     stored,
+    detail,
     generate,
+    setDetail,
     retry,
     stop,
   }

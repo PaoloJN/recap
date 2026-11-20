@@ -22,6 +22,7 @@ import {
 import {
   ANSWER_LANGUAGES,
   type AnswerLanguage,
+  type DiagramDetail,
   type DiagramLink,
   type PanelTab,
   type ProviderId,
@@ -303,6 +304,8 @@ export interface StoredDiagram {
   code: string
   links: DiagramLink[]
   createdAt: number
+  /** Absent on diagrams saved before the detail toggle. */
+  detail?: DiagramDetail
 }
 
 export type DiagramStore = Record<string, StoredDiagram>

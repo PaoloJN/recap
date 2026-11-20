@@ -1,3 +1,4 @@
+import { parseTimestamp } from "@/lib/timestamps"
 import type { DiagramLink } from "@/lib/types"
 
 export interface DiagramGraphNode {
@@ -373,7 +374,17 @@ export function edgesOf(id: string, graph: DiagramGraph): DiagramGraphEdge[] {
   return graph.edges.filter((edge) => edge.from === id || edge.to === id)
 }
 
+const STAMP = /\[((?:\d{1,2}:)?\d{1,2}:\d{2})\]/
+
+/** The first `[m:ss]` or `[h:mm:ss]` written into a node label. */
+export function secondsInLabel(label: string): number | null {
+  const match = STAMP.exec(label)
+  return match?.[1] ? parseTimestamp(match[1]) : null
+}
+
 export function secondsForLabel(label: string, links: readonly DiagramLink[]): number | null {
+  const embedded = secondsInLabel(label)
+  if (embedded !== null) return embedded
   const norm = (value: string) => value.trim().toLowerCase()
   const hit = links.find((link) => norm(link.label) === norm(label))
   return hit?.seconds ?? null

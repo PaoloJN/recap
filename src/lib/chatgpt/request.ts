@@ -98,6 +98,8 @@ function taskPrompt(req: StreamRequest): { system: string; user: string } {
     return buildDiagramPrompt(req.context, {
       language: req.language,
       customInstructions: req.customInstructions,
+      detail: req.detail,
+      videoType: req.videoType,
       repair: req.repair,
     })
   }

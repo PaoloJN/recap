@@ -18,6 +18,26 @@ describe("validateMermaid", () => {
     await expect(validateMermaid(GOOD)).resolves.toEqual({ ok: true })
   })
 
+  it("accepts subgraphs, class styling, line breaks, and labeled edges", async () => {
+    const rich = `flowchart TD
+  subgraph arch["Ràng buộc kiến trúc"]
+    A["Dune<br/>lint thay chú thích · [3:03]"]:::claim
+    B["Feature map<br/>kiểm chứng khi chạy"]:::evidence
+    C["TLA+ và Lean<br/>kiểm chứng hình thức"]:::evidence
+    D["Đánh đổi tốc độ<br/>chậm hơn review tay"]:::risk
+    E["Bật lint rule<br/>thay comment"]:::action
+    A -->|dẫn tới| B
+    A -->|ví dụ| C
+    B -->|đánh đổi| D
+    D -->|vì| E
+  end
+  classDef claim fill:#1d4ed8,stroke:#1e3a8a,color:#fff
+  classDef evidence fill:#047857,stroke:#064e3b,color:#fff
+  classDef risk fill:#b45309,stroke:#7c2d12,color:#fff
+  classDef action fill:#6d28d9,stroke:#4c1d95,color:#fff`
+    await expect(validateMermaid(rich)).resolves.toEqual({ ok: true })
+  })
+
   it("accepts a sequence diagram", async () => {
     await expect(validateMermaid(SEQUENCE)).resolves.toEqual({ ok: true })
   })

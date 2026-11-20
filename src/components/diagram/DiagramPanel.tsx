@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState } from "react"
 import { useChatDraft } from "@/components/chat/ChatDraftContext"
 import { DiagramViewport } from "@/components/diagram/DiagramViewport"
+import { Segmented } from "@/components/settings/Segmented"
 import { IconButton } from "@/components/shell/IconButton"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
@@ -32,7 +33,7 @@ import { downloadBlob } from "@/lib/download"
 import { slugify } from "@/lib/export"
 import { formatMs } from "@/lib/timestamps"
 import { buildNodeAskDraft, buildNodeExplainMessage } from "@/lib/tutor/prompts"
-import type { DiagramLink } from "@/lib/types"
+import type { DiagramDetail, DiagramLink } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import type { DiagramState } from "./useDiagram"
 
@@ -133,6 +134,38 @@ function DiagramLinks({
         ))}
       </div>
     </section>
+  )
+}
+
+function DetailToggle({
+  detail,
+  disabled,
+  onChange,
+}: {
+  detail: DiagramDetail
+  disabled?: boolean
+  onChange(detail: DiagramDetail): void
+}) {
+  return (
+    <fieldset
+      disabled={disabled}
+      className="flex flex-wrap items-center gap-[8px] border-0 p-0 disabled:opacity-50"
+      data-testid="diagram-detail"
+    >
+      <legend className="sr-only">Chi tiết</legend>
+      <span className="text-[12px] leading-[16px] font-medium text-muted-foreground" aria-hidden>
+        Chi tiết
+      </span>
+      <Segmented
+        label="Chi tiết"
+        value={detail}
+        options={[
+          ["compact", "Gọn"],
+          ["full", "Đầy đủ"],
+        ]}
+        onChange={onChange}
+      />
+    </fieldset>
   )
 }
 
@@ -311,7 +344,9 @@ export function DiagramResult({
     if (!domId) return
     const node = nodeFromDomId(domId, graph.nodes)
     if (!node) return
-    openNode(node, secondsForLabel(node.label, links), x, y)
+    const seconds = secondsForLabel(node.label, links)
+    if (seconds !== null) seek(seconds)
+    openNode(node, seconds, x, y)
   }
   const menuNode = menu ? (
     <NodeMenu menu={menu} onExplain={explain} onAsk={ask} onSeek={watch} />
@@ -418,10 +453,13 @@ export function DiagramBody({
   videoId: string
   dark: boolean
 }) {
-  const { status, code, links, svg, error, raw, generate, retry } = diagram
+  const { status, code, links, svg, error, raw, detail, generate, setDetail, retry } = diagram
+  const busy = status === "streaming" || status === "fixing"
+  const detailToggle = <DetailToggle detail={detail} disabled={busy} onChange={setDetail} />
   if (status === "streaming" || status === "fixing") {
     return (
       <div className="flex flex-col items-start gap-[12px] py-[8px]" aria-busy="true">
+        {detailToggle}
         <p className="text-[16px] leading-[24px] font-medium text-foreground">
           {status === "fixing" ? "Fixing diagram syntax…" : "Drawing the diagram…"}
         </p>
@@ -437,6 +475,7 @@ export function DiagramBody({
     const source = code || raw
     return (
       <div role="alert" className="flex flex-col gap-[12px]">
+        {detailToggle}
         <p className="text-[16px] leading-[24px] font-medium text-foreground">
           Couldn't draw this diagram
         </p>
@@ -457,26 +496,30 @@ export function DiagramBody({
   }
   if (status === "done" && code) {
     return (
-      <LiveDiagram
-        svg={svg}
-        code={code}
-        links={links}
-        title={title}
-        videoId={videoId}
-        dark={dark}
-      />
+      <div className="flex flex-col gap-[12px]">
+        {detailToggle}
+        <LiveDiagram
+          svg={svg}
+          code={code}
+          links={links}
+          title={title}
+          videoId={videoId}
+          dark={dark}
+        />
+      </div>
     )
   }
   return (
     <div className="flex flex-col gap-[16px] px-[4px] py-[24px]">
+      {detailToggle}
       <div className="flex size-[44px] items-center justify-center rounded-[12px] bg-secondary text-foreground">
         <TreeStructure className="size-[22px]" aria-hidden />
       </div>
       <div className="flex flex-col gap-[6px]">
         <p className="text-[16px] leading-[24px] font-medium text-foreground">Diagram this video</p>
         <p className="text-[14px] leading-[21px] text-pretty text-muted-foreground">
-          One diagram of the architecture, flow, or main ideas. Labels use your answer language and
-          keep English technical terms.
+          A structured diagram for this video type: sections, a detail on each node, and timestamps
+          you can jump to. Đầy đủ draws the long version.
         </p>
       </div>
       <button

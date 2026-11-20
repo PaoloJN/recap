@@ -52,9 +52,10 @@ const reply = "```mermaid\nflowchart TD\n  A --> B\n```"
 
 let state: DiagramState
 let settings: Settings = DEFAULT_SETTINGS
+let videoType: "strategy-talk" | null = null
 
 function Probe() {
-  state = useDiagram(ctx, selection, settings, false)
+  state = useDiagram(ctx, selection, settings, false, videoType)
   return null
 }
 
@@ -66,6 +67,7 @@ describe("useDiagram renderer failure", () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     fakeBrowser.reset()
     settings = DEFAULT_SETTINGS
+    videoType = null
     vi.mocked(openStream).mockClear()
     vi.mocked(parseDiagram).mockReset()
     vi.mocked(renderDiagram).mockReset()
@@ -96,5 +98,28 @@ describe("useDiagram renderer failure", () => {
     expect(openStream).toHaveBeenCalledTimes(1)
     expect(renderDiagram).toHaveBeenCalledWith("flowchart TD\n  A --> B", false)
     expect(state.status).toBe("done")
+  })
+
+  it("asks for a full strategy-talk diagram, then regenerates when Chi tiết changes", async () => {
+    vi.mocked(readTextFromUIStream).mockResolvedValue(reply)
+    vi.mocked(parseDiagram).mockResolvedValue({ ok: true })
+    videoType = "strategy-talk"
+    await act(async () => root.render(<Probe />))
+    await act(async () => state.generate({ force: true }))
+    expect(openStream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "diagram",
+        detail: "full",
+        videoType: "strategy-talk",
+      }),
+      expect.anything(),
+    )
+    expect(state.detail).toBe("full")
+    await act(async () => state.setDetail("compact"))
+    expect(openStream).toHaveBeenLastCalledWith(
+      expect.objectContaining({ detail: "compact", videoType: "strategy-talk" }),
+      expect.anything(),
+    )
+    expect(state.detail).toBe("compact")
   })
 })

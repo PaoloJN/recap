@@ -11,6 +11,7 @@ import {
 import { useStorageItem } from "@/hooks/useStorageItem"
 import {
   applyDrawerLayout,
+  applyFocusHost,
   applyPageLayout,
   clearDrawerLayout,
   clearPageLayout,
@@ -41,6 +42,8 @@ export interface LayoutController {
   canFocus: boolean
   /** False when the button and shortcut should no-op (fullscreen, or too narrow to enter). */
   canToggle: boolean
+  /** YouTube theater mode. The player is full-bleed, so the panel must not cover it. */
+  theater: boolean
   ready: boolean
   toggleFocus(): void
   previewWidth(width: number): void
@@ -167,6 +170,7 @@ export function LayoutProvider({
     host.style.setProperty("display", "block", "important")
     ensureLayoutStyle(document)
     return () => {
+      applyFocusHost(host, false, false)
       host.style.removeProperty("display")
       host.classList.remove("recap-host")
       clearPageLayout(document)
@@ -179,13 +183,27 @@ export function LayoutProvider({
     }
   }, [container])
 
+  const [theater, setTheater] = useState(false)
+  useEffect(() => {
+    const read = () => setTheater(document.querySelector("ytd-watch-flexy[theater]") !== null)
+    read()
+    const observer = new MutationObserver(read)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ["theater"],
+    })
+    return () => observer.disconnect()
+  }, [])
+
   const applied = useRef<string | null>(null)
   useEffect(() => {
     if (!ready || draggingRef.current) return
+    const host = hostOf(container)
     const fill = placement === "drawer" ? open : decision.focus
-    if (placement === "drawer")
-      applyDrawerLayout(hostOf(container), document, decision, open, false)
+    if (placement === "drawer") applyDrawerLayout(host, document, decision, open, false)
     else applyPageLayout(document, decision, false)
+    if (placement === "sidebar") applyFocusHost(host, decision.focus, theater)
     container.style.height = fill ? "100%" : ""
     container.style.flex = fill ? "1 1 auto" : ""
     container.style.minHeight = fill ? "0" : ""
@@ -196,7 +214,7 @@ export function LayoutProvider({
     applied.current = sig
     const frame = requestAnimationFrame(() => window.dispatchEvent(new Event("resize")))
     return () => cancelAnimationFrame(frame)
-  }, [ready, decision, container, placement, open])
+  }, [ready, decision, container, placement, open, theater])
 
   const toggleFocus = useCallback(() => {
     if (!ready) return
@@ -210,11 +228,9 @@ export function LayoutProvider({
     const onCommand = () => toggleFocus()
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || !decision.focus) return
+      if (document.documentElement.classList.contains("recap-diagram-open")) return
       const root = container.getRootNode()
-      if (
-        root instanceof ShadowRoot &&
-        root.querySelector("[data-testid='diagram-node-menu'], [data-testid='diagram-fullscreen']")
-      ) {
+      if (root instanceof ShadowRoot && root.querySelector("[data-testid='diagram-node-menu']")) {
         return
       }
       event.preventDefault()
@@ -265,6 +281,7 @@ export function LayoutProvider({
       canResize: ready && decision.sized,
       canFocus: nextFocus(false, fullscreen, viewport) === true,
       canToggle: nextFocus(prefs.focus, fullscreen, viewport) !== null,
+      theater,
       ready,
       toggleFocus,
       previewWidth,
@@ -276,6 +293,7 @@ export function LayoutProvider({
       prefs.focus,
       ready,
       fullscreen,
+      theater,
       viewport,
       toggleFocus,
       previewWidth,
