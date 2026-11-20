@@ -11,7 +11,7 @@ import {
 } from "@/lib/prompts/video-type"
 import { SettingsRow } from "./SettingsRow"
 import { SettingsSection } from "./SettingsSection"
-import { SMALL_BUTTON } from "./styles"
+import { PROMPT_FIELD, SMALL_BUTTON } from "./styles"
 
 function TypePrompt({
   type,
@@ -48,11 +48,14 @@ function TypePrompt({
         aria-label={`Prompt ${VIDEO_TYPE_LABELS[type]}`}
         value={draft}
         maxLength={MAX_VIDEO_TYPE_PROMPT}
-        rows={2}
+        rows={6}
         onChange={(event) => setDraft(event.target.value.slice(0, MAX_VIDEO_TYPE_PROMPT))}
         onBlur={() => onSave(draft.trim() === preset ? "" : draft.trim())}
-        className="field-sizing-fixed min-h-0 resize-none rounded-[8px] border-input bg-background px-[10px] py-[8px] text-[13px] leading-[19px] text-foreground shadow-none md:text-[13px] dark:bg-background"
+        className={PROMPT_FIELD}
       />
+      <span className="self-end font-mono text-[11px] text-subtle-foreground">
+        {draft.length}/{MAX_VIDEO_TYPE_PROMPT}
+      </span>
     </div>
   )
 }

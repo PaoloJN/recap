@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { fakeBrowser } from "wxt/testing/fake-browser"
+import { LEGACY_VIDEO_TYPE_PRESETS } from "./prompts/video-type"
 import {
   type ChatStore,
   DEFAULT_SETTINGS,
   layoutItem,
+  MAX_CUSTOM_INSTRUCTIONS,
   MAX_STORED_CHATS,
   MAX_STORED_SUMMARIES,
   mergeSettings,
@@ -93,10 +95,24 @@ describe("mergeSettings", () => {
       provider: "openai",
     })
   })
-  it("truncates custom instructions and ignores non-booleans", () => {
-    const merged = mergeSettings({ customInstructions: "a".repeat(600), followPlayback: "no" })
-    expect(merged.customInstructions).toHaveLength(500)
-    expect(merged.followPlayback).toBe(true)
+  it("keeps custom instructions up to 4000 characters and ignores non-booleans", () => {
+    const kept = mergeSettings({ customInstructions: "a".repeat(600), followPlayback: "no" })
+    expect(kept.customInstructions).toHaveLength(600)
+    expect(kept.followPlayback).toBe(true)
+    const capped = mergeSettings({ customInstructions: "b".repeat(MAX_CUSTOM_INSTRUCTIONS + 50) })
+    expect(capped.customInstructions).toHaveLength(MAX_CUSTOM_INSTRUCTIONS)
+  })
+  it("drops an untouched video-type preset and keeps a customized one", () => {
+    const merged = mergeSettings({
+      videoTypePrompts: {
+        tutorial: LEGACY_VIDEO_TYPE_PRESETS.tutorial,
+        "strategy-talk": "Chỉ lấy dự đoán có mốc thời gian.",
+        other: `  ${LEGACY_VIDEO_TYPE_PRESETS.other}  `,
+      },
+    })
+    expect(merged.videoTypePrompts.tutorial).toBeUndefined()
+    expect(merged.videoTypePrompts.other).toBeUndefined()
+    expect(merged.videoTypePrompts["strategy-talk"]).toBe("Chỉ lấy dự đoán có mốc thời gian.")
   })
   it("returns defaults for non-objects", () => {
     expect(mergeSettings(null)).toEqual(DEFAULT_SETTINGS)
