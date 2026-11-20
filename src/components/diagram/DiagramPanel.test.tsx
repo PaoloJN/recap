@@ -94,7 +94,9 @@ describe("DiagramResult node menu", () => {
       error: "The diagram renderer took too long to load.",
       raw: "```mermaid\nflowchart TD\n  A --> B\n```",
       stored: undefined,
+      detail: "full",
       generate() {},
+      setDetail() {},
       retry,
       stop() {},
     }

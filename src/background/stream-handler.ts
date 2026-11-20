@@ -135,6 +135,8 @@ function promptFor(req: Exclude<StreamRequest, { kind: "chat" }>): {
     return buildDiagramPrompt(req.context, {
       language: req.language,
       customInstructions: req.customInstructions,
+      detail: req.detail,
+      videoType: req.videoType,
       repair: req.repair,
     })
   }

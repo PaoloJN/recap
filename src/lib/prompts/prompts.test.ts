@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { buildAuthorViewPrompt, buildConceptsPrompt, buildQuizPrompt } from "@/lib/tutor/prompts"
 import type { VideoContext } from "@/lib/types"
-import { buildDiagramPrompt } from "./diagram"
+import { buildDiagramPrompt, diagramNodeRange, diagramShape } from "./diagram"
 import { buildSummaryPrompt } from "./summary"
 import { buildChatSystemPrompt } from "./system"
 import {
@@ -165,7 +165,7 @@ describe("buildDiagramPrompt", () => {
       language: "Tiếng Việt",
       customInstructions: "",
     })
-    expect(system).toContain("Write every node and edge label in Tiếng Việt.")
+    expect(system).toContain("Write every node, subgraph, and edge label in Tiếng Việt.")
     expect(system).toContain("API Gateway")
     expect(system).toContain("Do not translate those terms.")
     expect(system).toContain("```mermaid")
@@ -179,7 +179,7 @@ describe("buildDiagramPrompt", () => {
       customInstructions: "Prefer a sequence",
       repair: { code: "flowchart TD\n  A -->", error: "Parse error on line 2" },
     })
-    expect(system).toContain("Write every node and edge label in English.")
+    expect(system).toContain("Write every node, subgraph, and edge label in English.")
     expect(user).toContain("Parse error on line 2")
     expect(user).toContain("flowchart TD")
     expect(user).toContain("Fix the syntax only.")
@@ -191,6 +191,39 @@ describe("buildDiagramPrompt", () => {
       customInstructions: "Be brief",
     })
     expect(system).toContain("the transcript's language (en)")
+  })
+  it("picks a shape from the video type and scales the node count", () => {
+    expect(diagramShape("tutorial")).toBe("flow")
+    expect(diagramShape("strategy-talk")).toBe("argument")
+    expect(diagramShape("course-lecture")).toBe("concept")
+    expect(diagramShape("other")).toBe("flow")
+    expect(diagramNodeRange(30 * 60, "full")).toEqual({ min: 15, max: 35 })
+    expect(diagramNodeRange(30 * 60, "compact").max).toBeLessThan(15)
+    const talk = {
+      ...small,
+      metadata: { ...small.metadata, durationSeconds: 30 * 60 },
+    }
+    const full = buildDiagramPrompt(talk, {
+      language: "Tiếng Việt",
+      customInstructions: "",
+      detail: "full",
+      videoType: "strategy-talk",
+    }).system
+    expect(full).toContain("argument map")
+    expect(full).toContain("between 15 and 35 nodes")
+    expect(full).toContain(":::claim")
+    expect(full).toContain("classDef risk")
+    expect(full).toContain("[m:ss]")
+    expect(full).toContain("subgraph")
+    const compact = buildDiagramPrompt(talk, {
+      language: "Tiếng Việt",
+      customInstructions: "",
+      detail: "compact",
+      videoType: "tutorial",
+    }).system
+    expect(compact).toContain("flowchart TD")
+    expect(compact).toContain("Detail level: compact")
+    expect(compact).toContain("between 8 and 14 nodes")
   })
 })
 

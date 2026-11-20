@@ -8,7 +8,7 @@ import {
   useState,
 } from "react"
 import { createPortal } from "react-dom"
-import { usePortalContainer } from "@/components/shell/PortalContainer"
+import css from "@/assets/tailwind.css?inline"
 import {
   type DiagramView,
   fitWidth,
@@ -58,15 +58,16 @@ export function DiagramViewport({
   onActivate?(target: Element, clientX: number, clientY: number): void
   children: ReactNode
 }) {
-  const portal = usePortalContainer()
   const canvasRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<Drag | null>(null)
   const fittedKey = useRef<string | null>(null)
+  const fittedWidth = useRef(0)
   const [canvasNode, setCanvasNode] = useState<HTMLDivElement | null>(null)
   const [view, setView] = useState<DiagramView>({ scale: 1, x: 0, y: 0 })
   const [intrinsic, setIntrinsic] = useState({ width: 0, height: 0 })
   const [fullscreen, setFullscreen] = useState(false)
+  const fullscreenMount = useFullscreenMount(fullscreen)
   const [dragging, setDragging] = useState(false)
 
   const assignCanvas = (node: HTMLDivElement | null) => {
@@ -79,16 +80,19 @@ export function DiagramViewport({
     const content = contentRef.current
     if (!content || !canvasNode) return
     const apply = () => {
-      if (fittedKey.current === diagramKey) return
       const size = contentSize(content)
-      if (!(size.width > 0) || !(canvasNode.clientWidth > 0)) return
+      const width = canvasNode.clientWidth
+      if (!(size.width > 0) || !(width > 0)) return
+      if (fittedKey.current === diagramKey && Math.abs(fittedWidth.current - width) < 2) return
       fittedKey.current = diagramKey
+      fittedWidth.current = width
       setIntrinsic(size)
-      setView(fitWidth(canvasNode.clientWidth, size.width))
+      setView(fitWidth(width, size.width))
     }
     apply()
     const observer = new ResizeObserver(apply)
     observer.observe(content)
+    observer.observe(canvasNode)
     return () => observer.disconnect()
   }, [diagramKey, canvasNode])
 
@@ -106,6 +110,43 @@ export function DiagramViewport({
     canvasNode.addEventListener("wheel", onWheel, { passive: false })
     return () => canvasNode.removeEventListener("wheel", onWheel)
   }, [canvasNode])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fullscreen changes the canvas size without changing the node
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const content = contentRef.current
+      const canvas = canvasRef.current
+      if (!content || !canvas) return
+      const size = contentSize(content)
+      if (!(size.width > 0) || !(canvas.clientWidth > 0)) return
+      fittedKey.current = diagramKey
+      setIntrinsic(size)
+      setView(fitWidth(canvas.clientWidth, size.width))
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [fullscreen, diagramKey])
+
+  useEffect(() => {
+    if (!fullscreen) return
+    const root = canvasRef.current?.getRootNode()
+    const host = root instanceof ShadowRoot ? (root.host as HTMLElement) : null
+    // The host is its own stacking context, so the overlay cannot cover the masthead
+    // until the host itself sits above it.
+    document.documentElement.classList.add("recap-diagram-open")
+    host?.style.setProperty("overflow", "visible", "important")
+    host?.style.setProperty("z-index", "2147483646", "important")
+    return () => {
+      document.documentElement.classList.remove("recap-diagram-open")
+      if (!host) return
+      if (document.documentElement.classList.contains("recap-focus")) {
+        host.style.setProperty("overflow", "hidden", "important")
+        host.style.setProperty("z-index", "2", "important")
+      } else {
+        host.style.removeProperty("overflow")
+        host.style.removeProperty("z-index")
+      }
+    }
+  }, [fullscreen])
 
   useEffect(() => {
     if (!fullscreen) return
@@ -255,18 +296,46 @@ export function DiagramViewport({
     </div>
   )
 
-  if (!fullscreen) return chrome
-  const target = portal ?? document.body
+  if (!fullscreen || !fullscreenMount) return chrome
   return createPortal(
     <div
       data-testid="diagram-fullscreen"
       role="dialog"
       aria-modal="true"
       aria-label="Diagram"
-      className="fixed inset-[16px] z-[80] flex rounded-[12px] border bg-background p-[12px] shadow-pop"
+      className="fixed inset-0 z-[2147483000] flex flex-col bg-background p-[16px]"
+      style={{ position: "fixed", inset: 0, zIndex: 2147483000 }}
     >
       {chrome}
     </div>,
-    target,
+    fullscreenMount,
   )
+}
+
+/** Fullscreen has to leave the panel host. That host is its own stacking context, under the masthead. */
+function useFullscreenMount(open: boolean): HTMLElement | null {
+  const [mount, setMount] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!open) return
+    const host = document.createElement("div")
+    host.dataset.recapFullscreenHost = "true"
+    host.style.cssText = "position:fixed;inset:0;z-index:2147483646"
+    const shadow = host.attachShadow({ mode: "open" })
+    const style = document.createElement("style")
+    style.textContent = css
+    const node = document.createElement("div")
+    node.style.height = "100%"
+    const card = document
+      .querySelector("recap-panel")
+      ?.shadowRoot?.querySelector("[data-recap-card]")
+    if (card?.classList.contains("dark")) node.classList.add("dark")
+    shadow.append(style, node)
+    document.body.append(host)
+    setMount(node)
+    return () => {
+      host.remove()
+      setMount(null)
+    }
+  }, [open])
+  return mount
 }

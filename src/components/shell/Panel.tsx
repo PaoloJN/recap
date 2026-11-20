@@ -298,7 +298,13 @@ export function Panel() {
     })
   }
   const dark = settings.theme === "youtube" ? youtubeTheme === "dark" : settings.theme === "dark"
-  const diagram = useDiagram(video.context, hasKey ? selection : null, settings, dark)
+  const diagram = useDiagram(
+    video.context,
+    hasKey ? selection : null,
+    settings,
+    dark,
+    videoType.type,
+  )
 
   // ⌥S on a collapsed card or a still-loading video: the transcript (and so the context) only
   // arrives after the card opens, so the request waits here, tied to the video it was made for.
@@ -440,11 +446,23 @@ export function Panel() {
           data-recap-focus={layout.focus ? "true" : "false"}
           className={cn(
             "relative flex flex-col overflow-hidden rounded-[12px] border bg-background font-sans text-body text-foreground antialiased",
-            layout.focus ? "h-full min-h-0" : open && !fitContent ? "h-[640px]" : "h-auto",
+            layout.focus ? "min-h-0 w-full min-w-0" : open && !fitContent ? "h-[640px]" : "h-auto",
             !layout.focus && fitContent && "max-h-[640px]",
             TEXT_SIZE_CLASS[settings.textSize],
             dark && "dark",
           )}
+          style={
+            layout.focus
+              ? {
+                  height: layout.theater
+                    ? "min(720px, calc(100vh - 96px))"
+                    : "calc(100vh - var(--ytd-watch-flexy-masthead-height, 56px) - 24px)",
+                  maxHeight: layout.theater
+                    ? "min(720px, calc(100vh - 96px))"
+                    : "calc(100vh - var(--ytd-watch-flexy-masthead-height, 56px) - 24px)",
+                }
+              : undefined
+          }
         >
           {layout.canResize ? (
             <ResizeHandle

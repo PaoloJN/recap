@@ -1,9 +1,11 @@
 import type { UIMessage, UIMessageChunk } from "ai"
+import type { VideoType } from "./prompts/video-type"
 import type { ReasoningEffort } from "./reasoning"
 import type { ShortAnswer } from "./tutor/quiz"
 import type { TutorSettings } from "./tutor/types"
 import type {
   AnswerLanguage,
+  DiagramDetail,
   ModelSelection,
   ProviderId,
   SummaryStyle,
@@ -43,6 +45,10 @@ export type StreamRequest =
   | (StreamBase & {
       kind: "diagram"
       customInstructions: string
+      /** Compact draws fewer nodes. Absent means the full diagram. */
+      detail?: DiagramDetail
+      /** Chooses flow, argument map, or concept map. Absent uses a flow. */
+      videoType?: VideoType | null
       /** Set when the first reply was not valid Mermaid. The model is asked to fix syntax only. */
       repair?: { code: string; error: string }
     })

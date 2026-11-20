@@ -24,6 +24,9 @@ export const ANSWER_LANGUAGES: readonly AnswerLanguage[] = [
 ]
 export type PanelView = "main" | "settings" | "onboarding"
 
+/** How much structure a diagram asks the model for. Full is the default. */
+export type DiagramDetail = "compact" | "full"
+
 /** A diagram node (or step) and the transcript moment it came from. */
 export interface DiagramLink {
   label: string

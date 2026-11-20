@@ -148,10 +148,16 @@ describe("DiagramViewport", () => {
     await act(async () => {
       button.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
-    expect(document.querySelector("[data-testid='diagram-fullscreen']")).not.toBeNull()
+    const overlay = [...document.querySelectorAll("*")]
+      .map((el) => el.shadowRoot?.querySelector("[data-testid='diagram-fullscreen']"))
+      .find(Boolean)
+    expect(overlay).not.toBeUndefined()
+    expect((overlay as HTMLElement).style.position).toBe("fixed")
+    expect((overlay as HTMLElement).style.inset).toBe("0px")
+    expect(document.querySelector("[data-recap-fullscreen-host]")).not.toBeNull()
     await act(async () => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
     })
-    expect(document.querySelector("[data-testid='diagram-fullscreen']")).toBeNull()
+    expect(document.querySelector("[data-recap-fullscreen-host]")).toBeNull()
   })
 })

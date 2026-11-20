@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest"
 import {
+  applyFocusHost,
   applyPageLayout,
   clearPageLayout,
   ensureLayoutStyle,
@@ -20,9 +21,40 @@ describe("watch page layout css", () => {
     expect(LAYOUT_CSS).toContain("display: block !important")
     expect(LAYOUT_CSS).not.toContain("#columns")
     expect(LAYOUT_CSS).not.toContain("#primary")
+    expect(LAYOUT_CSS).not.toContain("#player")
     expect(LAYOUT_CSS).not.toContain("html5-main-video")
     expect(LAYOUT_CSS).not.toContain("aspect-ratio")
-    expect(LAYOUT_CSS).not.toContain("min-width: 0")
+    expect(LAYOUT_CSS).toContain(".recap-host")
+    expect(LAYOUT_CSS).toContain("min-width: 0")
+    expect(LAYOUT_CSS).toContain("overflow: hidden")
+    expect(LAYOUT_CSS).toContain("calc(60vw - 120px)")
+    expect(LAYOUT_CSS).toContain("width: 100%")
+  })
+})
+
+describe("applyFocusHost", () => {
+  it("pins the host height inline so the shadow reset cannot grow the card", () => {
+    const host = document.createElement("div")
+    applyFocusHost(host, true, false)
+    expect(host.style.getPropertyPriority("height")).toBe("important")
+    expect(host.style.height).toContain("100vh")
+    expect(host.style.overflow).toBe("hidden")
+    expect(host.style.position).toBe("sticky")
+
+    const root = host.attachShadow({ mode: "open" })
+    const overlay = document.createElement("div")
+    overlay.dataset.testid = "diagram-fullscreen"
+    root.append(overlay)
+    applyFocusHost(host, true, false)
+    expect(host.style.overflow).toBe("visible")
+
+    applyFocusHost(host, true, true)
+    expect(host.style.position).toBe("relative")
+    expect(host.style.height).toContain("720px")
+
+    applyFocusHost(host, false, false)
+    expect(host.style.height).toBe("")
+    expect(host.style.position).toBe("")
   })
 })
 

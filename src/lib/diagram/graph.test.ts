@@ -6,6 +6,7 @@ import {
   nodeFromDomId,
   parseDiagramGraph,
   secondsForLabel,
+  secondsInLabel,
 } from "./graph"
 import { isDiagramNodeClick, isTrustedDiagramEvent } from "./protocol"
 
@@ -125,6 +126,9 @@ describe("node identity", () => {
     ])
     expect(secondsForLabel("Worker", [{ label: "Worker", seconds: 28 }])).toBe(28)
     expect(secondsForLabel("Missing", [])).toBeNull()
+    expect(secondsInLabel("Ràng buộc<br/>Dune · [3:03]")).toBe(183)
+    expect(secondsForLabel("Claim<br/>detail · [12:04]", [])).toBe(12 * 60 + 4)
+    expect(secondsInLabel("no time")).toBeNull()
   })
 })
 
