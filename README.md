@@ -33,6 +33,58 @@ To update now, run `recap-update`, then Reload Recap at `chrome://extensions`. T
 
 To remove the updater, run `scripts/macos/uninstall-updater.sh`. That unloads the LaunchAgent and deletes the `recap-update` command. It leaves `$HOME/Tools/recap` in place. Remove the extension itself at `chrome://extensions`.
 
+A one-line install for a teammate's Mac is in [Cài cho team](#cài-cho-team).
+
+## Cài cho team
+
+Mỗi người dùng tài khoản ChatGPT hoặc khóa OpenRouter của chính mình. Khóa và token nằm trong `chrome.storage.local` trên máy đó, không dùng chung. Script chỉ ghi `$HOME/Tools/recap`, `$HOME/Tools/bin/recap-update` và LaunchAgent cập nhật. Không đọc, không sửa profile Chrome.
+
+Cài một dòng trên macOS:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tungdd97/recap/main/scripts/macos/install.sh | bash
+```
+
+Lệnh tải `recap-chrome-mv3.zip` và `version.json` từ bản phát hành mới nhất (không cần token), kiểm tra zip, rồi giải nén vào `$HOME/Tools/recap`. Nếu thư mục đã có, script đổi tên thành `$HOME/Tools/recap.bak.<thời điểm>` rồi cài đè. Chạy lại lệnh này an toàn. Sau đó script cài `recap-update` vào `$HOME/Tools/bin` và LaunchAgent chạy mỗi ngày lúc 08:00.
+
+Không muốn lịch cập nhật:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tungdd97/recap/main/scripts/macos/install.sh | bash -s -- --no-updater
+```
+
+### Làm tay
+
+1. Tải [recap-chrome-mv3.zip](https://github.com/tungdd97/recap/releases/latest/download/recap-chrome-mv3.zip) và [version.json](https://github.com/tungdd97/recap/releases/latest/download/version.json).
+2. Giải nén sao cho `manifest.json` nằm ở `$HOME/Tools/recap/manifest.json`.
+3. Từ bản checkout của repo, chạy `bash scripts/macos/install-updater.sh` nếu muốn lịch cập nhật 08:00.
+
+### Sau khi cài
+
+1. Mở `chrome://extensions`.
+2. Bật **Developer mode**.
+3. Chọn **Load unpacked** và trỏ tới `$HOME/Tools/recap`.
+4. Đăng nhập bằng tài khoản ChatGPT hoặc khóa OpenRouter của chính bạn.
+
+Nếu đã nạp đúng thư mục này rồi, chỉ cần bấm **Reload**.
+
+### Cập nhật
+
+`recap-update` chạy mỗi ngày lúc 08:00 (giờ máy). Chạy ngay: `$HOME/Tools/bin/recap-update`, rồi **Reload** trên `chrome://extensions`. `$HOME/Tools/bin/recap-update --check` chỉ in phiên bản đang cài và bản mới nhất. Log nằm ở `$HOME/Library/Logs/recap-update.log`.
+
+### Gỡ
+
+1. Gỡ lịch cập nhật (không xóa extension):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tungdd97/recap/main/scripts/macos/uninstall-updater.sh | bash
+```
+
+Hoặc, nếu có checkout: `bash scripts/macos/uninstall-updater.sh`.
+
+2. Xóa thư mục: `rm -rf -- "$HOME/Tools/recap"`. Các bản `recap.bak.*` cạnh đó có thể xóa cùng.
+3. Mở `chrome://extensions`, tìm **Recap AI** và bấm **Remove**.
+
 ## Install
 
 From a release:
