@@ -26,7 +26,7 @@ export interface SummaryState {
   feedback: "up" | "down" | undefined
   setFeedback(f: "up" | "down"): void
   /** Without `force`, a no-op when a summary is stored or a request is already running. */
-  generate(opts?: { force?: boolean }): void
+  generate(opts?: { force?: boolean; typePrompt?: string }): void
   stop(): void
 }
 
@@ -39,6 +39,7 @@ export function useSummary(
   selection: ModelSelection | null,
   rawSettings: Settings,
   enabled: boolean,
+  typePrompt = "",
 ): SummaryState {
   // Defensive: saved v2 settings may lack the newer fields.
   const settings = useMemo(() => mergeSettings(rawSettings), [rawSettings])
@@ -56,6 +57,8 @@ export function useSummary(
   const requestRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
   const autoRef = useRef(new Set<string>())
+  const typePromptRef = useRef(typePrompt)
+  typePromptRef.current = typePrompt
 
   const cancel = useCallback(() => {
     requestRef.current++ // make any in-flight request stale
@@ -76,7 +79,7 @@ export function useSummary(
   useEffect(() => cancel, [cancel])
 
   const run = useCallback(
-    (runStyle: SummaryStyle) => {
+    (runStyle: SummaryStyle, prompt = typePromptRef.current) => {
       if (!ctx || !selection) return
       cancel()
       const request = requestRef.current
@@ -106,6 +109,7 @@ export function useSummary(
               selection,
               language: settings.language,
               customInstructions: settings.customInstructions,
+              videoTypePrompt: prompt,
               reasoningEffort: settings.reasoningEffort,
             },
             { signal: controller.signal },
@@ -156,11 +160,11 @@ export function useSummary(
   )
 
   const generate = useCallback(
-    (opts?: { force?: boolean }) => {
+    (opts?: { force?: boolean; typePrompt?: string }) => {
       if (!ctx || !selection) return
       // Without force, a stored summary or a request already in flight is left alone.
       if (!opts?.force && (stored || abortRef.current)) return
-      run(style)
+      run(style, opts?.typePrompt)
     },
     [ctx, selection, stored, style, run],
   )

@@ -1,6 +1,12 @@
 import type { UIMessage } from "ai"
 import { storage } from "wxt/utils/storage"
 import type { LayoutPrefs } from "./layout/panel-layout"
+import {
+  isVideoType,
+  MAX_VIDEO_TYPE_PROMPT,
+  VIDEO_TYPES,
+  type VideoType,
+} from "./prompts/video-type"
 import { PROVIDER_IDS, PROVIDERS } from "./providers"
 import { REASONING_EFFORTS, type ReasoningEffort } from "./reasoning"
 import type { TranscriptCache } from "./source/cache"
@@ -36,6 +42,10 @@ export interface Settings {
   removeFillers: boolean
   defaultStyle: SummaryStyle
   customInstructions: string
+  /** When false, the panel does not guess a video type. */
+  autoDetectVideoType: boolean
+  /** Per-type replacements for the built-in focus text. Missing or blank means the preset. */
+  videoTypePrompts: Partial<Record<VideoType, string>>
   /** Free-text role used to tailor tutor examples. Empty means a neutral software engineer. */
   role: string
   tutorMode: TutorMode
@@ -59,6 +69,8 @@ export const DEFAULT_SETTINGS: Settings = {
   removeFillers: true,
   defaultStyle: "detailed",
   customInstructions: "",
+  autoDetectVideoType: true,
+  videoTypePrompts: {},
   role: "",
   tutorMode: "qa",
   tutorLevel: "engineer",
@@ -75,6 +87,19 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback
 
 function bool(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback
+}
+
+function videoTypePrompts(value: unknown): Partial<Record<VideoType, string>> {
+  if (typeof value !== "object" || value === null) return {}
+  const raw = value as Record<string, unknown>
+  const prompts: Partial<Record<VideoType, string>> = {}
+  for (const type of VIDEO_TYPES) {
+    const text = raw[type]
+    if (typeof text === "string" && text.trim()) {
+      prompts[type] = text.trim().slice(0, MAX_VIDEO_TYPE_PROMPT)
+    }
+  }
+  return prompts
 }
 
 export function mergeSettings(stored: unknown): Settings {
@@ -105,6 +130,8 @@ export function mergeSettings(stored: unknown): Settings {
       typeof raw.customInstructions === "string"
         ? raw.customInstructions.slice(0, MAX_CUSTOM_INSTRUCTIONS)
         : d.customInstructions,
+    autoDetectVideoType: bool(raw.autoDetectVideoType, d.autoDetectVideoType),
+    videoTypePrompts: videoTypePrompts(raw.videoTypePrompts),
     role: cleanRole(typeof raw.role === "string" ? raw.role : d.role),
     tutorMode: oneOf(raw.tutorMode, TUTOR_MODES, d.tutorMode),
     tutorLevel: oneOf(raw.tutorLevel, TUTOR_LEVELS, d.tutorLevel),
@@ -207,6 +234,31 @@ export interface StoredSummary {
 export type SummaryStore = Record<string, StoredSummary>
 
 export const summariesItem = storage.defineItem<SummaryStore>("local:summaries", { fallback: {} })
+
+export interface StoredVideoType {
+  type: VideoType
+  source: "heuristic" | "model" | "manual"
+}
+
+export type VideoTypeStore = Record<string, StoredVideoType>
+
+export const videoTypesItem = storage.defineItem<VideoTypeStore>("local:videoTypes", {
+  fallback: {},
+})
+
+const MAX_STORED_VIDEO_TYPES = 50
+
+export function upsertVideoType(
+  store: VideoTypeStore,
+  videoId: string,
+  entry: StoredVideoType,
+): VideoTypeStore {
+  if (!isVideoType(entry.type)) return store
+  const { [videoId]: _previous, ...rest } = store
+  const next: VideoTypeStore = { ...rest, [videoId]: entry }
+  const entries = Object.entries(next)
+  return Object.fromEntries(entries.slice(-MAX_STORED_VIDEO_TYPES))
+}
 
 export const MAX_STORED_SUMMARIES = 20
 
