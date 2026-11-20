@@ -8,7 +8,7 @@ import {
 } from "@phosphor-icons/react"
 import { useEffect, useRef, useState } from "react"
 import { useChatDraft } from "@/components/chat/ChatDraftContext"
-import { DiagramFrame } from "@/components/diagram/DiagramFrame"
+import { DiagramViewport } from "@/components/diagram/DiagramViewport"
 import { IconButton } from "@/components/shell/IconButton"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
@@ -20,6 +20,7 @@ import {
 } from "@/components/summary/buttons"
 import { useSeek } from "@/hooks/useSeek"
 import {
+  clickedNodeId,
   type DiagramGraphNode,
   edgeLines,
   nodeForLabel,
@@ -52,7 +53,7 @@ function stripSvg(svg: string): Element | null {
   return root
 }
 
-export function DiagramSvg({ svg }: { svg: string }) {
+export function DiagramSvg({ svg, intrinsic = false }: { svg: string; intrinsic?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const host = ref.current
@@ -62,20 +63,33 @@ export function DiagramSvg({ svg }: { svg: string }) {
     if (!root) return
     const node = document.importNode(root, true)
     if (node instanceof SVGElement) {
-      node.setAttribute("width", "100%")
-      node.style.maxWidth = "100%"
-      node.style.height = "auto"
-      node.removeAttribute("height")
+      if (intrinsic && node instanceof SVGSVGElement) {
+        const box = node.viewBox.baseVal
+        if (box.width > 0 && box.height > 0) {
+          node.setAttribute("width", String(box.width))
+          node.setAttribute("height", String(box.height))
+          node.style.width = `${box.width}px`
+          node.style.height = `${box.height}px`
+        }
+        node.style.maxWidth = "none"
+      } else {
+        node.setAttribute("width", "100%")
+        node.style.maxWidth = "100%"
+        node.style.height = "auto"
+        node.removeAttribute("height")
+      }
     }
     host.appendChild(node)
-  }, [svg])
+  }, [svg, intrinsic])
   return (
     <div
       ref={ref}
       data-testid="diagram-svg"
       role="img"
       aria-label="Diagram of the video"
-      className="overflow-x-auto rounded-[12px] border bg-card p-[8px] [&_svg]:h-auto [&_svg]:max-w-full"
+      className={
+        intrinsic ? "[&_svg]:block" : "overflow-x-auto rounded-[12px] border bg-card p-[8px]"
+      }
     />
   )
 }
@@ -173,7 +187,7 @@ function NodeMenu({
     <div
       role="menu"
       data-testid="diagram-node-menu"
-      className="absolute z-20 flex w-[200px] flex-col rounded-[10px] border bg-card p-[4px] shadow-pop"
+      className="fixed z-[90] flex w-[200px] flex-col rounded-[10px] border bg-card p-[4px] shadow-pop"
       style={{ left: menu.left, top: menu.top }}
     >
       <button type="button" role="menuitem" className={menuItem} onClick={onExplain}>
@@ -219,7 +233,6 @@ export function DiagramResult({
   const seek = useSeek()
   const hostRef = useRef<HTMLDivElement>(null)
   const [menu, setMenu] = useState<NodeMenuState | null>(null)
-  const [frameFailed, setFrameFailed] = useState(false)
   const graph = parseDiagramGraph(code)
 
   useEffect(() => {
@@ -247,15 +260,10 @@ export function DiagramResult({
     viewportX: number,
     viewportY: number,
   ) => {
-    const host = hostRef.current
-    if (!host) return
-    const box = host.getBoundingClientRect()
+    if (!hostRef.current) return
     const width = 200
-    const left = Math.min(
-      Math.max(8, viewportX - box.left),
-      Math.max(8, host.clientWidth - width - 8),
-    )
-    const top = Math.max(8, viewportY - box.top)
+    const left = Math.min(Math.max(8, viewportX), Math.max(8, window.innerWidth - width - 8))
+    const top = Math.min(Math.max(8, viewportY), Math.max(8, window.innerHeight - 44))
     setMenu({ node, edges: edgeLines(node, graph), seconds, left, top })
   }
 
@@ -297,22 +305,28 @@ export function DiagramResult({
     seek(menu.seconds)
     setMenu(null)
   }
-  const live = frameFailed ? undefined : interactive
+  const activate = (target: Element, x: number, y: number) => {
+    if (!interactive) return
+    const domId = clickedNodeId(target)
+    if (!domId) return
+    const node = nodeFromDomId(domId, graph.nodes)
+    if (!node) return
+    openNode(node, secondsForLabel(node.label, links), x, y)
+  }
+  const menuNode = menu ? (
+    <NodeMenu menu={menu} onExplain={explain} onAsk={ask} onSeek={watch} />
+  ) : null
   return (
-    <div ref={hostRef} className="relative flex flex-col gap-[16px]" data-testid="diagram-result">
-      {live ? (
-        <DiagramFrame
-          code={code}
-          dark={live.dark}
-          onError={() => setFrameFailed(true)}
-          onNode={(domId, x, y) => {
-            const node = nodeFromDomId(domId, graph.nodes)
-            if (!node) return
-            openNode(node, secondsForLabel(node.label, links), x, y)
-          }}
-        />
-      ) : svg ? (
-        <DiagramSvg svg={svg} />
+    <div className="relative flex flex-col gap-[16px]" data-testid="diagram-result">
+      {svg ? (
+        <DiagramViewport
+          diagramKey={code}
+          anchorRef={hostRef}
+          menu={menuNode}
+          onActivate={interactive ? activate : undefined}
+        >
+          <DiagramSvg svg={svg} intrinsic />
+        </DiagramViewport>
       ) : (
         <div
           aria-hidden
@@ -323,7 +337,7 @@ export function DiagramResult({
       <DiagramLinks
         links={links}
         onPick={
-          live
+          interactive
             ? (link, anchor) => {
                 const rect = anchor.getBoundingClientRect()
                 const node = nodeForLabel(link.label, graph)
@@ -332,7 +346,6 @@ export function DiagramResult({
             : undefined
         }
       />
-      {menu ? <NodeMenu menu={menu} onExplain={explain} onAsk={ask} onSeek={watch} /> : null}
       <div className="flex flex-wrap gap-[8px]">
         <button type="button" className={cn(secondaryButton, smallButton)} onClick={copy}>
           <Copy aria-hidden />

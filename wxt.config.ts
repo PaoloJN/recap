@@ -3,7 +3,6 @@ import { defineConfig } from "wxt"
 import { twPropertyDefaults } from "./src/build/tw-property-defaults"
 
 const REM_BASE_PX = 14
-const YOUTUBE_MATCHES = ["*://www.youtube.com/*"]
 
 const remToPx = {
   postcssPlugin: "rem-to-px",
@@ -23,14 +22,25 @@ export default defineConfig({
     name: "Recap AI",
     version: "2.0.0",
     // webNavigation reads the ChatGPT loopback redirect; tabs opens and closes that sign-in tab.
-    permissions: ["storage", "webNavigation", "tabs"],
+    // scripting injects the generic course script after the user allows an origin.
+    permissions: ["storage", "webNavigation", "tabs", "scripting"],
     host_permissions: [
       "https://api.openai.com/*",
       "https://auth.openai.com/*",
       "https://api.anthropic.com/*",
       "https://generativelanguage.googleapis.com/*",
       "https://openrouter.ai/*",
+      "https://www.udemy.com/*",
+      "https://*.udemycdn.com/*",
+      "https://vtt.udemy.com/*",
+      "https://www.coursera.org/*",
+      "https://d3c33hcgiwev3.cloudfront.net/*",
+      "https://learn.deeplearning.ai/*",
     ],
+    optional_host_permissions: ["https://*/*", "http://*/*"],
+    action: {
+      default_title: "Recap AI",
+    },
     icons: {
       16: "icon/16.png",
       32: "icon/32.png",
@@ -62,7 +72,9 @@ export default defineConfig({
           // diagram-renderer.html is an extension page the content script iframes so Mermaid
           // (bundled locally) can render outside the YouTube page.
           resources: ["fonts/*", "diagram-renderer.html"],
-          matches: YOUTUBE_MATCHES,
+          // Not a host permission. Fonts and the diagram renderer must load on course pages
+          // and on origins the user allows later, which cannot be listed here in advance.
+          matches: ["https://*/*", "http://*/*"],
           use_dynamic_url: false,
         },
       ]

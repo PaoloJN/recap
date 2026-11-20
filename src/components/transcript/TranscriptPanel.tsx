@@ -54,7 +54,7 @@ export function TranscriptPanel({ video, active }: { video: VideoState; active: 
     case "unavailable":
       return (
         <div className="px-[16px]">
-          <NoCaptions variant="transcript" />
+          <NoCaptions variant="transcript" note={transcript.message} />
         </div>
       )
     case "error":

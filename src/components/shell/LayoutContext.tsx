@@ -9,10 +9,18 @@ import {
   useState,
 } from "react"
 import { useStorageItem } from "@/hooks/useStorageItem"
-import { applyPageLayout, clearPageLayout, ensureLayoutStyle } from "@/lib/layout/page-style"
 import {
+  applyDrawerLayout,
+  applyPageLayout,
+  clearDrawerLayout,
+  clearPageLayout,
+  ensureLayoutStyle,
+} from "@/lib/layout/page-style"
+import {
+  decideDrawerLayout,
   decideLayout,
   isPageFullscreen,
+  type LayoutDecision,
   type LayoutPrefs,
   nextFocus,
   readLayout,
@@ -53,11 +61,22 @@ function hostOf(container: HTMLElement): HTMLElement {
   return root instanceof ShadowRoot ? (root.host as HTMLElement) : container
 }
 
+export type PanelPlacement = "sidebar" | "drawer"
+
+function decide(
+  placement: PanelPlacement,
+  input: Parameters<typeof decideLayout>[0],
+): LayoutDecision {
+  return placement === "drawer" ? decideDrawerLayout(input) : decideLayout(input)
+}
+
 export function LayoutProvider({
   container,
+  placement = "sidebar",
   children,
 }: {
   container: HTMLElement
+  placement?: PanelPlacement
   children: ReactNode
 }) {
   const { open, selectTab } = usePanelNav()
@@ -88,19 +107,23 @@ export function LayoutProvider({
     [setStored],
   )
 
-  const paint = useCallback((preferred: number | null, dragging: boolean) => {
-    applyPageLayout(
-      document,
-      decideLayout({
+  const paint = useCallback(
+    (preferred: number | null, dragging: boolean) => {
+      const next = decide(placement, {
         open: openRef.current,
         fullscreen: fullscreenRef.current,
         viewportWidth: window.innerWidth,
         preferredWidth: preferred,
         focus: prefsRef.current.focus,
-      }),
-      dragging,
-    )
-  }, [])
+      })
+      if (placement === "drawer") {
+        applyDrawerLayout(hostOf(container), document, next, openRef.current, dragging)
+        return
+      }
+      applyPageLayout(document, next, dragging)
+    },
+    [container, placement],
+  )
 
   useEffect(() => {
     if (live !== undefined && prefs.width === live) setLive(undefined)
@@ -127,14 +150,14 @@ export function LayoutProvider({
   const preferredWidth = live === undefined ? prefs.width : live
   const decision = useMemo(
     () =>
-      decideLayout({
+      decide(placement, {
         open,
         fullscreen,
         viewportWidth: viewport,
         preferredWidth,
         focus: prefs.focus,
       }),
-    [open, fullscreen, viewport, preferredWidth, prefs.focus],
+    [placement, open, fullscreen, viewport, preferredWidth, prefs.focus],
   )
 
   useEffect(() => {
@@ -144,6 +167,7 @@ export function LayoutProvider({
     return () => {
       host.classList.remove("recap-host")
       clearPageLayout(document)
+      clearDrawerLayout(host, document)
       container.style.height = ""
       container.style.flex = ""
       container.style.minHeight = ""
@@ -155,18 +179,21 @@ export function LayoutProvider({
   const applied = useRef<string | null>(null)
   useEffect(() => {
     if (!ready || draggingRef.current) return
-    applyPageLayout(document, decision, false)
-    container.style.height = decision.focus ? "100%" : ""
-    container.style.flex = decision.focus ? "1 1 auto" : ""
-    container.style.minHeight = decision.focus ? "0" : ""
-    container.style.display = decision.focus ? "flex" : ""
-    container.style.flexDirection = decision.focus ? "column" : ""
+    const fill = placement === "drawer" ? open : decision.focus
+    if (placement === "drawer")
+      applyDrawerLayout(hostOf(container), document, decision, open, false)
+    else applyPageLayout(document, decision, false)
+    container.style.height = fill ? "100%" : ""
+    container.style.flex = fill ? "1 1 auto" : ""
+    container.style.minHeight = fill ? "0" : ""
+    container.style.display = fill ? "flex" : ""
+    container.style.flexDirection = fill ? "column" : ""
     const sig = `${decision.sized}:${decision.focus}:${decision.cssWidth}`
     if (applied.current === sig) return
     applied.current = sig
     const frame = requestAnimationFrame(() => window.dispatchEvent(new Event("resize")))
     return () => cancelAnimationFrame(frame)
-  }, [ready, decision, container])
+  }, [ready, decision, container, placement, open])
 
   const toggleFocus = useCallback(() => {
     if (!ready) return
@@ -181,7 +208,10 @@ export function LayoutProvider({
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || !decision.focus) return
       const root = container.getRootNode()
-      if (root instanceof ShadowRoot && root.querySelector("[data-testid='diagram-node-menu']")) {
+      if (
+        root instanceof ShadowRoot &&
+        root.querySelector("[data-testid='diagram-node-menu'], [data-testid='diagram-fullscreen']")
+      ) {
         return
       }
       event.preventDefault()

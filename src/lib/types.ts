@@ -77,7 +77,8 @@ export interface WatchPageData {
 export type TranscriptStatus =
   | { state: "loading" }
   | { state: "ready"; segments: TranscriptSegment[]; language: string; asr?: boolean }
-  | { state: "unavailable" }
+  /** `message` is set on course sites. YouTube keeps the existing English empty state. */
+  | { state: "unavailable"; message?: string }
   | { state: "error"; message: string }
 
 export interface VideoContext {
