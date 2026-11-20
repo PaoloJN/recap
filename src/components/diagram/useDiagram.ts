@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useStorageItem } from "@/hooks/useStorageItem"
 import { resolveDiagram } from "@/lib/diagram/assess"
-import { parseDiagram, renderDiagram } from "@/lib/diagram/bridge"
-import { shortMermaidError } from "@/lib/diagram/parse"
+import { parseDiagram, renderDiagram, resetDiagramFrame } from "@/lib/diagram/bridge"
+import { extractMermaid, shortMermaidError } from "@/lib/diagram/parse"
 import {
   diagramsItem,
   mergeSettings,
@@ -26,6 +26,8 @@ export interface DiagramState {
   stored: StoredDiagram | undefined
   /** Without `force`, a no-op when a diagram is stored or a request is already running. */
   generate(opts?: { force?: boolean }): void
+  /** Reload the renderer and draw the reply already on screen. Asks the model only when there is none. */
+  retry(): void
   stop(): void
 }
 
@@ -56,6 +58,8 @@ export function useDiagram(
   const [raw, setRaw] = useState("")
   const requestRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
+  const sourceRef = useRef({ code: "", raw: "" })
+  sourceRef.current = { code: liveCode, raw: raw }
 
   const cancel = useCallback(() => {
     requestRef.current += 1
@@ -107,6 +111,7 @@ export function useDiagram(
     }
 
     void (async () => {
+      let reply = ""
       try {
         const full = await requestText()
         if (!isCurrent()) return
@@ -114,11 +119,13 @@ export function useDiagram(
           setStatus("idle")
           return
         }
+        reply = full
         const verdict = await resolveDiagram(full, parseDiagram, async (repair) => {
           if (!isCurrent() || signal.aborted) throw new DOMException("Stopped.", "AbortError")
           setStatus("fixing")
           const fixed = await requestText(repair)
           if (!isCurrent() || signal.aborted) throw new DOMException("Stopped.", "AbortError")
+          reply = fixed
           return fixed
         })
         if (!isCurrent()) return
@@ -152,6 +159,7 @@ export function useDiagram(
           setStatus("idle")
           return
         }
+        if (reply) setRaw(reply)
         setError(errorMessage(err))
         setStatus("error")
       } finally {
@@ -181,6 +189,27 @@ export function useDiagram(
     abortRef.current?.abort()
   }, [])
 
+  const retry = useCallback(() => {
+    resetDiagramFrame()
+    const source = (sourceRef.current.code || sourceRef.current.raw).trim()
+    if (!source) {
+      run()
+      return
+    }
+    const code = extractMermaid(source)
+    if (!code) {
+      setRaw(source)
+      setError("The model did not return a Mermaid diagram.")
+      setStatus("error")
+      return
+    }
+    setLiveCode(code)
+    setRaw(source)
+    setSvg(null)
+    setError(null)
+    setStatus("done")
+  }, [run])
+
   const active = Boolean(ctx && selection)
   const restored = active && status === "idle" && stored !== undefined
   const effectiveStatus: DiagramStatus = !active ? "idle" : restored ? "done" : status
@@ -205,8 +234,8 @@ export function useDiagram(
         if (cancelled) return
         // Restored diagrams keep their source in storage, not in liveCode.
         setLiveCode(code)
+        setRaw(code)
         setError(errorMessage(err))
-        setRaw("")
         setStatus("error")
       },
     )
@@ -224,6 +253,7 @@ export function useDiagram(
     raw,
     stored,
     generate,
+    retry,
     stop,
   }
 }

@@ -1,25 +1,18 @@
 import { clickedNodeId } from "@/lib/diagram/graph"
-import { DIAGRAM_SOURCE } from "@/lib/diagram/protocol"
+import { DIAGRAM_SOURCE, isDiagramPing, webPageOrigin } from "@/lib/diagram/protocol"
 import { renderMermaidSvg } from "@/lib/diagram/render"
 import { validateMermaid } from "@/lib/diagram/validate"
 
 // Extension page so Mermaid's chunks load from chrome-extension:// (MV3 content scripts cannot
 // fetch them off youtube.com) and so rendering is outside the page's Trusted Types policy.
 
-/** http(s) page that framed this renderer. Never `*`. */
-function pageOrigin(value: string): string | null {
-  try {
-    const url = new URL(value)
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null
-    return url.origin
-  } catch {
-    return null
-  }
-}
-
 document.body.style.margin = "0"
 
-let parentTarget: string | null = pageOrigin(document.referrer)
+let parentTarget: string | null = webPageOrigin(document.referrer)
+
+function announceReady(target: string) {
+  window.parent.postMessage({ source: DIAGRAM_SOURCE, type: "ready" }, target)
+}
 
 function stripSvg(svg: string): Element | null {
   const parsed = new DOMParser().parseFromString(svg, "image/svg+xml")
@@ -74,7 +67,7 @@ document.addEventListener("click", (event) => {
 })
 
 window.addEventListener("message", (event) => {
-  const origin = pageOrigin(event.origin)
+  const origin = webPageOrigin(event.origin)
   if (event.source !== window.parent || !origin) return
   const data = event.data as {
     source?: string
@@ -85,6 +78,12 @@ window.addEventListener("message", (event) => {
     interactive?: boolean
   }
   parentTarget = origin
+  // YouTube (and Chrome) often omit document.referrer for a chrome-extension iframe.
+  // The parent then pings, which is how this page learns where to send "ready".
+  if (isDiagramPing(data)) {
+    announceReady(origin)
+    return
+  }
   if (
     data?.source !== DIAGRAM_SOURCE ||
     typeof data.id !== "string" ||
@@ -124,6 +123,4 @@ window.addEventListener("message", (event) => {
   })()
 })
 
-if (parentTarget) {
-  window.parent.postMessage({ source: DIAGRAM_SOURCE, type: "ready" }, parentTarget)
-}
+if (parentTarget) announceReady(parentTarget)

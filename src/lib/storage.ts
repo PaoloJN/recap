@@ -10,6 +10,7 @@ import {
 import { PROVIDER_IDS, PROVIDERS } from "./providers"
 import { REASONING_EFFORTS, type ReasoningEffort } from "./reasoning"
 import type { TranscriptCache } from "./source/cache"
+import type { TutorChoice } from "./tutor/choice"
 import { cleanRole, MAX_ROLE } from "./tutor/prompts"
 import {
   type Concept,
@@ -50,6 +51,8 @@ export interface Settings {
   role: string
   tutorMode: TutorMode
   tutorLevel: TutorLevel
+  /** Last chat mode and level the user picked, remembered per video type. */
+  tutorByType: Partial<Record<VideoType, TutorChoice>>
   reasoningEffort: ReasoningEffort
 }
 
@@ -74,6 +77,7 @@ export const DEFAULT_SETTINGS: Settings = {
   role: "",
   tutorMode: "qa",
   tutorLevel: "engineer",
+  tutorByType: {},
   reasoningEffort: "auto",
 }
 
@@ -87,6 +91,21 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback
 
 function bool(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback
+}
+
+function tutorByType(value: unknown): Partial<Record<VideoType, TutorChoice>> {
+  if (typeof value !== "object" || value === null) return {}
+  const raw = value as Record<string, unknown>
+  const saved: Partial<Record<VideoType, TutorChoice>> = {}
+  for (const type of VIDEO_TYPES) {
+    const entry = raw[type]
+    if (typeof entry !== "object" || entry === null) continue
+    const item = entry as Record<string, unknown>
+    if (!TUTOR_MODES.includes(item.mode as TutorMode)) continue
+    if (!TUTOR_LEVELS.includes(item.level as TutorLevel)) continue
+    saved[type] = { mode: item.mode as TutorMode, level: item.level as TutorLevel }
+  }
+  return saved
 }
 
 function videoTypePrompts(value: unknown): Partial<Record<VideoType, string>> {
@@ -135,6 +154,7 @@ export function mergeSettings(stored: unknown): Settings {
     role: cleanRole(typeof raw.role === "string" ? raw.role : d.role),
     tutorMode: oneOf(raw.tutorMode, TUTOR_MODES, d.tutorMode),
     tutorLevel: oneOf(raw.tutorLevel, TUTOR_LEVELS, d.tutorLevel),
+    tutorByType: tutorByType(raw.tutorByType),
     reasoningEffort: oneOf(raw.reasoningEffort, REASONING_EFFORTS, d.reasoningEffort),
   }
 }

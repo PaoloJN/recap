@@ -2,7 +2,8 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ToastProvider } from "@/components/shell/ToastContext"
-import { DiagramResult } from "./DiagramPanel"
+import { DiagramBody, DiagramResult } from "./DiagramPanel"
+import type { DiagramState } from "./useDiagram"
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined
@@ -81,5 +82,39 @@ describe("DiagramResult node menu", () => {
       text.dispatchEvent(pointer("pointerup", 30, 20))
     })
     expect(document.querySelector("[data-testid='diagram-node-menu']")).toBeNull()
+  })
+
+  it("shows the model reply when drawing fails, and Try again reloads the renderer", async () => {
+    const retry = vi.fn()
+    const diagram: DiagramState = {
+      status: "error",
+      code: "",
+      links: [],
+      svg: null,
+      error: "The diagram renderer took too long to load.",
+      raw: "```mermaid\nflowchart TD\n  A --> B\n```",
+      stored: undefined,
+      generate() {},
+      retry,
+      stop() {},
+    }
+    await act(async () => {
+      root.render(
+        <DiagramBody
+          diagram={diagram}
+          title="Coworkers"
+          modelLabel="gpt"
+          videoId="v"
+          dark={false}
+        />,
+      )
+    })
+    expect(container.textContent).toContain("The reply is below.")
+    expect(container.textContent).toContain("flowchart TD")
+    const again = [...container.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes("Try again"),
+    )
+    await act(async () => again?.click())
+    expect(retry).toHaveBeenCalledOnce()
   })
 })
