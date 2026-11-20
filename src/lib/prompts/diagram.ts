@@ -1,6 +1,6 @@
 import type { AnswerLanguage, DiagramDetail, VideoContext } from "@/lib/types"
 import { transcriptForPrompt, videoMetadataBlock } from "./transcript-text"
-import { VIDEO_TYPE_PRESETS, type VideoType } from "./video-type"
+import { VIDEO_TYPE_DIAGRAM_EMPHASIS, type VideoType } from "./video-type"
 
 export type DiagramShape = "flow" | "argument" | "concept"
 
@@ -108,7 +108,7 @@ export function buildDiagramPrompt(
   const detail: DiagramDetail = opts.detail === "compact" ? "compact" : "full"
   const shape = diagramShape(opts.videoType)
   const range = diagramNodeRange(ctx.metadata.durationSeconds, detail)
-  const emphasis = opts.videoType ? VIDEO_TYPE_PRESETS[opts.videoType] : ""
+  const emphasis = opts.videoType ? VIDEO_TYPE_DIAGRAM_EMPHASIS[opts.videoType] : ""
   const system = [
     "You draw one Mermaid diagram of a YouTube video from its transcript.",
     ...shapeRules(shape),

@@ -8,7 +8,13 @@ import {
   transcriptSample,
 } from "./classify"
 import { buildSummaryPrompt } from "./summary"
-import { resolveVideoTypePrompt, VIDEO_TYPE_PRESETS, videoTypeFocus } from "./video-type"
+import {
+  LEGACY_VIDEO_TYPE_PRESETS,
+  resolveVideoTypePrompt,
+  VIDEO_TYPE_PRESETS,
+  VIDEO_TYPES,
+  videoTypeFocus,
+} from "./video-type"
 
 const ctx: VideoContext = {
   metadata: { videoId: "abc", title: "My Title", author: "My Channel", durationSeconds: 60 },
@@ -103,6 +109,19 @@ describe("classify prompt", () => {
   })
 })
 
+describe("video type presets", () => {
+  it("replaces every built-in brief with a practical prompt of 600–1200 characters", () => {
+    for (const type of VIDEO_TYPES) {
+      const text = VIDEO_TYPE_PRESETS[type]
+      expect(text.length, type).toBeGreaterThanOrEqual(600)
+      expect(text.length, type).toBeLessThanOrEqual(1200)
+      expect(text, type).toContain("## ")
+      expect(text, type).not.toMatch(/Tôi là|Bối cảnh:/)
+      expect(text, type).not.toBe(LEGACY_VIDEO_TYPE_PRESETS[type])
+    }
+  })
+})
+
 describe("video type prompt assembly", () => {
   it("appends the type focus to the system prompt and keeps global instructions", () => {
     const preset = VIDEO_TYPE_PRESETS.tutorial
@@ -112,8 +131,8 @@ describe("video type prompt assembly", () => {
       videoTypePrompt: preset,
     })
     expect(system).toContain(videoTypeFocus(preset))
-    expect(system).toContain("các bước, code/lệnh chính")
-    expect(system).toContain("Python backend")
+    expect(system).toContain("## Việc cần làm")
+    expect(system).toContain("backend Python")
     expect(system).toContain("## Key moments")
     expect(user).toContain("Additional instructions from the user:\nBe brief")
   })

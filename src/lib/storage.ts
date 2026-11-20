@@ -3,7 +3,9 @@ import { storage } from "wxt/utils/storage"
 import type { LayoutPrefs } from "./layout/panel-layout"
 import {
   isVideoType,
+  LEGACY_VIDEO_TYPE_PRESETS,
   MAX_VIDEO_TYPE_PROMPT,
+  VIDEO_TYPE_PRESETS,
   VIDEO_TYPES,
   type VideoType,
 } from "./prompts/video-type"
@@ -57,7 +59,7 @@ export interface Settings {
   reasoningEffort: ReasoningEffort
 }
 
-export const MAX_CUSTOM_INSTRUCTIONS = 500
+export const MAX_CUSTOM_INSTRUCTIONS = 4000
 
 export const DEFAULT_SETTINGS: Settings = {
   provider: "openai",
@@ -115,9 +117,14 @@ function videoTypePrompts(value: unknown): Partial<Record<VideoType, string>> {
   const prompts: Partial<Record<VideoType, string>> = {}
   for (const type of VIDEO_TYPES) {
     const text = raw[type]
-    if (typeof text === "string" && text.trim()) {
-      prompts[type] = text.trim().slice(0, MAX_VIDEO_TYPE_PROMPT)
+    if (typeof text !== "string") continue
+    const trimmed = text.trim()
+    if (!trimmed) continue
+    // An untouched preset was saved as the old default. Drop it so the new brief applies.
+    if (trimmed === LEGACY_VIDEO_TYPE_PRESETS[type] || trimmed === VIDEO_TYPE_PRESETS[type]) {
+      continue
     }
+    prompts[type] = trimmed.slice(0, MAX_VIDEO_TYPE_PROMPT)
   }
   return prompts
 }

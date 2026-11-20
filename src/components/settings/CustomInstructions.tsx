@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { MAX_CUSTOM_INSTRUCTIONS } from "@/lib/storage"
+import { PROMPT_FIELD } from "./styles"
 
 const SAVE_DELAY_MS = 400
 
@@ -41,11 +42,11 @@ export function CustomInstructions({ value, onSave }: CustomInstructionsProps) {
         aria-label="Custom instructions"
         value={draft}
         maxLength={MAX_CUSTOM_INSTRUCTIONS}
-        rows={3}
+        rows={6}
         placeholder="Anything the summary should always do, e.g. focus on the code shown"
         onChange={(e) => change(e.target.value)}
         onBlur={flush}
-        className="field-sizing-fixed min-h-0 resize-none rounded-[8px] border-input bg-background px-[10px] py-[8px] text-[13px] leading-[19px] text-foreground shadow-none placeholder:text-subtle-foreground md:text-[13px] dark:bg-background"
+        className={`${PROMPT_FIELD} placeholder:text-subtle-foreground`}
       />
       <span className="self-end font-mono text-[11px] text-subtle-foreground">
         {draft.length}/{MAX_CUSTOM_INSTRUCTIONS}
