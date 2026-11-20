@@ -8,14 +8,16 @@ import { ToastProvider } from "./ToastContext"
 
 export interface AppProps {
   container: HTMLElement
+  /** YouTube joins the sidebar. Other sites float a drawer. */
+  placement?: "sidebar" | "drawer"
 }
 
-export function App({ container }: AppProps) {
+export function App({ container, placement = "sidebar" }: AppProps) {
   return (
     <PortalContainerContext.Provider value={container}>
       <TooltipProvider delayDuration={300}>
         <NavigationProvider>
-          <LayoutProvider container={container}>
+          <LayoutProvider container={container} placement={placement}>
             {/* Box-equal to the card, so the toast sits inside the card's corner. */}
             <LayoutFrame>
               <ToastProvider>

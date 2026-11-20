@@ -3,6 +3,7 @@ import { storage } from "wxt/utils/storage"
 import type { LayoutPrefs } from "./layout/panel-layout"
 import { PROVIDER_IDS, PROVIDERS } from "./providers"
 import { REASONING_EFFORTS, type ReasoningEffort } from "./reasoning"
+import type { TranscriptCache } from "./source/cache"
 import { cleanRole, MAX_ROLE } from "./tutor/prompts"
 import {
   type Concept,
@@ -141,6 +142,15 @@ export const panelStateItem = storage.defineItem<PanelState>("local:panel", {
 /** Sidebar width and focus mode. Kept off `local:panel` so opening a tab cannot wipe it. */
 export const layoutItem = storage.defineItem<LayoutPrefs>("local:layout", {
   fallback: { width: null, focus: false },
+})
+
+export const transcriptCacheItem = storage.defineItem<TranscriptCache>("local:transcriptCache", {
+  fallback: {},
+})
+
+/** Origins the user allowed for the generic video fallback, as `https://host/*` patterns. */
+export const grantedOriginsItem = storage.defineItem<string[]>("local:grantedOrigins", {
+  fallback: [],
 })
 
 export interface StoredChat {

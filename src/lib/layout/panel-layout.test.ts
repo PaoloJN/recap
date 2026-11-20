@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   clampPanelWidth,
   composerMaxPx,
+  decideDrawerLayout,
   decideLayout,
   FOCUS_MIN_PX,
   isPageFullscreen,
@@ -135,6 +136,32 @@ describe("widthFromKey", () => {
     expect(widthFromKey(800, "Home", false, 1440)).toBe(PANEL_MIN_PX)
     expect(widthFromKey(400, "End", false, 1440)).toBe(864)
     expect(widthFromKey(400, "ArrowUp", false, 1440)).toBeNull()
+  })
+})
+
+describe("decideDrawerLayout", () => {
+  const open = {
+    open: true,
+    fullscreen: false,
+    viewportWidth: 1440,
+    preferredWidth: 480,
+    focus: false,
+  }
+
+  it("uses the stored width and grows to about 60% in focus", () => {
+    expect(decideDrawerLayout(open)).toMatchObject({ sized: true, focus: false, cssWidth: "480px" })
+    expect(decideDrawerLayout({ ...open, focus: true })).toMatchObject({
+      sized: false,
+      focus: true,
+      cssWidth: "864px",
+      widthPx: 864,
+    })
+  })
+
+  it("stays a drawer on a narrow window and hides its width while closed", () => {
+    expect(decideDrawerLayout({ ...open, viewportWidth: 500 }).cssWidth).toBe("360px")
+    expect(decideDrawerLayout({ ...open, open: false }).cssWidth).toBeNull()
+    expect(decideLayout(open).sized).toBe(true)
   })
 })
 

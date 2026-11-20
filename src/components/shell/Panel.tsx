@@ -100,7 +100,7 @@ function TranscriptGate({
     case "unavailable":
       return (
         <div className="px-[16px]">
-          <NoCaptions variant="summary" />
+          <NoCaptions variant="summary" note={transcript.message} />
         </div>
       )
     case "error":

@@ -55,6 +55,28 @@ export function focusFits(viewportWidth: number): boolean {
 }
 
 /** What to paint. Does not rewrite the stored preference, so a wide width returns when the window grows. */
+/** Floating drawer. Focus uses about 60% of the window. The stored width is left alone. */
+export const DRAWER_FOCUS_RATIO = 0.6
+
+export function decideDrawerLayout(input: LayoutInput): LayoutDecision {
+  const maxPx = panelMaxPx(input.viewportWidth)
+  const stored = clampPanelWidth(input.preferredWidth ?? PANEL_DEFAULT_PX, input.viewportWidth)
+  const focusWidth = clampPanelWidth(
+    Math.round(input.viewportWidth * DRAWER_FOCUS_RATIO),
+    input.viewportWidth,
+  )
+  const focus = input.open && input.focus && !input.fullscreen && focusFits(input.viewportWidth)
+  const sized = input.open && !input.fullscreen && !focus
+  const widthPx = focus ? focusWidth : stored
+  return {
+    sized,
+    focus,
+    cssWidth: input.open && !input.fullscreen ? `${widthPx}px` : null,
+    widthPx,
+    maxPx,
+  }
+}
+
 export function decideLayout(input: LayoutInput): LayoutDecision {
   const widthPx = clampPanelWidth(input.preferredWidth ?? PANEL_DEFAULT_PX, input.viewportWidth)
   const maxPx = panelMaxPx(input.viewportWidth)

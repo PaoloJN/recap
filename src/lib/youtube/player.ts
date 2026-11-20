@@ -1,7 +1,18 @@
 const VIDEO_SELECTOR = "video.html5-main-video"
 const RETRY_MS = 500
 
+/** Course adapters install this so seek and the playhead follow their `<video>`, not YouTube's. */
+let videoResolver: ((doc: Document) => HTMLVideoElement | null) | null = null
+
+export function setVideoResolver(
+  resolver: ((doc: Document) => HTMLVideoElement | null) | null,
+): void {
+  videoResolver = resolver
+}
+
 export function getVideoElement(doc: Document = document): HTMLVideoElement | null {
+  const resolved = videoResolver?.(doc)
+  if (resolved) return resolved
   return doc.querySelector<HTMLVideoElement>(VIDEO_SELECTOR)
 }
 

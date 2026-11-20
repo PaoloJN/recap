@@ -1,30 +1,32 @@
 import { browser } from "wxt/browser"
 import { registerChatGptHandler } from "@/background/chatgpt-handler"
+import { deliverCommand, syncGrantedOrigins } from "@/background/site-access"
 import { registerStreamPortHandler } from "@/background/stream-handler"
 import { registerKeyCheckHandler } from "@/background/validate-key"
-import type { ToggleMessage } from "@/lib/port-protocol"
+import type { ToggleCommand } from "@/lib/source/access"
+
+function commandOf(command: string): ToggleCommand | null {
+  if (command === "toggle-panel" || command === "explain-moment" || command === "focus-mode") {
+    return command
+  }
+  return null
+}
 
 export default defineBackground(() => {
   registerStreamPortHandler()
   registerKeyCheckHandler()
   registerChatGptHandler()
-  browser.commands.onCommand.addListener(async (command) => {
-    const type =
-      command === "toggle-panel"
-        ? "toggle-panel"
-        : command === "explain-moment"
-          ? "explain-moment"
-          : command === "focus-mode"
-            ? "focus-mode"
-            : null
+  void syncGrantedOrigins()
+
+  browser.commands.onCommand.addListener((command) => {
+    const type = commandOf(command)
     if (!type) return
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
-    if (tab?.id != null) {
-      try {
-        await browser.tabs.sendMessage(tab.id, { type } satisfies ToggleMessage)
-      } catch {
-        // no content script on this tab
-      }
-    }
+    void browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+      void deliverCommand(tab?.id, tab?.url, type)
+    })
+  })
+
+  browser.action.onClicked.addListener((tab) => {
+    void deliverCommand(tab.id, tab.url, "toggle-panel")
   })
 })

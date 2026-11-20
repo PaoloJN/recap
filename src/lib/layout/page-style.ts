@@ -119,6 +119,43 @@ export function applyPageLayout(doc: Document, decision: LayoutDecision, draggin
   else root.style.removeProperty("--recap-panel-width")
 }
 
+/** Right-hand overlay. Closed, the host shrinks to the chip so it does not cover the page. */
+export function applyDrawerLayout(
+  host: HTMLElement,
+  doc: Document,
+  decision: LayoutDecision,
+  open: boolean,
+  dragging = false,
+): void {
+  doc.documentElement.classList.toggle("recap-dragging", dragging)
+  host.style.position = "fixed"
+  host.style.top = "0"
+  host.style.right = "0"
+  host.style.zIndex = "2147483646"
+  host.style.boxSizing = "border-box"
+  if (!open || decision.cssWidth === null) {
+    host.style.height = "auto"
+    host.style.width = "auto"
+    host.style.maxHeight = ""
+    return
+  }
+  host.style.height = "100vh"
+  host.style.width = decision.cssWidth
+  host.style.maxHeight = "100vh"
+}
+
+export function clearDrawerLayout(host: HTMLElement, doc: Document): void {
+  doc.documentElement.classList.remove("recap-dragging")
+  host.style.position = ""
+  host.style.top = ""
+  host.style.right = ""
+  host.style.zIndex = ""
+  host.style.boxSizing = ""
+  host.style.height = ""
+  host.style.width = ""
+  host.style.maxHeight = ""
+}
+
 export function clearPageLayout(doc: Document): void {
   const root = doc.documentElement
   root.classList.remove("recap-sized", "recap-focus", "recap-dragging")

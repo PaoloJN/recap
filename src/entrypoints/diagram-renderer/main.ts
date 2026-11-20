@@ -6,26 +6,20 @@ import { validateMermaid } from "@/lib/diagram/validate"
 // Extension page so Mermaid's chunks load from chrome-extension:// (MV3 content scripts cannot
 // fetch them off youtube.com) and so rendering is outside the page's Trusted Types policy.
 
-function parentOrigin(): string {
+/** http(s) page that framed this renderer. Never `*`. */
+function pageOrigin(value: string): string | null {
   try {
-    return new URL(document.referrer).origin
+    const url = new URL(value)
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null
+    return url.origin
   } catch {
-    return "*"
-  }
-}
-
-function isYouTube(origin: string): boolean {
-  try {
-    return new URL(origin).hostname === "www.youtube.com"
-  } catch {
-    return false
+    return null
   }
 }
 
 document.body.style.margin = "0"
 
-const target = parentOrigin()
-let parentTarget: string | null = isYouTube(target) ? target : null
+let parentTarget: string | null = pageOrigin(document.referrer)
 
 function stripSvg(svg: string): Element | null {
   const parsed = new DOMParser().parseFromString(svg, "image/svg+xml")
@@ -80,7 +74,8 @@ document.addEventListener("click", (event) => {
 })
 
 window.addEventListener("message", (event) => {
-  if (event.source !== window.parent || !isYouTube(event.origin)) return
+  const origin = pageOrigin(event.origin)
+  if (event.source !== window.parent || !origin) return
   const data = event.data as {
     source?: string
     type?: string
@@ -89,7 +84,7 @@ window.addEventListener("message", (event) => {
     dark?: boolean
     interactive?: boolean
   }
-  if (isYouTube(event.origin)) parentTarget = event.origin
+  parentTarget = origin
   if (
     data?.source !== DIAGRAM_SOURCE ||
     typeof data.id !== "string" ||
@@ -129,4 +124,6 @@ window.addEventListener("message", (event) => {
   })()
 })
 
-window.parent.postMessage({ source: DIAGRAM_SOURCE, type: "ready" }, target)
+if (parentTarget) {
+  window.parent.postMessage({ source: DIAGRAM_SOURCE, type: "ready" }, parentTarget)
+}

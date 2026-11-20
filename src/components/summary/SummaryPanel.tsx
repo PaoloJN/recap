@@ -39,7 +39,9 @@ export function SummaryPanel({ video }: { video: VideoState }) {
   )
 
   const body = (() => {
-    if (transcript.state === "unavailable") return <NoCaptions variant="summary" />
+    if (transcript.state === "unavailable") {
+      return <NoCaptions variant="summary" note={transcript.message} />
+    }
     if (transcript.state === "error") {
       return (
         <SummaryError

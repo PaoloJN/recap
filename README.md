@@ -19,6 +19,7 @@ Recap AI for YouTube: summaries, a searchable transcript and chat about the vide
 - Export a video's summary and chat as Markdown, or all chats in one file.
 - Drag the panel's left edge to widen the sidebar (360px to about 60% of the window). Double-click the edge to reset. **Phóng to chat** (`Alt+Shift+F`) parks the video at about 40% on the left and gives the chat the rest of the screen. `Esc` restores. Fullscreen leaves the YouTube player alone.
 - Shortcuts: `Alt+Y` toggle panel, `Alt+E` explain this moment, `Alt+Shift+F` phóng to chat, `Alt+C` focus chat, `Alt+S` summarize, `Alt+F` search transcript. `Alt+Y`, `Alt+E`, and `Alt+Shift+F` can be rebound at `chrome://extensions/shortcuts`.
+- Lecture pages on Udemy, Coursera, and DeepLearning.AI get the same panel as a floating drawer. Captions come from the site's transcript or a VTT track. On any other page with an HTML5 video, press `Alt+Y` or the toolbar icon and allow that site. There is no speech-to-text. A page with no captions says "Trang này không có phụ đề, bật CC rồi thử lại".
 
 ## Install
 

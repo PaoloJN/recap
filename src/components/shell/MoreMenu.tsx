@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { usePlayer } from "@/hooks/usePlayer"
+import { getActiveSource } from "@/lib/source/active"
 import { formatMs } from "@/lib/timestamps"
 import { IconButton } from "./IconButton"
 import { useToast } from "./ToastContext"
@@ -48,7 +49,10 @@ function MoreMenuItems({ videoId, onExport, onShortcuts }: MoreMenuProps) {
 
   const copyLink = () => {
     if (!videoId) return
-    const url = `https://youtu.be/${videoId}?t=${Math.floor(ms / 1000)}`
+    const url =
+      getActiveSource().id === "youtube"
+        ? `https://youtu.be/${videoId}?t=${Math.floor(ms / 1000)}`
+        : document.location.href
     navigator.clipboard.writeText(url).then(
       () => toast("Link copied"),
       () => toast("Couldn't copy the link"),
