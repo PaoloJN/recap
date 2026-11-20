@@ -52,7 +52,55 @@ export function movedPastThreshold(dx: number, dy: number, threshold = DRAG_THRE
   return dx * dx + dy * dy > threshold * threshold
 }
 
-/** Ctrl/Cmd+wheel and trackpad pinch (browsers set ctrlKey). Plain wheel does not zoom. */
-export function isZoomWheel(event: { ctrlKey: boolean; metaKey: boolean }): boolean {
-  return event.ctrlKey || event.metaKey
+/** Firefox reports wheel distance in lines; Chrome and trackpads report pixels. */
+const WHEEL_LINE_PX = 16
+const WHEEL_PAGE_PX = 800
+/** Exponential zoom per pixel. A mouse notch (~100px) is a clear step; a trackpad's few pixels is a small one. */
+const WHEEL_ZOOM_PER_PX = 0.002
+
+export function wheelDeltaPixels(delta: number, deltaMode: number): number {
+  if (!Number.isFinite(delta)) return 0
+  if (deltaMode === 1) return delta * WHEEL_LINE_PX
+  if (deltaMode === 2) return delta * WHEEL_PAGE_PX
+  return delta
+}
+
+/** Wheel up (negative deltaY) zooms in. Line mode and pixel mode of the same distance match. */
+export function wheelZoomFactor(deltaY: number, deltaMode = 0): number {
+  return Math.exp(-wheelDeltaPixels(deltaY, deltaMode) * WHEEL_ZOOM_PER_PX)
+}
+
+export interface WheelInput {
+  deltaX: number
+  deltaY: number
+  deltaMode: number
+  shiftKey: boolean
+  ctrlKey: boolean
+  metaKey: boolean
+}
+
+export type WheelAction = { kind: "zoom"; factor: number } | { kind: "pan"; dx: number; dy: number }
+
+/** Plain wheel and pinch zoom. Shift+wheel pans sideways; pinch stays a zoom. */
+export function wheelAction(event: WheelInput): WheelAction {
+  const pinch = event.ctrlKey || event.metaKey
+  if (event.shiftKey && !pinch) {
+    const dx = wheelDeltaPixels(event.deltaX, event.deltaMode)
+    const dy = wheelDeltaPixels(event.deltaY, event.deltaMode)
+    if (dx === 0) return { kind: "pan", dx: -dy, dy: 0 }
+    return { kind: "pan", dx: -dx, dy: -dy }
+  }
+  return { kind: "zoom", factor: wheelZoomFactor(event.deltaY, event.deltaMode) }
+}
+
+/** Apply one wheel event. A zoom keeps the content point under the cursor. */
+export function applyWheel(
+  view: DiagramView,
+  cursorX: number,
+  cursorY: number,
+  event: WheelInput,
+): DiagramView {
+  const action = wheelAction(event)
+  if (action.kind === "pan") return panBy(view, action.dx, action.dy)
+  return zoomAt(view, cursorX, cursorY, view.scale * action.factor)
 }

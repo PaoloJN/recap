@@ -66,7 +66,10 @@ describe("DiagramViewport", () => {
     expect(container.querySelector("[data-testid='diagram-zoom-toolbar']")?.textContent).toContain(
       "Fit",
     )
-    expect(container.textContent).toContain("100%")
+    expect(container.querySelector("[data-testid='diagram-zoom-percent']")?.textContent).toBe(
+      "100%",
+    )
+    expect(container.textContent).toContain("Lăn chuột để phóng to · kéo để di chuyển")
     expect(container.textContent).toContain("Fullscreen")
     const content = canvas.querySelector("[data-testid='diagram-zoom-content']")
     if (!(content instanceof HTMLElement)) throw new Error("missing content")
@@ -82,35 +85,38 @@ describe("DiagramViewport", () => {
         y: 20,
         toJSON() {},
       }) as DOMRect
-    await act(async () => {
-      canvas.dispatchEvent(
-        new WheelEvent("wheel", {
-          bubbles: true,
-          cancelable: true,
-          clientX: 110,
-          clientY: 70,
-          deltaY: -100,
-          ctrlKey: true,
-        }),
-      )
+    const plain = new WheelEvent("wheel", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 110,
+      clientY: 70,
+      deltaY: -100,
+      ctrlKey: false,
     })
+    await act(async () => {
+      canvas.dispatchEvent(plain)
+    })
+    expect(plain.defaultPrevented).toBe(true)
     const zoomed = content.style.transform
     expect(zoomed).not.toBe("translate(0px, 0px) scale(1)")
     expect(zoomed).toMatch(/scale\((?!1\))/)
-    const plain = content.style.transform
-    await act(async () => {
-      canvas.dispatchEvent(
-        new WheelEvent("wheel", {
-          bubbles: true,
-          cancelable: true,
-          clientX: 110,
-          clientY: 70,
-          deltaY: 40,
-          ctrlKey: false,
-        }),
-      )
+    expect(container.querySelector("[data-testid='diagram-zoom-percent']")?.textContent).not.toBe(
+      "100%",
+    )
+    const parked = content.style.transform
+    const pinch = new WheelEvent("wheel", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 110,
+      clientY: 70,
+      deltaY: -40,
+      ctrlKey: true,
     })
-    expect(content.style.transform).toBe(plain)
+    await act(async () => {
+      canvas.dispatchEvent(pinch)
+    })
+    expect(pinch.defaultPrevented).toBe(true)
+    expect(content.style.transform).not.toBe(parked)
   })
 
   it("treats a short press as a click and a longer move as a pan", async () => {

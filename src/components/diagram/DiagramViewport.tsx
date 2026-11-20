@@ -10,9 +10,9 @@ import {
 import { createPortal } from "react-dom"
 import css from "@/assets/tailwind.css?inline"
 import {
+  applyWheel,
   type DiagramView,
   fitWidth,
-  isZoomWheel,
   movedPastThreshold,
   panBy,
   zoomAt,
@@ -99,13 +99,20 @@ export function DiagramViewport({
   useEffect(() => {
     if (!canvasNode) return
     const onWheel = (event: WheelEvent) => {
-      if (!isZoomWheel(event)) return
       event.preventDefault()
       const rect = canvasNode.getBoundingClientRect()
       const cursorX = event.clientX - rect.left - canvasNode.clientLeft
       const cursorY = event.clientY - rect.top - canvasNode.clientTop
-      const factor = Math.exp(-event.deltaY * 0.0015)
-      setView((current) => zoomAt(current, cursorX, cursorY, current.scale * factor))
+      setView((current) =>
+        applyWheel(current, cursorX, cursorY, {
+          deltaX: event.deltaX,
+          deltaY: event.deltaY,
+          deltaMode: event.deltaMode,
+          shiftKey: event.shiftKey,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+        }),
+      )
     }
     canvasNode.addEventListener("wheel", onWheel, { passive: false })
     return () => canvasNode.removeEventListener("wheel", onWheel)
@@ -254,12 +261,21 @@ export function DiagramViewport({
         <button type="button" className={toolButton} onClick={fitToWidth}>
           Fit
         </button>
-        <button type="button" className={toolButton} onClick={actualSize}>
-          100%
-        </button>
         <button
           type="button"
-          className={cn(toolButton, "ml-auto")}
+          className={toolButton}
+          aria-label="Actual size"
+          data-testid="diagram-zoom-percent"
+          onClick={actualSize}
+        >
+          {Math.round(view.scale * 100)}%
+        </button>
+        <span className="ml-auto text-[11px] leading-[14px] text-muted-foreground">
+          Lăn chuột để phóng to · kéo để di chuyển
+        </span>
+        <button
+          type="button"
+          className={toolButton}
           aria-pressed={fullscreen}
           onClick={() => setFullscreen((open) => !open)}
         >
