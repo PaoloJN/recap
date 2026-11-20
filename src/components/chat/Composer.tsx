@@ -1,6 +1,7 @@
-import { Clock, PaperPlaneRight, Stop, X } from "@phosphor-icons/react"
+import { Clock, PaperPlaneRight, Play, Stop, X } from "@phosphor-icons/react"
 import { type KeyboardEvent, type ReactNode, type RefObject, useLayoutEffect } from "react"
 import { Textarea } from "@/components/ui/textarea"
+import { usePlayer } from "@/hooks/usePlayer"
 import { composerMaxPx } from "@/lib/layout/panel-layout"
 import { formatMs } from "@/lib/timestamps"
 import { cn } from "@/lib/utils"
@@ -17,8 +18,25 @@ export interface ComposerProps {
   busy: boolean
   onSend(): void
   onStop(): void
+  onExplainMoment(): void
   modelPicker: ReactNode
   textareaRef: RefObject<HTMLTextAreaElement | null>
+}
+
+function ExplainMomentButton({ disabled, onClick }: { disabled: boolean; onClick(): void }) {
+  const { ms } = usePlayer()
+  return (
+    <button
+      type="button"
+      data-testid="explain-moment"
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex h-[28px] shrink-0 cursor-pointer items-center gap-[4px] rounded-[8px] bg-secondary px-[8px] text-[12px] font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-default disabled:opacity-50"
+    >
+      <Play weight="fill" className="size-[12px]" aria-hidden />
+      Giảng {formatMs(ms)}
+    </button>
+  )
 }
 
 const GHOST =
@@ -36,6 +54,7 @@ export function Composer({
   busy,
   onSend,
   onStop,
+  onExplainMoment,
   modelPicker,
   textareaRef,
 }: ComposerProps) {
@@ -101,7 +120,8 @@ export function Composer({
           aria-label="Ask anything about this video"
           className="field-sizing-fixed min-h-[40px] resize-none rounded-none border-0 bg-transparent p-0 text-[14px] leading-[20px] text-foreground shadow-none placeholder:text-subtle-foreground focus-visible:ring-0 md:text-[14px] dark:bg-transparent"
         />
-        <div className="flex items-center gap-[6px]">
+        <div className="flex flex-wrap items-center gap-[6px]">
+          <ExplainMomentButton disabled={busy} onClick={onExplainMoment} />
           {modelPicker}
           {attachTime ? (
             <button

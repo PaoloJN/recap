@@ -137,6 +137,7 @@ interface BodyProps {
   selection: ModelSelection
   settings: Settings
   dark: boolean
+  videoType: VideoType | null
 }
 
 function Body({
@@ -149,6 +150,7 @@ function Body({
   selection,
   settings,
   dark,
+  videoType,
 }: BodyProps) {
   // All three stay mounted so in-flight chat streams and transcript search/scroll survive tab
   // switches; inactive ones are hidden (a class, since the panels set their own display).
@@ -175,7 +177,9 @@ function Body({
       </div>
       <div className={pane("chat")}>
         {hasKey ? (
-          <TranscriptGate video={video}>{() => <ChatPanel video={video} />}</TranscriptGate>
+          <TranscriptGate video={video}>
+            {() => <ChatPanel video={video} videoType={videoType} />}
+          </TranscriptGate>
         ) : (
           <NoKeyGate verb="chat with videos" chatgpt={chatgpt} />
         )}
@@ -529,6 +533,7 @@ export function Panel() {
                 selection={selection}
                 settings={settings}
                 dark={dark}
+                videoType={videoType.type}
               />
             </div>
           </div>

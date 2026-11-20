@@ -418,7 +418,7 @@ export function DiagramBody({
   videoId: string
   dark: boolean
 }) {
-  const { status, code, links, svg, error, raw, generate } = diagram
+  const { status, code, links, svg, error, raw, generate, retry } = diagram
   if (status === "streaming" || status === "fixing") {
     return (
       <div className="flex flex-col items-start gap-[12px] py-[8px]" aria-busy="true">
@@ -441,13 +441,14 @@ export function DiagramBody({
           Couldn't draw this diagram
         </p>
         <p className="text-[14px] leading-[21px] text-pretty text-muted-foreground">
-          {error ?? "Something went wrong."} The reply is below.
+          {error ?? "Something went wrong."}
+          {source ? " The reply is below." : ""}
         </p>
         {source ? <SourceBlock text={source} /> : null}
         <button
           type="button"
           className={cn(primaryButton, smallButton, "self-start")}
-          onClick={() => generate({ force: true })}
+          onClick={retry}
         >
           Try again
         </button>

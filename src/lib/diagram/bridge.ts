@@ -28,6 +28,10 @@ function enqueue<T>(job: () => Promise<T>): Promise<T> {
   return run
 }
 
+function pingFrame(iframe: HTMLIFrameElement) {
+  iframe.contentWindow?.postMessage({ source: DIAGRAM_SOURCE, type: "ping" }, extensionOrigin())
+}
+
 function waitUntilReady(iframe: HTMLIFrameElement): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -40,12 +44,21 @@ function waitUntilReady(iframe: HTMLIFrameElement): Promise<void> {
       cleanup()
       resolve()
     }
+    const onLoad = () => pingFrame(iframe)
     const cleanup = () => {
       clearTimeout(timer)
+      iframe.removeEventListener("load", onLoad)
       window.removeEventListener("message", onMessage)
     }
+    iframe.addEventListener("load", onLoad)
     window.addEventListener("message", onMessage)
   })
+}
+
+/** Drop the hidden renderer so the next draw loads a new iframe. */
+export function resetDiagramFrame(): void {
+  frame?.remove()
+  frame = null
 }
 
 async function ensureFrame(): Promise<HTMLIFrameElement> {
@@ -59,6 +72,8 @@ async function ensureFrame(): Promise<HTMLIFrameElement> {
   // Off-screen but laid out, so Mermaid's text measurement (getBBox) is non-zero.
   // Rendering happens in an extension page: the content-script bundle cannot fetch Mermaid's
   // chunks from youtube.com, and the page's Trusted Types policy rejects Mermaid's DOM writes.
+  // referrerpolicy=origin so the renderer can see the page even when YouTube sends no referrer.
+  iframe.referrerPolicy = "origin"
   iframe.style.cssText =
     "position:fixed;left:0;top:0;width:960px;height:800px;border:0;transform:translateX(-100vw);pointer-events:none"
   const ready = waitUntilReady(iframe)

@@ -1,26 +1,20 @@
 import { useChat } from "@ai-sdk/react"
 import type { UIMessage } from "ai"
 import { useCallback, useEffect, useMemo, useRef } from "react"
-import { Segmented } from "@/components/settings/Segmented"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { useSummaryContext } from "@/components/summary/SummaryContext"
 import { Skeleton } from "@/components/ui/skeleton"
 import { updateSettings, useSettings } from "@/hooks/useSettings"
 import type { VideoState } from "@/hooks/useVideo"
+import type { VideoType } from "@/lib/prompts/video-type"
 import { DEFAULT_SETTINGS } from "@/lib/storage"
 import { chunkBySentences, findActiveIndex } from "@/lib/transcript/parse"
 import { displayText } from "@/lib/transcript/text"
 import { PortChatTransport } from "@/lib/transport"
+import { tutorChoice } from "@/lib/tutor/choice"
 import { buildDeeperMessage, buildMomentMessage } from "@/lib/tutor/prompts"
-import {
-  TUTOR_LEVEL_LABELS,
-  TUTOR_LEVELS,
-  TUTOR_MODE_LABELS,
-  TUTOR_MODES,
-  type TutorLevel,
-  type TutorMode,
-} from "@/lib/tutor/types"
+import type { TutorLevel, TutorMode } from "@/lib/tutor/types"
 import type { ChatMessageMetadata, ModelSelection, VideoContext } from "@/lib/types"
 import { getVideoElement } from "@/lib/youtube/player"
 import { type ChatQuote, useChatDraft } from "./ChatDraftContext"
@@ -28,6 +22,7 @@ import { ChatEmptyState, pickSuggestions } from "./ChatEmptyState"
 import { Composer } from "./Composer"
 import { MessageList, messageMeta } from "./MessageList"
 import { ModelPicker } from "./ModelPicker"
+import { TutorPill } from "./TutorPill"
 import { markStopped, shouldClearDraft, withMetadata } from "./thread"
 import { useChatHistory } from "./useChatHistory"
 import { usePreserveScroll } from "./usePreserveScroll"
@@ -49,7 +44,13 @@ function ChatSkeleton() {
 }
 
 /** Chat for the current video. Panel renders it once the transcript (and so the context) is ready. */
-export function ChatPanel({ video }: { video: VideoState }) {
+export function ChatPanel({
+  video,
+  videoType,
+}: {
+  video: VideoState
+  videoType: VideoType | null
+}) {
   const context = video.context
   const videoId = context?.metadata.videoId ?? ""
   const history = useChatHistory(videoId)
@@ -58,6 +59,7 @@ export function ChatPanel({ video }: { video: VideoState }) {
     <ChatView
       key={videoId}
       context={context}
+      videoType={videoType}
       title={video.page?.metadata.title}
       initialMessages={history.initialMessages}
       hasStored={history.initialMessages !== undefined}
@@ -69,6 +71,7 @@ export function ChatPanel({ video }: { video: VideoState }) {
 
 interface ChatViewProps {
   context: VideoContext
+  videoType: VideoType | null
   title: string | undefined
   initialMessages: UIMessage[] | undefined
   /** Whether storage holds a thread for this video; going false means it was cleared elsewhere. */
@@ -77,7 +80,15 @@ interface ChatViewProps {
   clear(): Promise<void>
 }
 
-function ChatView({ context, title, initialMessages, hasStored, save, clear }: ChatViewProps) {
+function ChatView({
+  context,
+  videoType,
+  title,
+  initialMessages,
+  hasStored,
+  save,
+  clear,
+}: ChatViewProps) {
   const [stored] = useSettings()
   const settings = stored ?? DEFAULT_SETTINGS
   const { tab, open, view } = usePanelNav()
@@ -102,6 +113,15 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
     () => ({ provider: settings.provider, model: settings.models[settings.provider] }),
     [settings.provider, settings.models],
   )
+  const choice = tutorChoice(videoType, settings.tutorByType)
+  const saveChoice = (next: { mode: TutorMode; level: TutorLevel }) => {
+    const key = videoType ?? "other"
+    void updateSettings({
+      tutorMode: next.mode,
+      tutorLevel: next.level,
+      tutorByType: { ...settings.tutorByType, [key]: next },
+    })
+  }
 
   // The transport is built once per view (keyed by video); refs carry the latest values.
   const latest = useRef({
@@ -109,7 +129,7 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
     selection,
     language: settings.language,
     title,
-    tutor: { mode: settings.tutorMode, level: settings.tutorLevel },
+    tutor: choice,
     role: settings.role,
     customInstructions: settings.customInstructions,
     reasoningEffort: settings.reasoningEffort,
@@ -119,7 +139,7 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
     selection,
     language: settings.language,
     title,
-    tutor: { mode: settings.tutorMode, level: settings.tutorLevel },
+    tutor: choice,
     role: settings.role,
     customInstructions: settings.customInstructions,
     reasoningEffort: settings.reasoningEffort,
@@ -338,43 +358,14 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
       })
   }, [newChatToken])
 
-  const modeOptions = TUTOR_MODES.map((id) => [id, TUTOR_MODE_LABELS[id]] as const)
-  const levelOptions = TUTOR_LEVELS.map((id) => [id, TUTOR_LEVEL_LABELS[id]] as const)
+  const explainMoment = () => {
+    const atMs = Math.round((getVideoElement()?.currentTime ?? 0) * 1000)
+    send(buildMomentMessage(context, atMs, summary.text), null)
+  }
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-col gap-[8px] border-b px-[12px] py-[8px]">
-        <div className="flex flex-wrap items-center gap-[8px]">
-          <Segmented
-            label="Chế độ người thầy"
-            value={settings.tutorMode}
-            options={modeOptions}
-            onChange={(tutorMode: TutorMode) => void updateSettings({ tutorMode })}
-            itemClassName="px-[8px]"
-          />
-          <Segmented
-            label="Mức"
-            value={settings.tutorLevel}
-            options={levelOptions}
-            onChange={(tutorLevel: TutorLevel) => void updateSettings({ tutorLevel })}
-            itemClassName="px-[8px]"
-          />
-        </div>
-        <button
-          type="button"
-          className="h-[32px] w-fit cursor-pointer rounded-[8px] bg-secondary px-[12px] text-[13px] font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
-          disabled={busy}
-          onClick={() => {
-            const atMs = Math.round((getVideoElement()?.currentTime ?? 0) * 1000)
-            send(buildMomentMessage(context, atMs, summary.text), null)
-          }}
-        >
-          Giảng đoạn này
-        </button>
-        {settings.tutorMode === "socratic" ? (
-          <p className="text-[12px] leading-[16px] text-muted-foreground">
-            Socratic hỏi một câu mỗi lượt, rồi kiểm tra câu trả lời của bạn.
-          </p>
-        ) : null}
+      <div className="flex items-center border-b px-[12px] py-[8px]">
+        <TutorPill mode={choice.mode} level={choice.level} onChange={saveChoice} />
       </div>
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-[16px]">
         <div className="recap-reading">
@@ -408,6 +399,7 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
         busy={busy}
         onSend={() => ask(draft.trim())}
         onStop={() => void onStop()}
+        onExplainMoment={explainMoment}
         modelPicker={<ModelPicker />}
         textareaRef={textareaRef}
       />

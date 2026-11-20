@@ -61,3 +61,21 @@ export function isDiagramReady(data: unknown): boolean {
   const msg = data as Record<string, unknown>
   return msg.source === DIAGRAM_SOURCE && msg.type === "ready"
 }
+
+/** Parent tells a freshly loaded renderer which page framed it. */
+export function isDiagramPing(data: unknown): boolean {
+  if (typeof data !== "object" || data === null) return false
+  const msg = data as Record<string, unknown>
+  return msg.source === DIAGRAM_SOURCE && msg.type === "ping"
+}
+
+/** Origin of an http(s) page. Extension URLs and empty referrers are not parents. */
+export function webPageOrigin(value: string): string | null {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null
+    return url.origin
+  } catch {
+    return null
+  }
+}
