@@ -163,8 +163,11 @@ export function LayoutProvider({
   useEffect(() => {
     const host = hostOf(container)
     host.classList.add("recap-host")
+    // The shadow reset (`:host { all: initial !important }`) keeps the host inline.
+    host.style.setProperty("display", "block", "important")
     ensureLayoutStyle(document)
     return () => {
+      host.style.removeProperty("display")
       host.classList.remove("recap-host")
       clearPageLayout(document)
       clearDrawerLayout(host, document)

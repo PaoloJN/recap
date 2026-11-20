@@ -1,9 +1,29 @@
 import { afterEach, describe, expect, it } from "vitest"
-import { applyPageLayout, clearPageLayout, ensureLayoutStyle, LAYOUT_STYLE_ID } from "./page-style"
+import {
+  applyPageLayout,
+  clearPageLayout,
+  ensureLayoutStyle,
+  LAYOUT_CSS,
+  LAYOUT_STYLE_ID,
+} from "./page-style"
 import { decideLayout } from "./panel-layout"
 
 afterEach(() => {
   clearPageLayout(document)
+})
+
+describe("watch page layout css", () => {
+  it("sizes the sidebar through YouTube's variables and does not restyle the player", () => {
+    expect(LAYOUT_CSS).toContain("--ytd-watch-flexy-sidebar-width: var(--recap-panel-width)")
+    expect(LAYOUT_CSS).toContain("--ytd-watch-flexy-sidebar-min-width: var(--recap-panel-width)")
+    expect(LAYOUT_CSS).toContain("recap-panel.recap-host")
+    expect(LAYOUT_CSS).toContain("display: block !important")
+    expect(LAYOUT_CSS).not.toContain("#columns")
+    expect(LAYOUT_CSS).not.toContain("#primary")
+    expect(LAYOUT_CSS).not.toContain("html5-main-video")
+    expect(LAYOUT_CSS).not.toContain("aspect-ratio")
+    expect(LAYOUT_CSS).not.toContain("min-width: 0")
+  })
 })
 
 describe("applyPageLayout", () => {

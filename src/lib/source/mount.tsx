@@ -42,7 +42,7 @@ export async function mountRecapPanel(
   injectFontFaces()
   const ui = await createShadowRootUi<Root>(ctx, {
     name: "recap-panel",
-    css,
+    css: `${css}\n:host{display:block !important;}`,
     position: "inline",
     anchor: options.anchor,
     append: options.append,
