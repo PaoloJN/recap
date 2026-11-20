@@ -29,6 +29,12 @@ describe("usageSummaryLine", () => {
       "0 tokens · 1 summary · 1 chat",
     )
   })
+
+  it("appends diagrams only when some were drawn", () => {
+    expect(usageSummaryLine({ tokens: 10, summaries: 0, chats: 0, diagrams: 1 })).toBe(
+      "10 tokens · 0 summaries · 0 chats · 1 diagram",
+    )
+  })
 })
 
 describe("resetsLabel", () => {

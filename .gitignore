@@ -4,6 +4,7 @@ node_modules
 # build output
 .output
 .wxt
+dist-preview
 
 # testing
 /coverage

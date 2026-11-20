@@ -19,7 +19,10 @@ export function formatTokens(n: number): string {
 export function usageSummaryLine(u: MonthUsage): string {
   const summaries = `${u.summaries} ${u.summaries === 1 ? "summary" : "summaries"}`
   const chats = `${u.chats} ${u.chats === 1 ? "chat" : "chats"}`
-  return `${formatTokens(u.tokens)} tokens · ${summaries} · ${chats}`
+  const base = `${formatTokens(u.tokens)} tokens · ${summaries} · ${chats}`
+  const diagrams = u.diagrams ?? 0
+  if (diagrams === 0) return base
+  return `${base} · ${diagrams} ${diagrams === 1 ? "diagram" : "diagrams"}`
 }
 
 /** "Resets Nov 1": the first day of the month after `now`. */

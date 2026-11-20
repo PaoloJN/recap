@@ -146,6 +146,42 @@ describe("runStreamRequest", () => {
     expect(messages.some((m) => m.type === "done")).toBe(false)
   })
 
+  it("sends a diagram prompt through the same stream, including OpenRouter selections", async () => {
+    const { post } = collect()
+    const model = helloModel()
+    const req: StreamRequest = {
+      kind: "diagram",
+      context,
+      selection: { provider: "openrouter", model: "openai/gpt-6-luna" },
+      language: "Tiếng Việt",
+      customInstructions: "",
+    }
+    await runStreamRequest(req, { model, post, signal: new AbortController().signal })
+    const sent = JSON.stringify(model.doStreamCalls[0]?.prompt)
+    expect(sent).toContain("Mermaid")
+    expect(sent).toContain("Tiếng Việt")
+    expect(sent).toContain("hello there")
+    expect(sent).not.toContain("## Key moments")
+  })
+
+  it("asks the model to fix a diagram when repair is set", async () => {
+    const { post } = collect()
+    const model = helloModel()
+    const req: StreamRequest = {
+      kind: "diagram",
+      context,
+      selection: { provider: "openrouter", model: "openai/gpt-6-luna" },
+      language: "Tiếng Việt",
+      customInstructions: "",
+      repair: { code: "flowchart TD\\n  A -->", error: "Parse error on line 2" },
+    }
+    await runStreamRequest(req, { model, post, signal: new AbortController().signal })
+    const sent = JSON.stringify(model.doStreamCalls[0]?.prompt)
+    expect(sent).toContain("Fix the syntax only.")
+    expect(sent).toContain("Parse error on line 2")
+    expect(sent).toContain("flowchart TD")
+  })
+
   it("uses the summary prompt for summary requests", async () => {
     const { post } = collect()
     const model = helloModel()

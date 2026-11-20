@@ -25,6 +25,15 @@ export type StreamRequest =
       language: AnswerLanguage
       customInstructions: string
     }
+  | {
+      kind: "diagram"
+      context: VideoContext
+      selection: ModelSelection
+      language: AnswerLanguage
+      customInstructions: string
+      /** Set when the first reply was not valid Mermaid. The model is asked to fix syntax only. */
+      repair?: { code: string; error: string }
+    }
 
 export type StreamPortMessage =
   | { type: "chunk"; chunk: UIMessageChunk }

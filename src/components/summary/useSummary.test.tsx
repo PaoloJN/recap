@@ -106,7 +106,7 @@ describe("useSummary", () => {
     expect(saved).toMatchObject({
       style: "detailed",
       model: "gpt-6-luna",
-      language: "en",
+      language: "Tiếng Việt",
       text: "Summary",
     })
   })
@@ -162,7 +162,7 @@ describe("useSummary", () => {
     await act(async () => state.generate())
     expect(state.style).toBe("detailed")
     expect(vi.mocked(openStream).mock.calls[0]?.[0]).toMatchObject({
-      language: "match",
+      language: "Tiếng Việt",
       customInstructions: "",
     })
   })

@@ -22,9 +22,11 @@ export default defineConfig({
   manifest: {
     name: "Recap AI",
     version: "2.0.0",
-    permissions: ["storage"],
+    // webNavigation reads the ChatGPT loopback redirect; tabs opens and closes that sign-in tab.
+    permissions: ["storage", "webNavigation", "tabs"],
     host_permissions: [
       "https://api.openai.com/*",
+      "https://auth.openai.com/*",
       "https://api.anthropic.com/*",
       "https://generativelanguage.googleapis.com/*",
       "https://openrouter.ai/*",
@@ -49,7 +51,9 @@ export default defineConfig({
     "build:manifestGenerated": (_wxt, manifest) => {
       manifest.web_accessible_resources = [
         {
-          resources: ["fonts/*"],
+          // diagram-renderer.html is an extension page the content script iframes so Mermaid
+          // (bundled locally) can render outside the YouTube page.
+          resources: ["fonts/*", "diagram-renderer.html"],
           matches: YOUTUBE_MATCHES,
           use_dynamic_url: false,
         },

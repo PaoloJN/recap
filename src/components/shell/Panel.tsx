@@ -3,8 +3,11 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useChatDraft } from "@/components/chat/ChatDraftContext"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { NewChatButton } from "@/components/chat/NewChatButton"
+import { DiagramActions, DiagramBody } from "@/components/diagram/DiagramPanel"
+import { type DiagramState, useDiagram } from "@/components/diagram/useDiagram"
 import { ConnectView } from "@/components/onboarding/ConnectView"
 import { NoKeyGate } from "@/components/onboarding/NoKeyGate"
+import { useChatGptSignedIn } from "@/components/settings/ChatGptAccount"
 import { NoCaptions } from "@/components/summary/NoCaptions"
 import { SummaryActions } from "@/components/summary/SummaryActions"
 import { SummaryProvider } from "@/components/summary/SummaryContext"
@@ -20,7 +23,14 @@ import { useTheme } from "@/hooks/useTheme"
 import { useVideo, type VideoState } from "@/hooks/useVideo"
 import { downloadText } from "@/lib/download"
 import { exportVideoMarkdown, slugify } from "@/lib/export"
-import { apiKeysItem, chatsItem, DEFAULT_SETTINGS, summariesItem } from "@/lib/storage"
+import { PROVIDERS } from "@/lib/providers"
+import {
+  apiKeysItem,
+  chatsItem,
+  DEFAULT_SETTINGS,
+  diagramsItem,
+  summariesItem,
+} from "@/lib/storage"
 import type { ModelSelection, PanelTab, TranscriptStatus, VideoContext } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { LiveChapterBar } from "./ChapterBar"
@@ -110,10 +120,13 @@ function TranscriptGate({
 interface BodyProps {
   tab: PanelTab
   hasKey: boolean
+  chatgpt: boolean
   video: VideoState
+  diagram: DiagramState
+  modelLabel: string
 }
 
-function Body({ tab, hasKey, video }: BodyProps) {
+function Body({ tab, hasKey, chatgpt, video, diagram, modelLabel }: BodyProps) {
   // All three stay mounted so in-flight chat streams and transcript search/scroll survive tab
   // switches; inactive ones are hidden (a class, since the panels set their own display).
   const pane = (name: PanelTab) => (tab === name ? "contents" : "hidden")
@@ -122,7 +135,7 @@ function Body({ tab, hasKey, video }: BodyProps) {
       <div className={pane("summary")}>
         {/* SummaryPanel handles transcript loading, no captions and errors itself. */}
         {!hasKey ? (
-          <NoKeyGate verb="summarize videos" />
+          <NoKeyGate verb="summarize videos" chatgpt={chatgpt} />
         ) : video.pageError !== null ? (
           <PageError video={video} />
         ) : (
@@ -141,7 +154,24 @@ function Body({ tab, hasKey, video }: BodyProps) {
         {hasKey ? (
           <TranscriptGate video={video}>{() => <ChatPanel video={video} />}</TranscriptGate>
         ) : (
-          <NoKeyGate verb="chat with videos" />
+          <NoKeyGate verb="chat with videos" chatgpt={chatgpt} />
+        )}
+      </div>
+      <div className={pane("diagram")}>
+        {hasKey ? (
+          <TranscriptGate video={video}>
+            {() => (
+              <div className="p-[16px]">
+                <DiagramBody
+                  diagram={diagram}
+                  title={video.context?.metadata.title ?? "diagram"}
+                  modelLabel={modelLabel}
+                />
+              </div>
+            )}
+          </TranscriptGate>
+        ) : (
+          <NoKeyGate verb="draw a diagram" chatgpt={chatgpt} />
         )}
       </div>
     </>
@@ -163,6 +193,7 @@ export function Panel() {
   } = nav
   const [storedSettings] = useSettings()
   const [apiKeys] = useStorageItem(apiKeysItem)
+  const chatGptSignedIn = useChatGptSignedIn()
   const youtubeTheme = useTheme()
   const toast = useToast()
   const container = usePortalContainer()
@@ -185,8 +216,11 @@ export function Panel() {
   const provider = settings.provider
   const model = settings.models[provider]
   const selection = useMemo<ModelSelection>(() => ({ provider, model }), [provider, model])
-  const hasKey = Boolean(apiKeys?.[provider])
+  const isChatGpt = provider === "chatgpt"
+  const hasKey = isChatGpt ? chatGptSignedIn : Boolean(apiKeys?.[provider])
   const summary = useSummary(video.context, selection, settings, open && hasKey)
+  const dark = settings.theme === "youtube" ? youtubeTheme === "dark" : settings.theme === "dark"
+  const diagram = useDiagram(video.context, hasKey ? selection : null, settings, dark)
 
   // ⌥S on a collapsed card or a still-loading video: the transcript (and so the context) only
   // arrives after the card opens, so the request waits here, tied to the video it was made for.
@@ -226,7 +260,6 @@ export function Panel() {
     },
   })
 
-  const dark = settings.theme === "youtube" ? youtubeTheme === "dark" : settings.theme === "dark"
   // Portaled menus/tooltips render into the shadow container, outside the card, so the
   // container carries the card's typography and theme too (else they inherit YouTube's font).
   useEffect(() => {
@@ -250,13 +283,19 @@ export function Panel() {
   const exportMarkdown = () => {
     if (!page) return
     const { metadata } = page
-    void Promise.all([summariesItem.getValue(), chatsItem.getValue()]).then(
-      ([summaries, chats]) => {
+    void Promise.all([
+      summariesItem.getValue(),
+      chatsItem.getValue(),
+      diagramsItem.getValue(),
+    ]).then(
+      ([summaries, chats, diagrams]) => {
         const filename = `${slugify(metadata.title)}.md`
+        const storedDiagram = diagrams[metadata.videoId]
         const text = exportVideoMarkdown(
           metadata,
           summaries[metadata.videoId]?.text,
           chats[metadata.videoId]?.messages,
+          storedDiagram ? { code: storedDiagram.code, links: storedDiagram.links } : undefined,
         )
         downloadText(filename, text)
         toast(`Saved ${filename}`)
@@ -298,7 +337,9 @@ export function Panel() {
   // Summary idle / error / no-captions / no-key screens are short: the card hugs them instead
   // of reserving the full scroll height. Everything that scrolls keeps the fixed 640px.
   const fitContent =
-    showMain && tab === "summary" && !(summary.status === "streaming" || summary.status === "done")
+    showMain &&
+    ((tab === "summary" && !(summary.status === "streaming" || summary.status === "done")) ||
+      (tab === "diagram" && diagram.status === "idle"))
 
   return (
     <SummaryProvider value={summary}>
@@ -351,6 +392,8 @@ export function Panel() {
                   <SummaryActions />
                 ) : tab === "chat" && hasMessages ? (
                   <NewChatButton />
+                ) : tab === "diagram" ? (
+                  <DiagramActions diagram={diagram} />
                 ) : null
               }
             />
@@ -360,7 +403,14 @@ export function Panel() {
                 transcriptScrolls ? "overflow-hidden" : "overflow-auto",
               )}
             >
-              <Body tab={tab} hasKey={hasKey} video={video} />
+              <Body
+                tab={tab}
+                hasKey={hasKey}
+                chatgpt={isChatGpt}
+                video={video}
+                diagram={diagram}
+                modelLabel={PROVIDERS[provider].models.find((m) => m.id === model)?.label ?? model}
+              />
             </div>
           </div>
         </div>

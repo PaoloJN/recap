@@ -9,10 +9,12 @@ import {
 import { browser } from "wxt/browser"
 import { STREAM_PORT_NAME, type StreamPortMessage, type StreamRequest } from "../lib/port-protocol"
 import { expandUserMessages } from "../lib/prompts/chat-messages"
+import { buildDiagramPrompt } from "../lib/prompts/diagram"
 import { buildSummaryPrompt } from "../lib/prompts/summary"
 import { buildChatSystemPrompt } from "../lib/prompts/system"
 import { createModel, PROVIDERS } from "../lib/providers"
 import { recordUsage as addUsage, apiKeysItem, monthKey, usageItem } from "../lib/storage"
+import { runChatGptRequest } from "./chatgpt-stream"
 
 const INVALID_KEY = "Invalid API key. Check it in Settings."
 const RATE_LIMITED = "Rate limited by the provider. Try again shortly."
@@ -63,14 +65,17 @@ interface StreamDeps {
   model: LanguageModel
   post: (m: StreamPortMessage) => void
   signal: AbortSignal
-  recordUsage?: (kind: "summary" | "chat", tokens: number) => Promise<void>
+  recordUsage?: (kind: "summary" | "chat" | "diagram", tokens: number) => Promise<void>
 }
 
 function clampTokens(n: number): number {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
-async function defaultRecordUsage(kind: "summary" | "chat", tokens: number): Promise<void> {
+async function defaultRecordUsage(
+  kind: "summary" | "chat" | "diagram",
+  tokens: number,
+): Promise<void> {
   const store = await usageItem.getValue()
   await usageItem.setValue(addUsage(store, monthKey(new Date()), kind, tokens))
 }
@@ -92,20 +97,36 @@ export async function runStreamRequest(req: StreamRequest, deps: StreamDeps): Pr
             maxRetries: MAX_RETRIES,
             onError,
           })
-        : (() => {
-            const { system, user } = buildSummaryPrompt(req.style, req.context, {
-              language: req.language,
-              customInstructions: req.customInstructions,
-            })
-            return streamText({
-              model,
-              system,
-              prompt: user,
-              abortSignal: signal,
-              maxRetries: MAX_RETRIES,
-              onError,
-            })
-          })()
+        : req.kind === "summary"
+          ? (() => {
+              const { system, user } = buildSummaryPrompt(req.style, req.context, {
+                language: req.language,
+                customInstructions: req.customInstructions,
+              })
+              return streamText({
+                model,
+                system,
+                prompt: user,
+                abortSignal: signal,
+                maxRetries: MAX_RETRIES,
+                onError,
+              })
+            })()
+          : (() => {
+              const { system, user } = buildDiagramPrompt(req.context, {
+                language: req.language,
+                customInstructions: req.customInstructions,
+                repair: req.repair,
+              })
+              return streamText({
+                model,
+                system,
+                prompt: user,
+                abortSignal: signal,
+                maxRetries: MAX_RETRIES,
+                onError,
+              })
+            })()
     for await (const chunk of toUIMessageStream({ stream: result.stream })) {
       if (chunk.type === "error") {
         streamError ??= new Error(chunk.errorText)
@@ -161,6 +182,14 @@ export function registerStreamPortHandler(): void {
       const req = raw as StreamRequest
       const post = (m: StreamPortMessage) => safePost(port, () => disconnected, m)
       try {
+        if (req.selection.provider === "chatgpt") {
+          await runChatGptRequest(req, {
+            post,
+            signal: controller.signal,
+            recordUsage: defaultRecordUsage,
+          })
+          return
+        }
         const keys = await apiKeysItem.getValue()
         const key = keys[req.selection.provider]
         if (!key) {

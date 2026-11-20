@@ -1,6 +1,7 @@
 import { CircleNotch, HardDrives, LockSimple, Trash } from "@phosphor-icons/react"
 import { RadioGroup } from "radix-ui"
 import { useRef, useState } from "react"
+import { ChatGptAuthButtons, useChatGptSignedIn } from "@/components/settings/ChatGptAccount"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { largeButton, primaryButton } from "@/components/summary/buttons"
@@ -27,6 +28,14 @@ export function ConnectView({ initialProvider }: { initialProvider: ProviderId }
   const [show, setShow] = useState(false)
   const { status, result, error, check, reset } = useKeyCheck()
   const info = PROVIDERS[provider]
+  const isChatGpt = provider === "chatgpt"
+  const chatGptSignedIn = useChatGptSignedIn()
+
+  const continueWithChatGpt = async () => {
+    await updateSettings({ provider: "chatgpt" })
+    setView("main")
+    toast(`Connected to ${PROVIDERS.chatgpt.label}`)
+  }
 
   const edit = (next: string) => {
     setKey(next)
@@ -133,79 +142,107 @@ export function ConnectView({ initialProvider }: { initialProvider: ProviderId }
           </RadioGroup.Root>
         </div>
 
-        <div className="flex flex-col gap-[8px]">
-          <div className="flex items-center justify-between">
-            <span className="text-[13px] font-medium text-muted-foreground">
-              {info.label} API key
-            </span>
-            <a
-              href={info.keyUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-[12px] text-link hover:underline"
-            >
-              Get a key ↗
-            </a>
-          </div>
-          <KeyField
-            provider={provider}
-            value={key}
-            onChange={edit}
-            show={show}
-            onToggleShow={() => setShow((s) => !s)}
-            onPaste={edit}
-            onSubmit={submit}
-            state={fieldState}
-          />
-          {error ? <p className="text-[12px] text-destructive">Paste a key first.</p> : null}
-          {status === "checking" ? (
-            <p className="flex items-center gap-[6px] text-[12px] text-muted-foreground">
-              <CircleNotch size={14} className="animate-spin" aria-hidden />
-              Checking with {info.label}…
+        {isChatGpt ? (
+          <div className="flex flex-col gap-[10px] rounded-[12px] bg-card p-[14px]">
+            <p className="text-[14px] leading-[21px] text-foreground">
+              Sign in with ChatGPT. Recap uses your plan for summaries and diagrams. There is no API
+              key.
             </p>
-          ) : null}
-          {status === "invalid" && result && !result.ok ? (
-            <div
-              role="alert"
-              className="flex flex-col gap-[4px] rounded-[12px] bg-danger-soft p-[12px]"
-            >
-              <span className="text-[14px] leading-[20px] font-medium text-foreground">
-                {result.message}
+            <p className="text-[12px] leading-[18px] text-muted-foreground">
+              Personal use only. Requests count against the same ChatGPT limits, and this login is a
+              preview. Tokens stay in chrome.storage on this device.
+            </p>
+            <ChatGptAuthButtons onLogin={continueWithChatGpt} />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-[8px]">
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] font-medium text-muted-foreground">
+                {info.label} API key
               </span>
-              <span className="text-[12px] leading-[18px] text-muted-foreground">
-                {result.status === null
-                  ? "Check your connection and try again."
-                  : "Check it's copied in full and billing is on for that project."}
-              </span>
+              <a
+                href={info.keyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[12px] text-link hover:underline"
+              >
+                Get a key ↗
+              </a>
             </div>
-          ) : null}
-          {status === "valid" ? (
-            <div className="flex flex-col gap-[8px] rounded-[12px] bg-success-soft p-[12px]">
-              <span className="text-[14px] leading-[20px] font-medium text-foreground">
-                {models.length > 0 ? `Key works. ${models.length} models available.` : "Key works."}
-              </span>
-              <div className="flex flex-wrap gap-[6px]">
-                {chips.map((m) => (
-                  <span
-                    key={m.id}
-                    className="inline-flex h-[24px] items-center rounded-[6px] bg-secondary px-[8px] text-[12px] text-foreground"
-                  >
-                    {m.label}
-                  </span>
-                ))}
+            <KeyField
+              provider={provider}
+              value={key}
+              onChange={edit}
+              show={show}
+              onToggleShow={() => setShow((s) => !s)}
+              onPaste={edit}
+              onSubmit={submit}
+              state={fieldState}
+            />
+            {error ? <p className="text-[12px] text-destructive">Paste a key first.</p> : null}
+            {status === "checking" ? (
+              <p className="flex items-center gap-[6px] text-[12px] text-muted-foreground">
+                <CircleNotch size={14} className="animate-spin" aria-hidden />
+                Checking with {info.label}…
+              </p>
+            ) : null}
+            {status === "invalid" && result && !result.ok ? (
+              <div
+                role="alert"
+                className="flex flex-col gap-[4px] rounded-[12px] bg-danger-soft p-[12px]"
+              >
+                <span className="text-[14px] leading-[20px] font-medium text-foreground">
+                  {result.message}
+                </span>
+                <span className="text-[12px] leading-[18px] text-muted-foreground">
+                  {result.status === null
+                    ? "Check your connection and try again."
+                    : "Check it's copied in full and billing is on for that project."}
+                </span>
               </div>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+            {status === "valid" ? (
+              <div className="flex flex-col gap-[8px] rounded-[12px] bg-success-soft p-[12px]">
+                <span className="text-[14px] leading-[20px] font-medium text-foreground">
+                  {models.length > 0
+                    ? `Key works. ${models.length} models available.`
+                    : "Key works."}
+                </span>
+                <div className="flex flex-wrap gap-[6px]">
+                  {chips.map((m) => (
+                    <span
+                      key={m.id}
+                      className="inline-flex h-[24px] items-center rounded-[6px] bg-secondary px-[8px] text-[12px] text-foreground"
+                    >
+                      {m.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
 
-        <button
-          type="button"
-          disabled={status === "checking" || saving}
-          onClick={submit}
-          className={cn(primaryButton, largeButton, "h-[40px] w-full")}
-        >
-          {buttonLabel}
-        </button>
+        {isChatGpt ? (
+          chatGptSignedIn ? (
+            <button
+              type="button"
+              onClick={() => void continueWithChatGpt()}
+              className={cn(primaryButton, largeButton, "h-[40px] w-full")}
+            >
+              Dùng ChatGPT
+            </button>
+          ) : null
+        ) : (
+          <button
+            type="button"
+            disabled={status === "checking" || saving}
+            onClick={submit}
+            className={cn(primaryButton, largeButton, "h-[40px] w-full")}
+          >
+            {buttonLabel}
+          </button>
+        )}
 
         <div className="flex flex-col gap-[8px]">
           {FOOTER.map(({ icon: FooterIcon, text }) => (

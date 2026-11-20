@@ -1,7 +1,7 @@
 import type { UIMessage } from "ai"
 import type { ChatStore } from "./storage"
 import { formatMs } from "./timestamps"
-import type { ChatMessageMetadata, VideoMetadata } from "./types"
+import type { ChatMessageMetadata, DiagramLink, VideoMetadata } from "./types"
 
 const watchUrl = (id: string) => `https://www.youtube.com/watch?v=${id}`
 
@@ -26,13 +26,26 @@ function formatMessages(messages: UIMessage[]): string {
     .join("\n\n")
 }
 
+export interface ExportDiagram {
+  code: string
+  links: DiagramLink[]
+}
+
+function formatDiagram(diagram: ExportDiagram): string {
+  const lines = diagram.links.map((link) => `- ${link.label} — ${formatMs(link.seconds * 1000)}`)
+  const list = lines.length > 0 ? `\n\n${lines.join("\n")}` : ""
+  return `## Sơ đồ\n\n\`\`\`mermaid\n${diagram.code.trim()}\n\`\`\`${list}`
+}
+
 export function exportVideoMarkdown(
   meta: VideoMetadata,
   summaryText: string | undefined,
   messages: UIMessage[] | undefined,
+  diagram?: ExportDiagram | null,
 ): string {
   const sections = [`# ${meta.title}`, `${watchUrl(meta.videoId)}\nChannel: ${meta.author}`]
   if (summaryText?.trim()) sections.push(`## Summary\n\n${summaryText}`)
+  if (diagram?.code.trim()) sections.push(formatDiagram(diagram))
   if (messages && messages.length > 0) sections.push(`## Chat\n\n${formatMessages(messages)}`)
   return sections.join("\n\n")
 }

@@ -18,7 +18,9 @@ function ids(body: unknown): string[] {
   return data.map((m) => m?.id).filter((id): id is string => typeof id === "string")
 }
 
-const ENDPOINTS: Record<ProviderId, Endpoint> = {
+type KeyProvider = Exclude<ProviderId, "chatgpt">
+
+const ENDPOINTS: Record<KeyProvider, Endpoint> = {
   openai: {
     url: "https://api.openai.com/v1/models",
     headers: (key) => ({ Authorization: `Bearer ${key}` }),
@@ -65,6 +67,13 @@ export async function validateKey(
   key: string,
   fetchFn: typeof fetch = fetch,
 ): Promise<KeyCheckResult> {
+  if (provider === "chatgpt") {
+    return {
+      ok: false,
+      status: null,
+      message: "ChatGPT uses Sign in with ChatGPT, not an API key.",
+    }
+  }
   const { label } = PROVIDERS[provider]
   const endpoint = ENDPOINTS[provider]
   try {

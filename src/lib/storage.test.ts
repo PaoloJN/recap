@@ -90,6 +90,12 @@ describe("mergeSettings", () => {
   it("returns defaults for non-objects", () => {
     expect(mergeSettings(null)).toEqual(DEFAULT_SETTINGS)
   })
+  it("defaults a fresh install to Vietnamese and keeps an explicit language", () => {
+    expect(DEFAULT_SETTINGS.language).toBe("Tiếng Việt")
+    expect(mergeSettings({}).language).toBe("Tiếng Việt")
+    expect(mergeSettings({ language: "English" }).language).toBe("English")
+    expect(mergeSettings({ language: "match" }).language).toBe("match")
+  })
 })
 
 describe("upsertSummary", () => {
@@ -116,7 +122,11 @@ describe("usage", () => {
     s = recordUsage(s, "2026-09", "summary", 20)
     s = recordUsage(s, "2026-10", "summary", 5)
     expect(Object.keys(s).sort()).toEqual(["2026-09", "2026-10"])
-    expect(s["2026-10"]).toEqual({ tokens: 5, summaries: 1, chats: 0 })
+    expect(s["2026-10"]).toEqual({ tokens: 5, summaries: 1, chats: 0, diagrams: 0 })
+  })
+  it("counts diagrams separately from summaries", () => {
+    const s = recordUsage({}, "2026-10", "diagram", 7)
+    expect(s["2026-10"]).toEqual({ tokens: 7, summaries: 0, chats: 0, diagrams: 1 })
   })
   it("monthKey pads the month", () => {
     expect(monthKey(new Date(2026, 0, 5))).toBe("2026-01")

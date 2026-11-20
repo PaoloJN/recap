@@ -1,4 +1,10 @@
+import { useEffect } from "react"
 import { browser } from "wxt/browser"
+import {
+  ChatGptAuthButtons,
+  chatGptStatus,
+  useChatGptSignedIn,
+} from "@/components/settings/ChatGptAccount"
 import { CustomInstructions } from "@/components/settings/CustomInstructions"
 import { DataSection } from "@/components/settings/DataSection"
 import { Segmented } from "@/components/settings/Segmented"
@@ -7,6 +13,7 @@ import { SettingsSection } from "@/components/settings/SettingsSection"
 import { ShortcutsSection } from "@/components/settings/ShortcutsSection"
 import { SMALL_BUTTON } from "@/components/settings/styles"
 import { UsageSection } from "@/components/settings/UsageSection"
+import { useChatGptModels } from "@/components/settings/useChatGptModels"
 import {
   Select,
   SelectContent,
@@ -78,12 +85,13 @@ interface PickerProps<T extends string> {
   value: T
   options: readonly { id: T; label: string }[]
   onChange(value: T): void
+  className?: string
 }
 
-function Picker<T extends string>({ label, value, options, onChange }: PickerProps<T>) {
+function Picker<T extends string>({ label, value, options, onChange, className }: PickerProps<T>) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as T)}>
-      <SelectTrigger aria-label={label} className="max-w-[180px]">
+      <SelectTrigger aria-label={label} className={cn("max-w-[180px]", className)}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent position="popper" align="end">
@@ -158,6 +166,44 @@ function ApiKeyRow({ provider }: { provider: ProviderId }) {
 }
 
 const PROVIDER_OPTIONS = PROVIDER_IDS.map((id) => ({ id, label: PROVIDERS[id].label }))
+
+function ChatGptModelControl({
+  model,
+  enabled,
+  onChange,
+}: {
+  model: string
+  enabled: boolean
+  onChange(id: string): void
+}) {
+  const { loaded, models } = useChatGptModels(enabled)
+  useEffect(() => {
+    if (loaded && model === "" && models[0]) onChange(models[0].id)
+  }, [loaded, model, models, onChange])
+  if (!loaded) return <span className="text-[13px] text-muted-foreground">…</span>
+  if (models.length === 0) {
+    return (
+      <input
+        aria-label="Model id"
+        value={model}
+        placeholder="model id"
+        onChange={(event) => onChange(event.target.value.trim())}
+        className="h-[32px] w-[180px] rounded-[8px] bg-secondary px-[10px] text-[13px] text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      />
+    )
+  }
+  const options = models.some((item) => item.id === model)
+    ? models
+    : [{ id: model, label: model }, ...models]
+  return (
+    <Picker
+      label="Default model"
+      value={model || options[0]?.id || ""}
+      options={options}
+      onChange={onChange}
+    />
+  )
+}
 const STYLE_OPTIONS = SUMMARY_STYLE_IDS.map((id) => ({ id, label: SUMMARY_STYLES[id].label }))
 const LANGUAGE_OPTIONS = ANSWER_LANGUAGES.map((id) => ({
   id,
@@ -172,7 +218,9 @@ function SettingsBody({
   update(patch: Partial<Settings>): Promise<void>
 }) {
   const { provider } = settings
+  const signedIn = useChatGptSignedIn()
   const set = (patch: Partial<Settings>) => void update(patch)
+  const setModel = (id: string) => set({ models: { ...settings.models, [provider]: id } })
 
   return (
     <div className="flex flex-col gap-[20px] p-[16px] pb-[24px]">
@@ -185,19 +233,47 @@ function SettingsBody({
               value={provider}
               options={PROVIDER_OPTIONS}
               onChange={(next) => set({ provider: next })}
+              className="max-w-[220px]"
             />
           }
         />
-        <ApiKeyRow provider={provider} />
+        {provider === "chatgpt" ? (
+          <SettingsRow
+            title="Tài khoản"
+            note={
+              <span className="flex items-center gap-[6px]">
+                <span
+                  className={cn(
+                    "size-[6px] shrink-0 rounded-full",
+                    signedIn ? "bg-success" : "bg-subtle-foreground",
+                  )}
+                  aria-hidden
+                />
+                {chatGptStatus(signedIn)}
+              </span>
+            }
+            control={<ChatGptAuthButtons />}
+          />
+        ) : (
+          <ApiKeyRow provider={provider} />
+        )}
         <SettingsRow
           title="Default model"
           control={
-            <Picker
-              label="Default model"
-              value={settings.models[provider]}
-              options={PROVIDERS[provider].models}
-              onChange={(id) => set({ models: { ...settings.models, [provider]: id } })}
-            />
+            provider === "chatgpt" ? (
+              <ChatGptModelControl
+                model={settings.models.chatgpt}
+                enabled={signedIn}
+                onChange={setModel}
+              />
+            ) : (
+              <Picker
+                label="Default model"
+                value={settings.models[provider]}
+                options={PROVIDERS[provider].models}
+                onChange={setModel}
+              />
+            )
           }
         />
       </SettingsSection>
@@ -218,7 +294,7 @@ function SettingsBody({
         />
         <SettingsRow
           title="Answer language"
-          note="Summaries and chat replies"
+          note="Summaries, diagrams, and chat"
           control={
             <Picker<AnswerLanguage>
               label="Answer language"

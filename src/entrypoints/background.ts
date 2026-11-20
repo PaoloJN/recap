@@ -1,4 +1,5 @@
 import { browser } from "wxt/browser"
+import { registerChatGptHandler } from "@/background/chatgpt-handler"
 import { registerStreamPortHandler } from "@/background/stream-handler"
 import { registerKeyCheckHandler } from "@/background/validate-key"
 import type { ToggleMessage } from "@/lib/port-protocol"
@@ -6,6 +7,7 @@ import type { ToggleMessage } from "@/lib/port-protocol"
 export default defineBackground(() => {
   registerStreamPortHandler()
   registerKeyCheckHandler()
+  registerChatGptHandler()
   browser.commands.onCommand.addListener(async (command) => {
     if (command !== "toggle-panel") return
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true })

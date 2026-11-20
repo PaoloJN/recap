@@ -5,6 +5,7 @@
       "**",
       "!**/.output",
       "!**/.wxt",
+      "!**/dist-preview",
       "!**/node_modules",
       "!.superpowers",
       "!docs",

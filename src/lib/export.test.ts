@@ -29,7 +29,16 @@ describe("exportVideoMarkdown", () => {
     const out = exportVideoMarkdown(meta, undefined, [])
     expect(out).not.toContain("## Summary")
     expect(out).not.toContain("## Chat")
+    expect(out).not.toContain("## Sơ đồ")
     expect(exportVideoMarkdown(meta, "", undefined)).not.toContain("## Summary")
+  })
+  it("includes the mermaid diagram and its timestamps", () => {
+    const out = exportVideoMarkdown(meta, undefined, undefined, {
+      code: "flowchart TD\n  A --> B",
+      links: [{ label: "API Gateway", seconds: 28 }],
+    })
+    expect(out).toContain("## Sơ đồ\n\n```mermaid\nflowchart TD\n  A --> B\n```")
+    expect(out).toContain("- API Gateway — 0:28")
   })
 })
 

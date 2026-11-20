@@ -1,11 +1,12 @@
-export type ProviderId = "openai" | "anthropic" | "google" | "openrouter"
-export type PanelTab = "summary" | "transcript" | "chat"
+export type ProviderId = "openai" | "anthropic" | "google" | "openrouter" | "chatgpt"
+export type PanelTab = "summary" | "transcript" | "chat" | "diagram"
 export type SummaryStyle = "detailed" | "tldr" | "moments"
 export type ThemeSetting = "youtube" | "dark" | "light"
 export type TextSize = "s" | "m" | "l"
 export type AnswerLanguage =
   | "match"
   | "English"
+  | "Tiếng Việt"
   | "Español"
   | "Deutsch"
   | "Français"
@@ -14,6 +15,7 @@ export type AnswerLanguage =
 export const ANSWER_LANGUAGES: readonly AnswerLanguage[] = [
   "match",
   "English",
+  "Tiếng Việt",
   "Español",
   "Deutsch",
   "Français",
@@ -21,6 +23,12 @@ export const ANSWER_LANGUAGES: readonly AnswerLanguage[] = [
   "日本語",
 ]
 export type PanelView = "main" | "settings" | "onboarding"
+
+/** A diagram node (or step) and the transcript moment it came from. */
+export interface DiagramLink {
+  label: string
+  seconds: number
+}
 
 export interface Chapter {
   seconds: number

@@ -22,7 +22,13 @@ export interface ProviderInfo {
   tag: string
 }
 
-export const PROVIDER_IDS: readonly ProviderId[] = ["openai", "anthropic", "google", "openrouter"]
+export const PROVIDER_IDS: readonly ProviderId[] = [
+  "openai",
+  "anthropic",
+  "google",
+  "openrouter",
+  "chatgpt",
+]
 
 export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   openai: {
@@ -85,6 +91,16 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     tagline: "One key, 300+ models",
     tag: "",
   },
+  chatgpt: {
+    id: "chatgpt",
+    label: "ChatGPT (subscription)",
+    models: [],
+    defaultModel: "",
+    keyUrl: "https://chatgpt.com",
+    keyHint: "",
+    tagline: "Plus or Pro. No API key",
+    tag: "Subscription",
+  },
 }
 
 export function createModel(selection: ModelSelection, apiKey: string): LanguageModel {
@@ -101,6 +117,8 @@ export function createModel(selection: ModelSelection, apiKey: string): Language
       return createGoogleGenerativeAI({ apiKey })(model)
     case "openrouter":
       return createOpenRouter({ apiKey })(model)
+    case "chatgpt":
+      throw new Error("ChatGPT subscription does not use an API key.")
     default: {
       const unknown: never = provider
       throw new Error(`Unknown provider: ${unknown}`)

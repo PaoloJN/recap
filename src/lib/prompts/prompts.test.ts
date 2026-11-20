@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { VideoContext } from "@/lib/types"
+import { buildDiagramPrompt } from "./diagram"
 import { buildSummaryPrompt } from "./summary"
 import { buildChatSystemPrompt } from "./system"
 import {
@@ -82,6 +83,7 @@ describe("buildSummaryPrompt", () => {
       expect(system).toContain(h)
     }
     expect(system).toContain("- m:ss Text")
+    expect(system).toContain("Focus on the main ideas.")
   })
   it("tldr only asks for the lead and questions, in a named language", () => {
     const { system, user } = buildSummaryPrompt("tldr", small, {
@@ -109,6 +111,41 @@ describe("legacy settings", () => {
     const legacy = {} as unknown as Parameters<typeof buildSummaryPrompt>[2]
     expect(() => buildSummaryPrompt("detailed", small, legacy)).not.toThrow()
     expect(buildSummaryPrompt("detailed", small, legacy).system).toContain("transcript's language")
+  })
+})
+
+describe("buildDiagramPrompt", () => {
+  it("asks for Vietnamese labels and keeps English technical terms", () => {
+    const { system, user } = buildDiagramPrompt(small, {
+      language: "Tiếng Việt",
+      customInstructions: "",
+    })
+    expect(system).toContain("Write every node and edge label in Tiếng Việt.")
+    expect(system).toContain("API Gateway")
+    expect(system).toContain("Do not translate those terms.")
+    expect(system).toContain("```mermaid")
+    expect(system).toContain("## Mốc thời gian")
+    expect(user).toContain("[0:00] hello")
+    expect(user).not.toContain("Additional instructions")
+  })
+  it("follows another answer language and a repair request", () => {
+    const { system, user } = buildDiagramPrompt(small, {
+      language: "English",
+      customInstructions: "Prefer a sequence",
+      repair: { code: "flowchart TD\n  A -->", error: "Parse error on line 2" },
+    })
+    expect(system).toContain("Write every node and edge label in English.")
+    expect(user).toContain("Parse error on line 2")
+    expect(user).toContain("flowchart TD")
+    expect(user).toContain("Fix the syntax only.")
+    expect(user).not.toContain("Prefer a sequence")
+  })
+  it("uses the transcript language when set to match", () => {
+    const { system } = buildDiagramPrompt(small, {
+      language: "match",
+      customInstructions: "Be brief",
+    })
+    expect(system).toContain("the transcript's language (en)")
   })
 })
 

@@ -1,5 +1,6 @@
 import type { Icon } from "@phosphor-icons/react"
 import { ClosedCaptioning, Coins, Key, LockSimple } from "@phosphor-icons/react"
+import { ChatGptAuthButtons } from "@/components/settings/ChatGptAccount"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { largeButton, primaryButton, secondaryButton } from "@/components/summary/buttons"
 import { cn } from "@/lib/utils"
@@ -14,8 +15,40 @@ const ROWS: { icon: Icon; title: string; note: string }[] = [
   },
 ]
 
-export function NoKeyGate({ verb }: { verb: "summarize videos" | "chat with videos" }) {
+export function NoKeyGate({
+  verb,
+  chatgpt = false,
+}: {
+  verb: "summarize videos" | "chat with videos" | "draw a diagram"
+  chatgpt?: boolean
+}) {
   const { setView, selectTab } = usePanelNav()
+  if (chatgpt) {
+    return (
+      <div className="flex flex-col gap-[20px] p-[20px] py-[28px]">
+        <div className="flex flex-col gap-[12px]">
+          <div className="flex size-[44px] items-center justify-center rounded-[12px] bg-secondary text-foreground">
+            <Key size={22} aria-hidden />
+          </div>
+          <h2 className="text-[16px] leading-[22px] font-medium text-foreground">
+            Sign in with ChatGPT to {verb}
+          </h2>
+          <p className="text-[14px] leading-[21px] text-muted-foreground">
+            This uses your ChatGPT plan. There is no API key. Tokens stay on this device and count
+            against the same limits as ChatGPT.
+          </p>
+        </div>
+        <ChatGptAuthButtons />
+        <button
+          type="button"
+          className={cn(secondaryButton, largeButton, "w-full")}
+          onClick={() => selectTab("transcript")}
+        >
+          Open transcript
+        </button>
+      </div>
+    )
+  }
   return (
     <div className="flex flex-col gap-[20px] p-[20px] py-[28px]">
       <div className="flex flex-col gap-[12px]">

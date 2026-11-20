@@ -6,7 +6,7 @@ const COPY = {
 } as const
 
 const BODY =
-  "Summaries and chat need captions. Search, follow and jump still work on videos that have them."
+  "Summaries, diagrams and chat need captions. Search, follow and jump still work on videos that have them."
 
 export function NoCaptions({ variant }: { variant: "summary" | "transcript" }) {
   return (

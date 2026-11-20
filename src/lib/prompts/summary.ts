@@ -24,7 +24,7 @@ const SHAPES: Record<SummaryStyle, string[]> = {
 const SECTIONS: Record<SummaryStyle, string[]> = {
   tldr: [
     "Include only these parts, in this order:",
-    "1. A lead paragraph of 2 to 3 sentences, with no heading.",
+    "1. A lead paragraph of 2 to 3 sentences on the main idea, with no heading.",
     "2. `## Questions`: 3 follow-up questions a viewer might ask, as `- Question?` bullets.",
     "Do not write any other section.",
   ],
@@ -36,7 +36,7 @@ const SECTIONS: Record<SummaryStyle, string[]> = {
   ],
   detailed: [
     "Include these parts, in this order:",
-    "1. A lead paragraph of 2 to 4 sentences, with no heading.",
+    "1. A lead paragraph of 2 to 3 sentences on the main idea, with no heading.",
     "2. `## Key moments`: 4 to 7 bullets, each written as `- m:ss Text`.",
     "3. `## Notes`: 3 to 5 bullets with the most useful details, each written as `- Text`.",
     "4. `## In plain terms`: one short paragraph explaining the idea simply.",
@@ -63,6 +63,7 @@ export function buildSummaryPrompt(
     ...(SECTIONS[style] ?? SECTIONS.detailed),
     "",
     "Rules:",
+    "- Focus on the main ideas. Skip greetings, sponsor reads, and minor asides.",
     "- Write each moment bullet as `- m:ss Text`: a plain m:ss timestamp (or h:mm:ss), then the text. No bold, no brackets, no links.",
     "- Use the timestamps from the transcript lines.",
     '- Do not add a preamble such as "Here is the summary" or any closing remark.',

@@ -4,6 +4,7 @@ import { PROVIDER_IDS, PROVIDERS } from "./providers"
 import {
   ANSWER_LANGUAGES,
   type AnswerLanguage,
+  type DiagramLink,
   type PanelTab,
   type ProviderId,
   type SummaryStyle,
@@ -34,7 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   >,
   theme: "youtube",
   textSize: "m",
-  language: "match",
+  language: "Tiếng Việt",
   autoSummarize: false,
   followPlayback: true,
   removeFillers: true,
@@ -92,6 +93,16 @@ export const settingsItem = storage.defineItem<Settings>("local:settings", {
 export type ApiKeys = Partial<Record<ProviderId, string>>
 
 export const apiKeysItem = storage.defineItem<ApiKeys>("local:apiKeys", { fallback: {} })
+
+/** Signed-in flag only. Tokens stay in the background vault and are not stored here. */
+export interface ChatGptSession {
+  signedIn: boolean
+  message: string
+}
+
+export const chatgptSessionItem = storage.defineItem<ChatGptSession>("local:chatgptSession", {
+  fallback: { signedIn: false, message: "" },
+})
 
 export interface PanelState {
   open: boolean
@@ -163,10 +174,36 @@ export function removeSummary(store: SummaryStore, videoId: string): SummaryStor
   return rest
 }
 
+export interface StoredDiagram {
+  model: string
+  language: string
+  code: string
+  links: DiagramLink[]
+  createdAt: number
+}
+
+export type DiagramStore = Record<string, StoredDiagram>
+
+export const diagramsItem = storage.defineItem<DiagramStore>("local:diagrams", { fallback: {} })
+
+export const MAX_STORED_DIAGRAMS = 20
+
+export function upsertDiagram(
+  store: DiagramStore,
+  videoId: string,
+  diagram: StoredDiagram,
+): DiagramStore {
+  const next: DiagramStore = { ...store, [videoId]: diagram }
+  const newestFirst = Object.entries(next).sort(([, a], [, b]) => b.createdAt - a.createdAt)
+  return Object.fromEntries(newestFirst.slice(0, MAX_STORED_DIAGRAMS))
+}
+
 export interface MonthUsage {
   tokens: number
   summaries: number
   chats: number
+  /** Absent on usage recorded before diagrams existed. */
+  diagrams?: number
 }
 
 export type UsageStore = Record<string, MonthUsage>
@@ -180,7 +217,7 @@ export function monthKey(date: Date): string {
 export function recordUsage(
   store: UsageStore,
   month: string,
-  kind: "summary" | "chat",
+  kind: "summary" | "chat" | "diagram",
   tokens: number,
 ): UsageStore {
   const current = store[month] ?? { tokens: 0, summaries: 0, chats: 0 }
@@ -188,6 +225,7 @@ export function recordUsage(
     tokens: current.tokens + tokens,
     summaries: current.summaries + (kind === "summary" ? 1 : 0),
     chats: current.chats + (kind === "chat" ? 1 : 0),
+    diagrams: (current.diagrams ?? 0) + (kind === "diagram" ? 1 : 0),
   }
   const next: UsageStore = { ...store, [month]: updated }
   const newest = Object.keys(next).sort().reverse().slice(0, 2)

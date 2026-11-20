@@ -1,7 +1,7 @@
 {
   "name": "recap",
   "displayName": "Recap AI",
-  "description": "Recap AI for YouTube: summaries, a searchable transcript and chat about the video, powered by your own OpenAI, Anthropic, Google or OpenRouter key.",
+  "description": "Recap AI for YouTube: summaries, diagrams, a searchable transcript and chat about the video, powered by your own OpenAI, Anthropic, Google or OpenRouter key.",
   "author": "Paolo Nessim",
   "repository": {
     "type": "git",
@@ -21,6 +21,7 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "typecheck": "wxt prepare && tsc --noEmit",
+    "verify:diagram": "vite build --config src/preview/vite.config.mjs && node scripts/verify-diagram.mjs",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
@@ -34,6 +35,7 @@
     "ai": "^7.0.153",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "mermaid": "^12.3.0",
     "nanoid": "^6.0.2",
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",
@@ -50,6 +52,7 @@
     "@types/react-dom": "^19.3.0",
     "@wxt-dev/module-react": "^1.2.2",
     "jsdom": "^30.1.3",
+    "playwright-core": "^1.65.0",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
