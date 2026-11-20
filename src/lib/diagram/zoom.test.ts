@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest"
 import {
+  applyWheel,
   clampScale,
   type DiagramView,
   DRAG_THRESHOLD_PX,
   fitWidth,
-  isZoomWheel,
   movedPastThreshold,
+  type WheelInput,
+  wheelAction,
+  wheelZoomFactor,
   ZOOM_MAX,
   ZOOM_MIN,
   zoomAt,
@@ -65,9 +68,66 @@ describe("diagram zoom", () => {
     expect(movedPastThreshold(-5, 0)).toBe(true)
   })
 
-  it("zooms only for ctrl, cmd, or pinch wheels", () => {
-    expect(isZoomWheel({ ctrlKey: false, metaKey: false })).toBe(false)
-    expect(isZoomWheel({ ctrlKey: true, metaKey: false })).toBe(true)
-    expect(isZoomWheel({ ctrlKey: false, metaKey: true })).toBe(true)
+  it("keeps the point under the cursor for a plain wheel and a pinch", () => {
+    const view: DiagramView = { scale: 1.4, x: 20, y: -10 }
+    const cursorX = 120
+    const cursorY = 80
+    const before = pointUnder(view, cursorX, cursorY)
+    const base: WheelInput = {
+      deltaX: 0,
+      deltaY: -48,
+      deltaMode: 0,
+      shiftKey: false,
+      ctrlKey: false,
+      metaKey: false,
+    }
+    for (const event of [base, { ...base, ctrlKey: true }, { ...base, deltaMode: 1, deltaY: -3 }]) {
+      const next = applyWheel(view, cursorX, cursorY, event)
+      expect(next.scale).toBeGreaterThan(view.scale)
+      expect(next.scale).toBeLessThanOrEqual(ZOOM_MAX)
+      const after = pointUnder(next, cursorX, cursorY)
+      expect(after.x).toBeCloseTo(before.x)
+      expect(after.y).toBeCloseTo(before.y)
+    }
+  })
+
+  it("zooms in on wheel up, out on wheel down, and matches a line to its pixels", () => {
+    expect(wheelZoomFactor(-100, 0)).toBeGreaterThan(1)
+    expect(wheelZoomFactor(100, 0)).toBeLessThan(1)
+    expect(wheelZoomFactor(-3, 1)).toBeCloseTo(wheelZoomFactor(-48, 0))
+    const trackpad = wheelZoomFactor(-4, 0)
+    expect(trackpad).toBeGreaterThan(1)
+    expect(trackpad).toBeLessThan(1.02)
+    const zoomed = applyWheel({ scale: 4, x: -20, y: 8 }, 40, 40, {
+      deltaX: 0,
+      deltaY: -400,
+      deltaMode: 0,
+      shiftKey: false,
+      ctrlKey: false,
+      metaKey: false,
+    })
+    expect(zoomed).toEqual({ scale: 4, x: -20, y: 8 })
+  })
+
+  it("pans sideways on shift+wheel and still zooms a pinch", () => {
+    const view: DiagramView = { scale: 1, x: 0, y: 0 }
+    const panned = applyWheel(view, 10, 10, {
+      deltaX: 0,
+      deltaY: 32,
+      deltaMode: 0,
+      shiftKey: true,
+      ctrlKey: false,
+      metaKey: false,
+    })
+    expect(panned).toEqual({ scale: 1, x: -32, y: 0 })
+    const pinch = wheelAction({
+      deltaX: 0,
+      deltaY: -20,
+      deltaMode: 0,
+      shiftKey: true,
+      ctrlKey: true,
+      metaKey: false,
+    })
+    expect(pinch.kind).toBe("zoom")
   })
 })
