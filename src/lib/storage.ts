@@ -153,6 +153,17 @@ export const grantedOriginsItem = storage.defineItem<string[]>("local:grantedOri
   fallback: [],
 })
 
+/** Last GitHub release lookup. `checkedAt` 0 means the panel has not asked yet. */
+export interface UpdateCheck {
+  checkedAt: number
+  latest: string | null
+  dismissed: string | null
+}
+
+export const updateCheckItem = storage.defineItem<UpdateCheck>("local:updateCheck", {
+  fallback: { checkedAt: 0, latest: null, dismissed: null },
+})
+
 export interface StoredChat {
   updatedAt: number
   title?: string

@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
 
 permissions:
   contents: write
@@ -18,8 +18,41 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm zip
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: .output/*.zip
-          generate_release_notes: true
+      - name: Build
+        run: pnpm build
+        env:
+          RECAP_VERSION: 2.0.${{ github.run_number }}
+      - name: Pack the extension and version.json
+        env:
+          RECAP_VERSION: 2.0.${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          (cd .output/chrome-mv3 && zip -r "$GITHUB_WORKSPACE/recap-chrome-mv3.zip" .)
+          python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          with open("version.json", "w", encoding="utf-8") as fh:
+              json.dump(
+                  {
+                      "version": os.environ["RECAP_VERSION"],
+                      "sha": os.environ["GITHUB_SHA"],
+                      "builtAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                  },
+                  fh,
+              )
+          PY
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v2.0.${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" recap-chrome-mv3.zip version.json --clobber
+            gh release edit "$TAG" --latest --title "$TAG"
+          else
+            gh release create "$TAG" recap-chrome-mv3.zip version.json \
+              --latest \
+              --title "$TAG" \
+              --notes "Chrome MV3 build. Load unpacked from the zip, then Reload at chrome://extensions."
+          fi

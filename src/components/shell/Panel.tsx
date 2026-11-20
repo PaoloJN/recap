@@ -22,6 +22,7 @@ import { useSettings } from "@/hooks/useSettings"
 import { useShortcuts } from "@/hooks/useShortcuts"
 import { useStorageItem } from "@/hooks/useStorageItem"
 import { useTheme } from "@/hooks/useTheme"
+import { useUpdateNotice } from "@/hooks/useUpdateNotice"
 import { useVideo, type VideoState } from "@/hooks/useVideo"
 import { downloadText } from "@/lib/download"
 import { exportVideoMarkdown, slugify } from "@/lib/export"
@@ -50,6 +51,7 @@ import { SettingsVersion, SettingsView } from "./SettingsView"
 import { SubHeader } from "./SubHeader"
 import { TabRow } from "./TabRow"
 import { useToast } from "./ToastContext"
+import { UpdateBanner } from "./UpdateBanner"
 
 type ReadyTranscript = Extract<TranscriptStatus, { state: "ready" }>
 
@@ -251,6 +253,7 @@ export function Panel() {
     setCard(el)
   }, [])
   const video = useVideo(open)
+  const update = useUpdateNotice(open)
   const { hasMessages, reset: resetChatDraft, requestFocus, requestExplain } = useChatDraft()
   // A draft, quote, "current moment" or pending focus request belongs to the video it was made for.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the video id changes
@@ -457,6 +460,9 @@ export function Panel() {
               chapters={page.chapters}
               durationSeconds={page.metadata.durationSeconds}
             />
+          ) : null}
+          {open && update.version ? (
+            <UpdateBanner version={update.version} onDismiss={update.dismiss} />
           ) : null}
           {open ? null : <CollapsedRow status={status} onExpand={() => setOpen(true)} />}
           {open && view === "onboarding" && storedSettings ? (
