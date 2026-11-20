@@ -21,6 +21,18 @@ Recap AI for YouTube: summaries, a searchable transcript and chat about the vide
 - Shortcuts: `Alt+Y` toggle panel, `Alt+E` explain this moment, `Alt+Shift+F` phóng to chat, `Alt+C` focus chat, `Alt+S` summarize, `Alt+F` search transcript. `Alt+Y`, `Alt+E`, and `Alt+Shift+F` can be rebound at `chrome://extensions/shortcuts`.
 - Lecture pages on Udemy, Coursera, and DeepLearning.AI get the same panel as a floating drawer. Captions come from the site's transcript or a VTT track. On any other page with an HTML5 video, press `Alt+Y` or the toolbar icon and allow that site. There is no speech-to-text. A page with no captions says "Trang này không có phụ đề, bật CC rồi thử lại".
 
+## macOS
+
+On a new Mac:
+
+1. Download [recap-chrome-mv3.zip](https://github.com/tungdd97/recap/releases/latest/download/recap-chrome-mv3.zip) and unzip it so `manifest.json` is at `$HOME/Tools/recap/manifest.json`.
+2. Open `chrome://extensions`, turn on Developer mode, and choose Load unpacked. Select `$HOME/Tools/recap`.
+3. From a checkout of this repo, run `scripts/macos/install-updater.sh`. That copies `recap-update` to `$HOME/Tools/bin/recap-update` and loads a LaunchAgent that runs it every day at 08:00 local time.
+
+To update now, run `recap-update`, then Reload Recap at `chrome://extensions`. The panel also shows a banner when a newer release is up (it asks GitHub at most once every 6 hours). `recap-update --check` only prints the installed and latest versions. `recap-update --force` installs even when they match. A log is written to `$HOME/Library/Logs/recap-update.log`. The updater does not touch the Chrome profile.
+
+To remove the updater, run `scripts/macos/uninstall-updater.sh`. That unloads the LaunchAgent and deletes the `recap-update` command. It leaves `$HOME/Tools/recap` in place. Remove the extension itself at `chrome://extensions`.
+
 ## Install
 
 From a release:
@@ -127,7 +139,7 @@ Kéo cạnh trái của panel để đổi bề rộng cột bên phải (tối 
 ## Privacy
 
 - Your key is stored in `chrome.storage.local` on your device and sent only to the provider you pick. A ChatGPT subscription stores its tokens the same way, only in the background service worker.
-- Requests go only to YouTube and the provider you chose. There is no server of ours in between.
+- Requests go to YouTube, the provider you chose, and (at most once every 6 hours, while the panel is open) the public GitHub release that carries the version number. There is no server of ours in between.
 - No analytics, no telemetry, no tracking.
 - Transcripts come from YouTube's own transcript feature. It is undocumented and may change. If it breaks, the panel shows "no transcript".
 

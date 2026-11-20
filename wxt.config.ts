@@ -20,7 +20,8 @@ export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   manifest: {
     name: "Recap AI",
-    version: "2.0.0",
+    // CI sets RECAP_VERSION to 2.0.<run_number> so each main push is a newer Chrome version.
+    version: process.env.RECAP_VERSION ?? "2.0.0",
     // webNavigation reads the ChatGPT loopback redirect; tabs opens and closes that sign-in tab.
     // scripting injects the generic course script after the user allows an origin.
     permissions: ["storage", "webNavigation", "tabs", "scripting"],
@@ -36,6 +37,11 @@ export default defineConfig({
       "https://www.coursera.org/*",
       "https://d3c33hcgiwev3.cloudfront.net/*",
       "https://learn.deeplearning.ai/*",
+      // Release lookup and the version.json download (GitHub redirects the asset).
+      "https://api.github.com/*",
+      "https://github.com/*",
+      "https://objects.githubusercontent.com/*",
+      "https://release-assets.githubusercontent.com/*",
     ],
     optional_host_permissions: ["https://*/*", "http://*/*"],
     action: {
