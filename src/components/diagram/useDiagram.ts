@@ -98,6 +98,7 @@ export function useDiagram(
           selection,
           language: settings.language,
           customInstructions: settings.customInstructions,
+          reasoningEffort: settings.reasoningEffort,
           repair,
         },
         { signal },
@@ -157,7 +158,15 @@ export function useDiagram(
         if (abortRef.current === controller) abortRef.current = null
       }
     })()
-  }, [ctx, selection, videoId, settings.language, settings.customInstructions, cancel])
+  }, [
+    ctx,
+    selection,
+    videoId,
+    settings.language,
+    settings.customInstructions,
+    settings.reasoningEffort,
+    cancel,
+  ])
 
   const generate = useCallback(
     (opts?: { force?: boolean }) => {

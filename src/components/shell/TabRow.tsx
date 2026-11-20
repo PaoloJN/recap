@@ -8,6 +8,8 @@ const TABS: { id: PanelTab; label: string }[] = [
   { id: "transcript", label: "Transcript" },
   { id: "chat", label: "Chat" },
   { id: "diagram", label: "Sơ đồ" },
+  { id: "concepts", label: "Khái niệm" },
+  { id: "quiz", label: "Quiz" },
 ]
 
 export function TabRow({ right }: { right?: ReactNode }) {

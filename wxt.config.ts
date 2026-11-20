@@ -43,6 +43,14 @@ export default defineConfig({
         suggested_key: { default: "Alt+Y" },
         description: "Toggle the Recap panel",
       },
+      "explain-moment": {
+        suggested_key: { default: "Alt+E" },
+        description: "Explain this moment",
+      },
+      "focus-mode": {
+        suggested_key: { default: "Alt+Shift+F" },
+        description: "Phóng to chat",
+      },
     },
   },
   hooks: {

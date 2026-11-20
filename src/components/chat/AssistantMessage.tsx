@@ -14,6 +14,7 @@ export interface AssistantMessageProps {
   onCopy(): void
   onRegenerate(): void
   onFeedback(): void
+  onDeepen?(): void
 }
 
 const ACTION = "size-[30px] [&_svg]:size-[15px]"
@@ -42,6 +43,7 @@ export function AssistantMessage({
   onCopy,
   onRegenerate,
   onFeedback,
+  onDeepen,
 }: AssistantMessageProps) {
   return (
     <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-[10px]">
@@ -73,6 +75,16 @@ export function AssistantMessage({
               >
                 <ArrowClockwise />
               </IconButton>
+            ) : null}
+            {text && onDeepen ? (
+              <button
+                type="button"
+                className="h-[30px] cursor-pointer rounded-[8px] px-[8px] text-[12px] font-medium text-muted-foreground outline-none hover:bg-secondary hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
+                disabled={busy}
+                onClick={onDeepen}
+              >
+                Đào sâu
+              </button>
             ) : null}
             {text ? (
               <IconButton

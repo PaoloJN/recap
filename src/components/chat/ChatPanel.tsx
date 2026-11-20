@@ -1,16 +1,26 @@
 import { useChat } from "@ai-sdk/react"
 import type { UIMessage } from "ai"
 import { useCallback, useEffect, useMemo, useRef } from "react"
+import { Segmented } from "@/components/settings/Segmented"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { useSummaryContext } from "@/components/summary/SummaryContext"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useSettings } from "@/hooks/useSettings"
+import { updateSettings, useSettings } from "@/hooks/useSettings"
 import type { VideoState } from "@/hooks/useVideo"
 import { DEFAULT_SETTINGS } from "@/lib/storage"
 import { chunkBySentences, findActiveIndex } from "@/lib/transcript/parse"
 import { displayText } from "@/lib/transcript/text"
 import { PortChatTransport } from "@/lib/transport"
+import { buildDeeperMessage, buildMomentMessage } from "@/lib/tutor/prompts"
+import {
+  TUTOR_LEVEL_LABELS,
+  TUTOR_LEVELS,
+  TUTOR_MODE_LABELS,
+  TUTOR_MODES,
+  type TutorLevel,
+  type TutorMode,
+} from "@/lib/tutor/types"
 import type { ChatMessageMetadata, ModelSelection, VideoContext } from "@/lib/types"
 import { getVideoElement } from "@/lib/youtube/player"
 import { type ChatQuote, useChatDraft } from "./ChatDraftContext"
@@ -20,11 +30,10 @@ import { MessageList, messageMeta } from "./MessageList"
 import { ModelPicker } from "./ModelPicker"
 import { markStopped, shouldClearDraft, withMetadata } from "./thread"
 import { useChatHistory } from "./useChatHistory"
+import { usePreserveScroll } from "./usePreserveScroll"
 
 const newMessageId = () => crypto.randomUUID()
 const EXPLAIN_NOW_PROMPT = "Explain what's happening here."
-/** Within this distance of the bottom, new content keeps the list pinned to the bottom. */
-const STICK_PX = 40
 
 function ChatSkeleton() {
   return (
@@ -85,6 +94,8 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
     consumeFocus,
     setHasMessages,
     newChatToken,
+    explain,
+    ask: pendingAsk,
   } = useChatDraft()
 
   const selection = useMemo<ModelSelection>(
@@ -93,15 +104,43 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
   )
 
   // The transport is built once per view (keyed by video); refs carry the latest values.
-  const latest = useRef({ context, selection, language: settings.language, title })
-  latest.current = { context, selection, language: settings.language, title }
+  const latest = useRef({
+    context,
+    selection,
+    language: settings.language,
+    title,
+    tutor: { mode: settings.tutorMode, level: settings.tutorLevel },
+    role: settings.role,
+    customInstructions: settings.customInstructions,
+    reasoningEffort: settings.reasoningEffort,
+  })
+  latest.current = {
+    context,
+    selection,
+    language: settings.language,
+    title,
+    tutor: { mode: settings.tutorMode, level: settings.tutorLevel },
+    role: settings.role,
+    customInstructions: settings.customInstructions,
+    reasoningEffort: settings.reasoningEffort,
+  }
+  const webRef = useRef(false)
   const transport = useMemo(
     () =>
-      new PortChatTransport(() => ({
-        context: latest.current.context,
-        selection: latest.current.selection,
-        language: latest.current.language,
-      })),
+      new PortChatTransport(() => {
+        const web = webRef.current
+        webRef.current = false
+        return {
+          context: latest.current.context,
+          selection: latest.current.selection,
+          language: latest.current.language,
+          tutor: latest.current.tutor,
+          role: latest.current.role,
+          customInstructions: latest.current.customInstructions,
+          reasoningEffort: latest.current.reasoningEffort,
+          web,
+        }
+      }),
     [],
   )
 
@@ -141,10 +180,7 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
   // Scrolling: stay pinned to the bottom while the user is there; jump down on send.
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinnedRef = useRef(true)
-  const onScroll = () => {
-    const el = scrollRef.current
-    if (el) pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX
-  }
+  usePreserveScroll(scrollRef, pinnedRef)
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-pin on every message/stream update
   useEffect(() => {
     const el = scrollRef.current
@@ -177,12 +213,13 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
   )
 
   const send = useCallback(
-    (text: string, sendQuote: ChatQuote | null) => {
+    (text: string, sendQuote: ChatQuote | null, web = false) => {
       const seconds = getVideoElement()?.currentTime
       const metadata: ChatMessageMetadata = {}
       if (attachTime && seconds !== undefined) metadata.at = Math.floor(seconds)
       if (sendQuote) metadata.quote = sendQuote
       pinnedRef.current = true
+      webRef.current = web
       void sendMessage({ text, metadata })
       if (shouldClearDraft(text, draft)) setDraft("")
       setQuote(null)
@@ -194,6 +231,28 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
   const ask = useCallback((text: string) => send(text, quote), [send, quote])
 
   const rows = useMemo(() => chunkBySentences(context.transcript), [context.transcript])
+  const videoId = context.metadata.videoId
+  const seenExplain = useRef(0)
+  const seenAsk = useRef(0)
+  useEffect(() => {
+    if (explain.nonce === 0 || explain.videoId !== videoId || seenExplain.current === explain.nonce)
+      return
+    if (busy) return
+    seenExplain.current = explain.nonce
+    const atMs = Math.round((getVideoElement()?.currentTime ?? 0) * 1000)
+    send(buildMomentMessage(context, atMs, summary.text), null)
+  }, [explain, videoId, busy, context, summary.text, send])
+  useEffect(() => {
+    if (
+      pendingAsk.nonce === 0 ||
+      pendingAsk.videoId !== videoId ||
+      seenAsk.current === pendingAsk.nonce
+    )
+      return
+    if (busy) return
+    seenAsk.current = pendingAsk.nonce
+    send(pendingAsk.text, null, pendingAsk.web)
+  }, [pendingAsk, videoId, busy, send])
   const explainNow = (ms: number) => {
     const row = rows[Math.max(findActiveIndex(rows, ms), 0)]
     const nowQuote = row
@@ -279,26 +338,65 @@ function ChatView({ context, title, initialMessages, hasStored, save, clear }: C
       })
   }, [newChatToken])
 
+  const modeOptions = TUTOR_MODES.map((id) => [id, TUTOR_MODE_LABELS[id]] as const)
+  const levelOptions = TUTOR_LEVELS.map((id) => [id, TUTOR_LEVEL_LABELS[id]] as const)
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto p-[16px]">
-        {messages.length === 0 && !busy ? (
-          <ChatEmptyState
-            suggestions={pickSuggestions(summary.parsed.questions)}
-            onExplainNow={explainNow}
-            onAsk={ask}
+      <div className="flex flex-col gap-[8px] border-b px-[12px] py-[8px]">
+        <div className="flex flex-wrap items-center gap-[8px]">
+          <Segmented
+            label="Chế độ người thầy"
+            value={settings.tutorMode}
+            options={modeOptions}
+            onChange={(tutorMode: TutorMode) => void updateSettings({ tutorMode })}
+            itemClassName="px-[8px]"
           />
-        ) : (
-          <MessageList
-            messages={messages}
-            status={status}
-            error={error}
-            onCopy={onCopy}
-            onRegenerate={() => void regenerate()}
-            onFeedback={onFeedback}
-            onRetry={() => void regenerate()}
+          <Segmented
+            label="Mức"
+            value={settings.tutorLevel}
+            options={levelOptions}
+            onChange={(tutorLevel: TutorLevel) => void updateSettings({ tutorLevel })}
+            itemClassName="px-[8px]"
           />
-        )}
+        </div>
+        <button
+          type="button"
+          className="h-[32px] w-fit cursor-pointer rounded-[8px] bg-secondary px-[12px] text-[13px] font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
+          disabled={busy}
+          onClick={() => {
+            const atMs = Math.round((getVideoElement()?.currentTime ?? 0) * 1000)
+            send(buildMomentMessage(context, atMs, summary.text), null)
+          }}
+        >
+          Giảng đoạn này
+        </button>
+        {settings.tutorMode === "socratic" ? (
+          <p className="text-[12px] leading-[16px] text-muted-foreground">
+            Socratic hỏi một câu mỗi lượt, rồi kiểm tra câu trả lời của bạn.
+          </p>
+        ) : null}
+      </div>
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-[16px]">
+        <div className="recap-reading">
+          {messages.length === 0 && !busy ? (
+            <ChatEmptyState
+              suggestions={pickSuggestions(summary.parsed.questions)}
+              onExplainNow={explainNow}
+              onAsk={ask}
+            />
+          ) : (
+            <MessageList
+              messages={messages}
+              status={status}
+              error={error}
+              onCopy={onCopy}
+              onRegenerate={() => void regenerate()}
+              onFeedback={onFeedback}
+              onRetry={() => void regenerate()}
+              onDeepen={(text) => send(buildDeeperMessage(text.slice(0, 700)), null, true)}
+            />
+          )}
+        </div>
       </div>
       <Composer
         draft={draft}

@@ -139,6 +139,7 @@ export async function loadTranscript(
   const track = pickCaptionTrack(page.captionTracks)
   if (!track) return { state: "unavailable" }
   const language = track.languageCode
+  const asr = track.kind === "asr"
 
   let segments: TranscriptSegment[] = []
   try {
@@ -151,12 +152,14 @@ export async function loadTranscript(
   } catch {
     segments = []
   }
-  if (segments.length > 0) return { state: "ready", segments, language }
+  if (segments.length > 0) return { state: "ready", segments, language, asr }
 
   try {
     segments = await readDom(doc)
   } catch (e) {
     return { state: "error", message: e instanceof Error ? e.message : String(e) }
   }
-  return segments.length > 0 ? { state: "ready", segments, language } : { state: "unavailable" }
+  return segments.length > 0
+    ? { state: "ready", segments, language, asr }
+    : { state: "unavailable" }
 }

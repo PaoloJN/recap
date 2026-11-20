@@ -1,6 +1,7 @@
 import { Clock, PaperPlaneRight, Stop, X } from "@phosphor-icons/react"
-import type { KeyboardEvent, ReactNode, RefObject } from "react"
+import { type KeyboardEvent, type ReactNode, type RefObject, useLayoutEffect } from "react"
 import { Textarea } from "@/components/ui/textarea"
+import { composerMaxPx } from "@/lib/layout/panel-layout"
 import { formatMs } from "@/lib/timestamps"
 import { cn } from "@/lib/utils"
 import type { ChatQuote } from "./ChatDraftContext"
@@ -40,6 +41,28 @@ export function Composer({
 }: ComposerProps) {
   const canSend = draft.trim() !== "" && !busy
 
+  // Refit when `draft` commits. The height comes from scrollHeight, so the name is unused.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refit after each draft commit
+  useLayoutEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    const sizeField = () => {
+      const card = el.closest("[data-recap-card]")
+      el.style.setProperty("field-sizing", "fixed")
+      const max = composerMaxPx(card instanceof HTMLElement ? card.clientHeight : 0)
+      el.style.maxHeight = `${max}px`
+      el.style.height = "auto"
+      el.style.height = `${Math.min(el.scrollHeight, max)}px`
+      el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden"
+    }
+    sizeField()
+    const card = el.closest("[data-recap-card]")
+    if (!card) return
+    const observer = new ResizeObserver(sizeField)
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [draft, textareaRef])
+
   // ⏎ sends, ⇧⏎ inserts a newline; while a reply streams Enter does nothing.
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return
@@ -48,7 +71,7 @@ export function Composer({
   }
 
   return (
-    <div className="shrink-0 px-[12px] pt-[8px] pb-[12px]">
+    <div className="recap-composer shrink-0 px-[12px] pt-[8px] pb-[12px]">
       <div className="flex flex-col gap-[8px] rounded-[12px] border border-input bg-background p-[10px]">
         {quote ? (
           <div className="flex items-start gap-[8px] rounded-[8px] bg-secondary py-[6px] pr-[6px] pl-[10px]">
@@ -70,13 +93,13 @@ export function Composer({
         ) : null}
         <Textarea
           ref={textareaRef}
-          rows={2}
+          rows={1}
           value={draft}
           onChange={(e) => onDraft(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Ask anything about this video"
           aria-label="Ask anything about this video"
-          className="min-h-[40px] max-h-[120px] resize-none rounded-none border-0 bg-transparent p-0 text-[14px] leading-[20px] text-foreground shadow-none placeholder:text-subtle-foreground focus-visible:ring-0 md:text-[14px] dark:bg-transparent"
+          className="field-sizing-fixed min-h-[40px] resize-none rounded-none border-0 bg-transparent p-0 text-[14px] leading-[20px] text-foreground shadow-none placeholder:text-subtle-foreground focus-visible:ring-0 md:text-[14px] dark:bg-transparent"
         />
         <div className="flex items-center gap-[6px]">
           {modelPicker}

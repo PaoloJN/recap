@@ -7,11 +7,13 @@ import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root"
 import css from "@/assets/tailwind.css?inline"
 import { App } from "@/components/shell/App"
 import { injectFontFaces } from "@/lib/fonts"
+import { clearPageLayout } from "@/lib/layout/page-style"
 import type { ToggleMessage } from "@/lib/port-protocol"
 import { panelStateItem } from "@/lib/storage"
 
 function isToggleMessage(msg: unknown): msg is ToggleMessage {
-  return (msg as ToggleMessage | undefined)?.type === "toggle-panel"
+  const type = (msg as ToggleMessage | undefined)?.type
+  return type === "toggle-panel" || type === "explain-moment" || type === "focus-mode"
 }
 
 export default defineContentScript({
@@ -40,9 +42,23 @@ export default defineContentScript({
 
     const onMessage = (msg: unknown) => {
       if (!isToggleMessage(msg)) return
+      if (msg.type === "explain-moment") {
+        void panelStateItem
+          .getValue()
+          .then((s) => panelStateItem.setValue({ ...s, open: true, tab: "chat" }))
+        document.dispatchEvent(new CustomEvent("recap-explain-moment"))
+        return
+      }
+      if (msg.type === "focus-mode") {
+        document.dispatchEvent(new CustomEvent("recap-focus-mode"))
+        return
+      }
       void panelStateItem.getValue().then((s) => panelStateItem.setValue({ ...s, open: !s.open }))
     }
     browser.runtime.onMessage.addListener(onMessage)
-    ctx.onInvalidated(() => browser.runtime.onMessage.removeListener(onMessage))
+    ctx.onInvalidated(() => {
+      browser.runtime.onMessage.removeListener(onMessage)
+      clearPageLayout(document)
+    })
   },
 })

@@ -9,11 +9,19 @@ export default defineBackground(() => {
   registerKeyCheckHandler()
   registerChatGptHandler()
   browser.commands.onCommand.addListener(async (command) => {
-    if (command !== "toggle-panel") return
+    const type =
+      command === "toggle-panel"
+        ? "toggle-panel"
+        : command === "explain-moment"
+          ? "explain-moment"
+          : command === "focus-mode"
+            ? "focus-mode"
+            : null
+    if (!type) return
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
     if (tab?.id != null) {
       try {
-        await browser.tabs.sendMessage(tab.id, { type: "toggle-panel" } satisfies ToggleMessage)
+        await browser.tabs.sendMessage(tab.id, { type } satisfies ToggleMessage)
       } catch {
         // no content script on this tab
       }

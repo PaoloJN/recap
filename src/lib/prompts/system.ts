@@ -1,8 +1,19 @@
+import { tutorInstructions } from "@/lib/tutor/prompts"
+import type { TutorSettings } from "@/lib/tutor/types"
 import type { AnswerLanguage, VideoContext } from "@/lib/types"
 import { transcriptForPrompt, videoMetadataBlock } from "./transcript-text"
 
-export function buildChatSystemPrompt(ctx: VideoContext, language: AnswerLanguage): string {
-  return [
+export interface ChatTutorPrompt extends TutorSettings {
+  role?: string
+  customInstructions?: string
+}
+
+export function buildChatSystemPrompt(
+  ctx: VideoContext,
+  language: AnswerLanguage,
+  tutor?: ChatTutorPrompt,
+): string {
+  const rules = [
     "You answer questions about a specific YouTube video using its transcript.",
     "",
     videoMetadataBlock(ctx),
@@ -15,8 +26,12 @@ export function buildChatSystemPrompt(ctx: VideoContext, language: AnswerLanguag
     "- If the transcript does not contain the answer, say so instead of guessing.",
     "- Use Markdown.",
     "- Keep answers concise.",
-    "",
-    "TRANSCRIPT:",
-    transcriptForPrompt(ctx),
-  ].join("\n")
+  ]
+  if (tutor) {
+    rules.push(
+      "",
+      tutorInstructions(tutor, { role: tutor.role, customInstructions: tutor.customInstructions }),
+    )
+  }
+  return [...rules, "", "TRANSCRIPT:", transcriptForPrompt(ctx)].join("\n")
 }

@@ -78,6 +78,55 @@ describe("responsesBodyForRequest", () => {
     expect(body.instructions).not.toContain("temperature")
   })
 
+  it("adds reasoning.effort only for a reasoning model, and web_search only when asked", () => {
+    const withEffort = responsesBodyForRequest({
+      kind: "chat",
+      context,
+      selection,
+      language: "Tiếng Việt",
+      reasoningEffort: "high",
+      messages: [{ id: "u", role: "user", parts: [{ type: "text", text: "Why?" }] }],
+    })
+    expect(withEffort.reasoning).toEqual({ effort: "high" })
+    expect(withEffort.tools).toBeUndefined()
+    expect(forbiddenFieldUsed(withEffort)).toBeUndefined()
+
+    const automatic = responsesBodyForRequest({
+      kind: "chat",
+      context,
+      selection: { provider: "chatgpt", model: "gpt-4o" },
+      language: "Tiếng Việt",
+      reasoningEffort: "high",
+      messages: [{ id: "u", role: "user", parts: [{ type: "text", text: "Why?" }] }],
+    })
+    expect(automatic.reasoning).toBeUndefined()
+    expect(Object.keys(automatic).sort()).toEqual([
+      "input",
+      "instructions",
+      "model",
+      "store",
+      "stream",
+    ])
+
+    const author = responsesBodyForRequest({
+      kind: "author",
+      context,
+      selection,
+      language: "Tiếng Việt",
+      customInstructions: "",
+      tutor: { mode: "explain", level: "engineer" },
+      role: "AI architect",
+      web: true,
+      reasoningEffort: "low",
+    })
+    expect(author.tools).toEqual([{ type: "web_search" }])
+    expect(author.reasoning).toEqual({ effort: "low" })
+    expect(author.instructions).toContain("Tác giả nói")
+    expect(author.instructions).toContain("AI architect")
+    expect(author.instructions).not.toContain("Python")
+    expect(forbiddenFieldUsed(author)).toBeUndefined()
+  })
+
   it("drops system chat messages", () => {
     const body = responsesBodyForRequest({
       kind: "chat",

@@ -106,6 +106,7 @@ export function useSummary(
               selection,
               language: settings.language,
               customInstructions: settings.customInstructions,
+              reasoningEffort: settings.reasoningEffort,
             },
             { signal: controller.signal },
           )
@@ -144,7 +145,14 @@ export function useSummary(
         }
       })()
     },
-    [ctx, selection, settings.language, settings.customInstructions, cancel],
+    [
+      ctx,
+      selection,
+      settings.language,
+      settings.customInstructions,
+      settings.reasoningEffort,
+      cancel,
+    ],
   )
 
   const generate = useCallback(

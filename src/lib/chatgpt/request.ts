@@ -4,6 +4,13 @@ import { expandUserMessages } from "@/lib/prompts/chat-messages"
 import { buildDiagramPrompt } from "@/lib/prompts/diagram"
 import { buildSummaryPrompt } from "@/lib/prompts/summary"
 import { buildChatSystemPrompt } from "@/lib/prompts/system"
+import { responsesReasoning } from "@/lib/reasoning"
+import {
+  buildAuthorViewPrompt,
+  buildConceptsPrompt,
+  buildGradePrompt,
+  buildQuizPrompt,
+} from "@/lib/tutor/prompts"
 import { CHATGPT_FORBIDDEN_FIELDS } from "./constants"
 
 export interface ResponsesTurn {
@@ -17,6 +24,8 @@ export interface ResponsesBody {
   store: false
   stream: true
   input: ResponsesTurn[]
+  tools?: { type: "web_search" }[]
+  reasoning?: { effort: "low" | "medium" | "high" }
 }
 
 const EMPTY_INPUT = "Không có nội dung để gửi cho ChatGPT."
@@ -31,6 +40,8 @@ export function buildResponsesBody(args: {
   model: string
   instructions: string
   input: readonly ResponsesTurn[]
+  tools?: { type: "web_search" }[]
+  reasoning?: { effort: "low" | "medium" | "high" }
 }): ResponsesBody {
   const model = args.model.trim()
   if (!model) throw new Error(MISSING_MODEL)
@@ -44,7 +55,19 @@ export function buildResponsesBody(args: {
     store: false,
     stream: true,
     input: input.map((turn) => ({ ...turn })),
+    ...(args.tools && args.tools.length > 0 ? { tools: args.tools } : {}),
+    ...(args.reasoning ? { reasoning: args.reasoning } : {}),
   }
+}
+
+export function omitReasoning(body: ResponsesBody): ResponsesBody {
+  const { reasoning: _reasoning, ...rest } = body
+  return rest
+}
+
+export function omitTools(body: ResponsesBody): ResponsesBody {
+  const { tools: _tools, ...rest } = body
+  return rest
 }
 
 export function chatTurns(messages: UIMessage[]): ResponsesTurn[] {
@@ -62,34 +85,84 @@ export function chatTurns(messages: UIMessage[]): ResponsesTurn[] {
   return turns
 }
 
-export function responsesBodyForRequest(req: StreamRequest): ResponsesBody {
-  if (req.kind === "chat") {
-    return buildResponsesBody({
-      model: req.selection.model,
-      instructions: buildChatSystemPrompt(req.context, req.language),
-      input: chatTurns(req.messages),
-    })
-  }
+function taskPrompt(req: StreamRequest): { system: string; user: string } {
   if (req.kind === "summary") {
-    const { system, user } = buildSummaryPrompt(req.style, req.context, {
+    return buildSummaryPrompt(req.style, req.context, {
       language: req.language,
       customInstructions: req.customInstructions,
     })
-    return buildResponsesBody({
-      model: req.selection.model,
-      instructions: system,
-      input: [{ role: "user", content: user }],
+  }
+  if (req.kind === "diagram") {
+    return buildDiagramPrompt(req.context, {
+      language: req.language,
+      customInstructions: req.customInstructions,
+      repair: req.repair,
     })
   }
-  const { system, user } = buildDiagramPrompt(req.context, {
-    language: req.language,
-    customInstructions: req.customInstructions,
-    repair: req.repair,
-  })
+  if (req.kind === "concepts") {
+    return buildConceptsPrompt(req.context, {
+      language: req.language,
+      customInstructions: req.customInstructions,
+      tutor: req.tutor,
+      role: req.role,
+    })
+  }
+  if (req.kind === "quiz") {
+    return buildQuizPrompt(req.context, {
+      language: req.language,
+      customInstructions: req.customInstructions,
+      tutor: req.tutor,
+      role: req.role,
+    })
+  }
+  if (req.kind === "grade") {
+    return buildGradePrompt(req.context, {
+      language: req.language,
+      tutor: req.tutor,
+      role: req.role,
+      answers: req.answers,
+    })
+  }
+  if (req.kind === "author") {
+    return buildAuthorViewPrompt(req.context, {
+      customInstructions: req.customInstructions,
+      role: req.role,
+    })
+  }
+  throw new Error("Chat requests are not a single prompt.")
+}
+
+export function responsesBodyForRequest(req: StreamRequest): ResponsesBody {
+  const reasoning = responsesReasoning(req.selection.model, req.reasoningEffort)
+  const tools =
+    (req.kind === "chat" || req.kind === "author") && req.web
+      ? [{ type: "web_search" as const }]
+      : undefined
+  if (req.kind === "chat") {
+    return buildResponsesBody({
+      model: req.selection.model,
+      instructions: buildChatSystemPrompt(
+        req.context,
+        req.language,
+        req.tutor && {
+          mode: req.tutor.mode,
+          level: req.tutor.level,
+          role: req.role,
+          customInstructions: req.customInstructions,
+        },
+      ),
+      input: chatTurns(req.messages),
+      tools,
+      reasoning,
+    })
+  }
+  const { system, user } = taskPrompt(req)
   return buildResponsesBody({
     model: req.selection.model,
     instructions: system,
     input: [{ role: "user", content: user }],
+    tools,
+    reasoning,
   })
 }
 

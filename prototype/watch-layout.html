@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recap layout prototype</title>
+    <style>
+      :root {
+        --panel: 400px;
+        --min: 360px;
+        --max-ratio: 0.6;
+        --page: 24px;
+        --gap: 24px;
+        --mast: 56px;
+        --ink: #0f0f0f;
+        --muted: #606060;
+        --line: rgba(0, 0, 0, 0.1);
+        --chip: #f2f2f2;
+        --link: #065fd4;
+        --red: #ff0033;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: #fff; color: var(--ink); font-family: Roboto, Arial, sans-serif; }
+      button, textarea { font: inherit; }
+      #mast {
+        position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 16px;
+        height: var(--mast); padding: 0 16px; background: #fff; border-bottom: 1px solid #e5e5e5;
+      }
+      .logo { display: flex; align-items: center; gap: 4px; font-weight: 700; letter-spacing: -0.4px; }
+      .logo i { width: 28px; height: 20px; border-radius: 6px; background: var(--red); display: grid; place-items: center; }
+      .logo i::after { content: ""; border-style: solid; border-width: 5px 0 5px 8px; border-color: transparent transparent transparent #fff; }
+      .search { flex: 1; max-width: 560px; height: 36px; margin: 0 auto; border: 1px solid #ccc; border-radius: 18px; background: #fff; }
+      .avatar { width: 32px; height: 32px; border-radius: 50%; background: #065fd4; color: #fff; display: grid; place-items: center; font-size: 13px; }
+      #page { padding: 16px var(--page) 48px; }
+      #columns { display: flex; align-items: flex-start; gap: var(--gap); }
+      #primary { flex: 1 1 auto; min-width: 0; }
+      #secondary { width: var(--panel); flex: 0 0 var(--panel); min-width: 0; transition: width 150ms ease, flex-basis 150ms ease; }
+      #primary { transition: width 150ms ease, flex-basis 150ms ease; }
+      html.dragging #primary, html.dragging #secondary { transition: none; }
+      .stage { width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; background: radial-gradient(120% 80% at 20% 20%, #3a3a3a, #111 55%, #000); position: relative; overflow: hidden; }
+      .play { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); width: 68px; height: 48px; border-radius: 12px; background: #ff0033ee; display: grid; place-items: center; }
+      .play::after { content: ""; border-style: solid; border-width: 8px 0 8px 14px; border-color: transparent transparent transparent #fff; margin-left: 2px; }
+      .scrub { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: #ffffff33; }
+      .scrub span { display: block; width: 28%; height: 100%; background: var(--red); }
+      h1 { font-size: 20px; line-height: 28px; font-weight: 600; margin: 12px 0 8px; }
+      .channel { display: flex; align-items: center; gap: 12px; }
+      .ch-avatar { width: 40px; height: 40px; border-radius: 50%; background: #222; color: #fff; display: grid; place-items: center; font-size: 14px; }
+      .ch-name { font-size: 14px; font-weight: 500; }
+      .ch-sub { font-size: 12px; color: var(--muted); }
+      .subscribe { margin-left: auto; height: 36px; padding: 0 16px; border: 0; border-radius: 18px; background: #0f0f0f; color: #fff; font-weight: 500; }
+      .comments { margin-top: 20px; display: flex; flex-direction: column; gap: 14px; }
+      .comment { display: flex; gap: 12px; font-size: 14px; line-height: 20px; }
+      .comment b { display: block; font-size: 13px; }
+      .comment span { color: #333; }
+      .dot { width: 32px; height: 32px; border-radius: 50%; background: #e5e5e5; flex: none; }
+      #panel {
+        height: 640px; display: flex; flex-direction: column; position: relative;
+        border: 1px solid var(--line); border-radius: 12px; background: #fff; overflow: hidden;
+      }
+      .head { display: flex; align-items: center; gap: 12px; padding: 12px 8px 12px 16px; }
+      .mark { width: 32px; height: 32px; display: grid; place-items: center; }
+      .titles { min-width: 0; flex: 1; }
+      .titles strong { display: block; font-size: 14px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .titles em { display: block; font-style: normal; font-size: 12px; line-height: 16px; color: var(--muted); }
+      .icon {
+        width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: var(--muted);
+        display: grid; place-items: center; cursor: pointer;
+      }
+      .icon:hover { background: var(--chip); color: var(--ink); }
+      .icon[aria-pressed="true"] { color: var(--ink); background: var(--chip); }
+      .tabs { display: flex; gap: 8px; padding: 0 12px 8px; }
+      .tabs span { height: 28px; padding: 0 10px; border-radius: 8px; background: var(--chip); font-size: 13px; display: grid; place-items: center; color: var(--ink); }
+      .tabs .on { background: #0f0f0f; color: #fff; }
+      .thread { flex: 1; min-height: 0; overflow: auto; padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 16px; }
+      .msg { font-size: 14px; line-height: 20px; color: #333; }
+      .msg.user { align-self: flex-end; max-width: 90%; background: var(--chip); border-radius: 12px; padding: 8px 12px; color: var(--ink); }
+      .who { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+      .diagram { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: #f9f9f9; }
+      .diagram p { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+      .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      .node { border: 1px solid #c5c5c5; background: #fff; border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+      .arrow { color: var(--muted); font-size: 16px; }
+      .composer { padding: 8px 12px 12px; }
+      .box { border: 1px solid rgba(0, 0, 0, 0.18); border-radius: 12px; padding: 10px; }
+      textarea { width: 100%; min-height: 40px; max-height: 40%; border: 0; resize: none; outline: none; padding: 0; line-height: 20px; }
+      .sendrow { display: flex; justify-content: flex-end; margin-top: 8px; }
+      .send { width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--chip); color: #8a8a8a; }
+      .related { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+      .rel { display: flex; gap: 8px; }
+      .thumb { width: 168px; height: 94px; border-radius: 8px; background: #ddd; flex: none; }
+      .rel b { display: block; font-size: 14px; line-height: 20px; font-weight: 500; }
+      .rel span { font-size: 12px; color: var(--muted); }
+      html.focus #columns { align-items: stretch; }
+      html.focus #primary { flex: 0 0 40%; width: 40%; }
+      html.focus .stage { position: sticky; top: 72px; }
+      html.focus #secondary { flex: 1 1 auto; width: auto; min-height: calc(100vh - 72px); }
+      html.focus .related { display: none; }
+      html.focus #panel { height: calc(100vh - 88px); position: sticky; top: 72px; }
+      html.focus .thread, html.focus .composer { width: 100%; max-width: 75ch; margin-inline: auto; }
+      html.focus textarea { min-height: 72px; }
+      #handle {
+        position: absolute; inset: 0 auto 0 0; width: 12px; z-index: 3; margin: 0; height: auto;
+        border: 0; padding: 0; background: transparent; cursor: col-resize; touch-action: none; appearance: none;
+      }
+      #handle:hover, #handle:focus-visible {
+        background: linear-gradient(to right, transparent 5px, rgba(15, 15, 15, 0.4) 5px, rgba(15, 15, 15, 0.4) 7px, transparent 7px);
+      }
+      #handle:focus-visible { outline: 3px solid rgba(6, 95, 212, 0.5); outline-offset: -3px; }
+      @media (prefers-reduced-motion: reduce) {
+        #primary, #secondary { transition: none; }
+      }
+    </style>
+    <script>
+      /* Mirrors src/lib/layout/panel-layout.ts so screenshots match the extension. */
+      const MIN = 360
+      const MAX_RATIO = 0.6
+      const DEFAULT_PX = 400
+      const shot = new URLSearchParams(location.search).get("shot")
+      if (shot === "focus") document.documentElement.classList.add("focus")
+      if (shot === "wide") {
+        const max = Math.max(MIN, Math.floor(window.innerWidth * MAX_RATIO))
+        const wide = Math.min(max, Math.round(window.innerWidth * 0.5))
+        document.documentElement.style.setProperty("--panel", `${Math.max(MIN, wide)}px`)
+      }
+    </script>
+  </head>
+  <body>
+    <header id="mast">
+      <div class="logo"><i></i> YouTube</div>
+      <div class="search"></div>
+      <div class="avatar">A</div>
+    </header>
+    <main id="page">
+      <div id="columns">
+        <section id="primary">
+          <div class="stage" id="player">
+            <div class="play"></div>
+            <div class="scrub"><span></span></div>
+          </div>
+          <h1>How a gateway routes work to the pool</h1>
+          <div class="channel">
+            <div class="ch-avatar">R</div>
+            <div>
+              <div class="ch-name">Recap engineering</div>
+              <div class="ch-sub">128K subscribers</div>
+            </div>
+            <button class="subscribe" type="button">Subscribe</button>
+          </div>
+          <div class="comments">
+            <div class="comment"><div class="dot"></div><div><b>Minh</b><span>The cache check at 4:12 is the part I keep replaying.</span></div></div>
+            <div class="comment"><div class="dot"></div><div><b>Lan</b><span>Would love a diagram of the retry path. The sidebar chat is finally wide enough to read it.</span></div></div>
+          </div>
+        </section>
+        <aside id="secondary">
+          <section id="panel" data-recap-card>
+            <hr id="handle" tabindex="0" aria-orientation="vertical" aria-label="Resize panel" aria-valuemin="360" aria-valuenow="400" title="Drag to resize. Double-click to reset." />
+            <div class="head">
+              <div class="mark" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><title>Recap</title><rect x="3" y="4" width="18" height="16" rx="3" stroke="#0f0f0f" stroke-width="1.6"/><path d="M7 9h10M7 12h7" stroke="#0f0f0f" stroke-width="1.6" stroke-linecap="round"/></svg>
+              </div>
+              <div class="titles">
+                <strong>Recap AI</strong>
+                <em>Recap engineering</em>
+              </div>
+              <button class="icon" id="focus" type="button" aria-pressed="false" aria-label="Phóng to chat" title="Phóng to chat">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><title>Phóng to chat</title><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg>
+              </button>
+              <button class="icon" type="button" aria-label="Collapse">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><title>Collapse</title><path d="M6 14l6-6 6 6"/></svg>
+              </button>
+            </div>
+            <div class="tabs">
+              <span>Summary</span>
+              <span class="on">Chat</span>
+              <span>Sơ đồ</span>
+            </div>
+            <div class="thread" id="thread">
+              <div class="msg user" data-msg>How does the gateway decide between the worker pool and the cache when a request misses the edge?</div>
+              <div class="msg" data-msg>
+                <div class="who">Người thầy · Giảng giải</div>
+                The gateway checks Redis before it ever touches the pool. A hit returns the cached payload and skips the worker. A miss enqueues the job, and the worker writes the result back with a short TTL so the next caller does not stampede the origin. The video walks that branch at 4:12, then shows the retry budget: three attempts, jittered, and only for the idempotent GET. Names in the auto captions say “cash” here; the description calls it Redis.
+              </div>
+              <div class="msg user" data-msg>What should I watch before the retry section?</div>
+              <div class="msg" data-msg>
+                <div class="who">Người thầy</div>
+                Start with the idempotency key, then the queue. The retry section assumes you already know that a failed worker does not roll back the cache write. If the key is reused, the gateway treats the second call as the same job and will not enqueue again.
+              </div>
+              <div class="diagram" data-msg>
+                <p>Sơ đồ · request path</p>
+                <div class="flow">
+                  <div class="node">Client</div>
+                  <span class="arrow">→</span>
+                  <div class="node">API Gateway</div>
+                  <span class="arrow">→</span>
+                  <div class="node">Worker</div>
+                  <span class="arrow">→</span>
+                  <div class="node">Redis</div>
+                </div>
+              </div>
+            </div>
+            <div class="composer">
+              <div class="box">
+                <textarea rows="1" aria-label="Ask anything about this video" placeholder="Ask anything about this video"></textarea>
+                <div class="sendrow"><button class="send" type="button" aria-label="Send">↑</button></div>
+              </div>
+            </div>
+          </section>
+          <div class="related">
+            <div class="rel"><div class="thumb" style="background:#c5d4e8"></div><div><b>Retry budgets, explained slowly</b><span>Recap engineering · 18K views</span></div></div>
+            <div class="rel"><div class="thumb" style="background:#e8d4c5"></div><div><b>Why the cache key includes the tenant</b><span>Recap engineering · 9.2K views</span></div></div>
+          </div>
+        </aside>
+      </div>
+    </main>
+    <script>
+      const root = document.documentElement
+      const handle = document.getElementById("handle")
+      const focusBtn = document.getElementById("focus")
+      const maxPx = () => Math.max(MIN, Math.floor(window.innerWidth * MAX_RATIO))
+      const clamp = (n) => Math.min(maxPx(), Math.max(MIN, Math.round(n)))
+      const read = () => {
+        const raw = getComputedStyle(root).getPropertyValue("--panel").trim()
+        const n = Number.parseFloat(raw)
+        return Number.isFinite(n) ? n : DEFAULT_PX
+      }
+      const paint = (px) => {
+        root.style.setProperty("--panel", `${px}px`)
+        handle.setAttribute("aria-valuenow", String(px))
+        handle.setAttribute("aria-valuemax", String(maxPx()))
+      }
+      if (!root.style.getPropertyValue("--panel") && !root.classList.contains("focus")) paint(DEFAULT_PX)
+      else handle.setAttribute("aria-valuenow", String(read()))
+
+      let drag = null
+      handle.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0 || root.classList.contains("focus")) return
+        handle.setPointerCapture(event.pointerId)
+        drag = { startX: event.clientX, startWidth: read(), frame: 0, x: event.clientX }
+        root.classList.add("dragging")
+      })
+      handle.addEventListener("pointermove", (event) => {
+        if (!drag) return
+        drag.x = event.clientX
+        if (drag.frame) return
+        drag.frame = requestAnimationFrame(() => {
+          if (!drag) return
+          drag.frame = 0
+          paint(clamp(drag.startWidth + (drag.startX - drag.x)))
+        })
+      })
+      const end = (event) => {
+        if (!drag) return
+        if (drag.frame) cancelAnimationFrame(drag.frame)
+        paint(clamp(drag.startWidth + (drag.startX - event.clientX)))
+        drag = null
+        root.classList.remove("dragging")
+        window.dispatchEvent(new Event("resize"))
+      }
+      handle.addEventListener("pointerup", end)
+      handle.addEventListener("pointercancel", end)
+      handle.addEventListener("dblclick", () => {
+        paint(DEFAULT_PX)
+        window.dispatchEvent(new Event("resize"))
+      })
+      handle.addEventListener("keydown", (event) => {
+        const step = event.shiftKey ? 48 : 16
+        let next = null
+        if (event.key === "ArrowLeft") next = clamp(read() + step)
+        else if (event.key === "ArrowRight") next = clamp(read() - step)
+        else if (event.key === "Home") next = MIN
+        else if (event.key === "End") next = maxPx()
+        if (next === null) return
+        event.preventDefault()
+        paint(next)
+      })
+
+      const setFocus = (on) => {
+        root.classList.toggle("focus", on)
+        focusBtn.setAttribute("aria-pressed", on ? "true" : "false")
+        focusBtn.setAttribute("aria-label", on ? "Thu nhỏ" : "Phóng to chat")
+        focusBtn.title = on ? "Thu nhỏ" : "Phóng to chat"
+        window.dispatchEvent(new Event("resize"))
+      }
+      if (root.classList.contains("focus")) setFocus(true)
+      focusBtn.addEventListener("click", () => setFocus(!root.classList.contains("focus")))
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") setFocus(false)
+      })
+
+      const area = document.querySelector("textarea")
+      const card = document.getElementById("panel")
+      const sizeField = () => {
+        const max = Math.max(96, Math.round(card.clientHeight * 0.4))
+        area.style.maxHeight = `${max}px`
+        area.style.height = "auto"
+        area.style.height = `${Math.min(area.scrollHeight, max)}px`
+      }
+      area.addEventListener("input", sizeField)
+      new ResizeObserver(sizeField).observe(card)
+      sizeField()
+    </script>
+  </body>
+</html>

@@ -14,6 +14,8 @@ import { SummaryProvider } from "@/components/summary/SummaryContext"
 import { SummaryPanel } from "@/components/summary/SummaryPanel"
 import { useSummary } from "@/components/summary/useSummary"
 import { TranscriptPanel } from "@/components/transcript/TranscriptPanel"
+import { ConceptsPanel } from "@/components/tutor/ConceptsPanel"
+import { QuizPanel } from "@/components/tutor/QuizPanel"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSettings } from "@/hooks/useSettings"
@@ -24,6 +26,7 @@ import { useVideo, type VideoState } from "@/hooks/useVideo"
 import { downloadText } from "@/lib/download"
 import { exportVideoMarkdown, slugify } from "@/lib/export"
 import { PROVIDERS } from "@/lib/providers"
+import type { Settings } from "@/lib/storage"
 import {
   apiKeysItem,
   chatsItem,
@@ -38,9 +41,11 @@ import { CollapsedRow } from "./CollapsedRow"
 import { collapsedStatus } from "./collapsed-status"
 import { EmptyState } from "./EmptyState"
 import { Header } from "./Header"
+import { useLayout } from "./LayoutContext"
 import { MoreMenu } from "./MoreMenu"
 import { usePanelNav } from "./NavigationContext"
 import { DialogContainerContext, usePortalContainer } from "./PortalContainer"
+import { ResizeHandle } from "./ResizeHandle"
 import { SettingsVersion, SettingsView } from "./SettingsView"
 import { SubHeader } from "./SubHeader"
 import { TabRow } from "./TabRow"
@@ -124,9 +129,22 @@ interface BodyProps {
   video: VideoState
   diagram: DiagramState
   modelLabel: string
+  selection: ModelSelection
+  settings: Settings
+  dark: boolean
 }
 
-function Body({ tab, hasKey, chatgpt, video, diagram, modelLabel }: BodyProps) {
+function Body({
+  tab,
+  hasKey,
+  chatgpt,
+  video,
+  diagram,
+  modelLabel,
+  selection,
+  settings,
+  dark,
+}: BodyProps) {
   // All three stay mounted so in-flight chat streams and transcript search/scroll survive tab
   // switches; inactive ones are hidden (a class, since the panels set their own display).
   const pane = (name: PanelTab) => (tab === name ? "contents" : "hidden")
@@ -157,6 +175,32 @@ function Body({ tab, hasKey, chatgpt, video, diagram, modelLabel }: BodyProps) {
           <NoKeyGate verb="chat with videos" chatgpt={chatgpt} />
         )}
       </div>
+      <div className={pane("concepts")}>
+        {hasKey ? (
+          <TranscriptGate video={video}>
+            {() =>
+              video.context ? (
+                <ConceptsPanel ctx={video.context} selection={selection} settings={settings} />
+              ) : null
+            }
+          </TranscriptGate>
+        ) : (
+          <NoKeyGate verb="learn from this video" chatgpt={chatgpt} />
+        )}
+      </div>
+      <div className={pane("quiz")}>
+        {hasKey ? (
+          <TranscriptGate video={video}>
+            {() =>
+              video.context ? (
+                <QuizPanel ctx={video.context} selection={selection} settings={settings} />
+              ) : null
+            }
+          </TranscriptGate>
+        ) : (
+          <NoKeyGate verb="quiz this video" chatgpt={chatgpt} />
+        )}
+      </div>
       <div className={pane("diagram")}>
         {hasKey ? (
           <TranscriptGate video={video}>
@@ -166,6 +210,8 @@ function Body({ tab, hasKey, chatgpt, video, diagram, modelLabel }: BodyProps) {
                   diagram={diagram}
                   title={video.context?.metadata.title ?? "diagram"}
                   modelLabel={modelLabel}
+                  videoId={video.videoId ?? ""}
+                  dark={dark}
                 />
               </div>
             )}
@@ -197,6 +243,7 @@ export function Panel() {
   const youtubeTheme = useTheme()
   const toast = useToast()
   const container = usePortalContainer()
+  const layout = useLayout()
   const cardRef = useRef<HTMLDivElement | null>(null)
   const [card, setCard] = useState<HTMLDivElement | null>(null)
   const setCardRef = useCallback((el: HTMLDivElement | null) => {
@@ -204,7 +251,7 @@ export function Panel() {
     setCard(el)
   }, [])
   const video = useVideo(open)
-  const { hasMessages, reset: resetChatDraft, requestFocus } = useChatDraft()
+  const { hasMessages, reset: resetChatDraft, requestFocus, requestExplain } = useChatDraft()
   // A draft, quote, "current moment" or pending focus request belongs to the video it was made for.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the video id changes
   useEffect(() => {
@@ -238,11 +285,14 @@ export function Panel() {
     generateSummary({ force: false })
   }, [pendingSummarize, video.videoId, hasKey, contextVideoId, summaryStatus, generateSummary])
 
-  const openTab = (t: PanelTab) => {
-    setOpen(true)
-    setView("main")
-    selectTab(t)
-  }
+  const openTab = useCallback(
+    (t: PanelTab) => {
+      setOpen(true)
+      setView("main")
+      selectTab(t)
+    },
+    [setOpen, setView, selectTab],
+  )
   // The card host stays in the DOM after leaving /watch; shortcuts only act on a video page.
   useShortcuts(video.videoId !== null, {
     "focus-chat": () => {
@@ -259,6 +309,15 @@ export function Panel() {
       requestSearchFocus()
     },
   })
+  useEffect(() => {
+    const onExplain = () => {
+      if (!video.videoId) return
+      openTab("chat")
+      requestExplain(video.videoId)
+    }
+    document.addEventListener("recap-explain-moment", onExplain)
+    return () => document.removeEventListener("recap-explain-moment", onExplain)
+  }, [video.videoId, requestExplain, openTab])
 
   // Portaled menus/tooltips render into the shadow container, outside the card, so the
   // container carries the card's typography and theme too (else they inherit YouTube's font).
@@ -346,14 +405,25 @@ export function Panel() {
       <DialogContainerContext.Provider value={card}>
         <div
           ref={setCardRef}
+          data-recap-card=""
+          data-recap-focus={layout.focus ? "true" : "false"}
           className={cn(
             "relative flex flex-col overflow-hidden rounded-[12px] border bg-background font-sans text-body text-foreground antialiased",
-            open && !fitContent ? "h-[640px]" : "h-auto",
-            fitContent && "max-h-[640px]",
+            layout.focus ? "h-full min-h-0" : open && !fitContent ? "h-[640px]" : "h-auto",
+            !layout.focus && fitContent && "max-h-[640px]",
             TEXT_SIZE_CLASS[settings.textSize],
             dark && "dark",
           )}
         >
+          {layout.canResize ? (
+            <ResizeHandle
+              widthPx={layout.widthPx}
+              maxPx={layout.maxPx}
+              onPreview={layout.previewWidth}
+              onCommit={layout.commitWidth}
+              onReset={layout.resetWidth}
+            />
+          ) : null}
           {open && view !== "main" ? (
             <SubHeader
               title={view === "settings" ? "Settings" : "Add API key"}
@@ -368,6 +438,15 @@ export function Panel() {
               open={open}
               onToggleOpen={() => setOpen(!open)}
               onOpenSettings={openSettings}
+              focusMode={
+                open
+                  ? {
+                      active: layout.focus,
+                      disabled: !layout.canToggle,
+                      onToggle: layout.toggleFocus,
+                    }
+                  : undefined
+              }
               moreMenu={
                 <MoreMenu videoId={videoId} onExport={exportMarkdown} onShortcuts={showShortcuts} />
               }
@@ -410,6 +489,9 @@ export function Panel() {
                 video={video}
                 diagram={diagram}
                 modelLabel={PROVIDERS[provider].models.find((m) => m.id === model)?.label ?? model}
+                selection={selection}
+                settings={settings}
+                dark={dark}
               />
             </div>
           </div>

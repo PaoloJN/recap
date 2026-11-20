@@ -1,5 +1,5 @@
 export type ProviderId = "openai" | "anthropic" | "google" | "openrouter" | "chatgpt"
-export type PanelTab = "summary" | "transcript" | "chat" | "diagram"
+export type PanelTab = "summary" | "transcript" | "chat" | "diagram" | "concepts" | "quiz"
 export type SummaryStyle = "detailed" | "tldr" | "moments"
 export type ThemeSetting = "youtube" | "dark" | "light"
 export type TextSize = "s" | "m" | "l"
@@ -76,7 +76,7 @@ export interface WatchPageData {
 
 export type TranscriptStatus =
   | { state: "loading" }
-  | { state: "ready"; segments: TranscriptSegment[]; language: string }
+  | { state: "ready"; segments: TranscriptSegment[]; language: string; asr?: boolean }
   | { state: "unavailable" }
   | { state: "error"; message: string }
 

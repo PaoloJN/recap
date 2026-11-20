@@ -1,6 +1,16 @@
 import type { UIMessage } from "ai"
 import { storage } from "wxt/utils/storage"
+import type { LayoutPrefs } from "./layout/panel-layout"
 import { PROVIDER_IDS, PROVIDERS } from "./providers"
+import { REASONING_EFFORTS, type ReasoningEffort } from "./reasoning"
+import { cleanRole, MAX_ROLE } from "./tutor/prompts"
+import {
+  type Concept,
+  TUTOR_LEVELS,
+  TUTOR_MODES,
+  type TutorLevel,
+  type TutorMode,
+} from "./tutor/types"
 import {
   ANSWER_LANGUAGES,
   type AnswerLanguage,
@@ -11,6 +21,8 @@ import {
   type TextSize,
   type ThemeSetting,
 } from "./types"
+
+export { MAX_ROLE }
 
 export interface Settings {
   provider: ProviderId
@@ -23,6 +35,11 @@ export interface Settings {
   removeFillers: boolean
   defaultStyle: SummaryStyle
   customInstructions: string
+  /** Free-text role used to tailor tutor examples. Empty means a neutral software engineer. */
+  role: string
+  tutorMode: TutorMode
+  tutorLevel: TutorLevel
+  reasoningEffort: ReasoningEffort
 }
 
 export const MAX_CUSTOM_INSTRUCTIONS = 500
@@ -41,6 +58,10 @@ export const DEFAULT_SETTINGS: Settings = {
   removeFillers: true,
   defaultStyle: "detailed",
   customInstructions: "",
+  role: "",
+  tutorMode: "qa",
+  tutorLevel: "engineer",
+  reasoningEffort: "auto",
 }
 
 const THEMES: readonly ThemeSetting[] = ["youtube", "dark", "light"]
@@ -83,6 +104,10 @@ export function mergeSettings(stored: unknown): Settings {
       typeof raw.customInstructions === "string"
         ? raw.customInstructions.slice(0, MAX_CUSTOM_INSTRUCTIONS)
         : d.customInstructions,
+    role: cleanRole(typeof raw.role === "string" ? raw.role : d.role),
+    tutorMode: oneOf(raw.tutorMode, TUTOR_MODES, d.tutorMode),
+    tutorLevel: oneOf(raw.tutorLevel, TUTOR_LEVELS, d.tutorLevel),
+    reasoningEffort: oneOf(raw.reasoningEffort, REASONING_EFFORTS, d.reasoningEffort),
   }
 }
 
@@ -111,6 +136,11 @@ export interface PanelState {
 
 export const panelStateItem = storage.defineItem<PanelState>("local:panel", {
   fallback: { open: false, tab: "summary" },
+})
+
+/** Sidebar width and focus mode. Kept off `local:panel` so opening a tab cannot wipe it. */
+export const layoutItem = storage.defineItem<LayoutPrefs>("local:layout", {
+  fallback: { width: null, focus: false },
 })
 
 export interface StoredChat {
@@ -196,6 +226,30 @@ export function upsertDiagram(
   const next: DiagramStore = { ...store, [videoId]: diagram }
   const newestFirst = Object.entries(next).sort(([, a], [, b]) => b.createdAt - a.createdAt)
   return Object.fromEntries(newestFirst.slice(0, MAX_STORED_DIAGRAMS))
+}
+
+export interface StoredConcepts {
+  model: string
+  language: string
+  concepts: Concept[]
+  mermaid: string
+  createdAt: number
+}
+
+export type ConceptStore = Record<string, StoredConcepts>
+
+export const conceptsItem = storage.defineItem<ConceptStore>("local:concepts", { fallback: {} })
+
+export const MAX_STORED_CONCEPTS = 20
+
+export function upsertConcepts(
+  store: ConceptStore,
+  videoId: string,
+  concepts: StoredConcepts,
+): ConceptStore {
+  const next: ConceptStore = { ...store, [videoId]: concepts }
+  const newestFirst = Object.entries(next).sort(([, a], [, b]) => b.createdAt - a.createdAt)
+  return Object.fromEntries(newestFirst.slice(0, MAX_STORED_CONCEPTS))
 }
 
 export interface MonthUsage {

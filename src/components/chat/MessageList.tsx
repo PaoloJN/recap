@@ -19,6 +19,7 @@ export interface MessageListProps {
   onRegenerate(): void
   onFeedback(id: string): void
   onRetry(): void
+  onDeepen?(text: string): void
 }
 
 export function MessageList({
@@ -29,6 +30,7 @@ export function MessageList({
   onRegenerate,
   onFeedback,
   onRetry,
+  onDeepen,
 }: MessageListProps) {
   const busy = status === "submitted" || status === "streaming"
   const last = messages.at(-1)
@@ -42,22 +44,28 @@ export function MessageList({
         const meta = messageMeta(m)
         const text = messageText(m)
         if (m.role === "user") {
-          return <UserBubble key={m.id} text={text} at={meta.at} quote={meta.quote} />
+          return (
+            <div key={m.id} data-msg="">
+              <UserBubble text={text} at={meta.at} quote={meta.quote} />
+            </div>
+          )
         }
         if (m.role !== "assistant") return null
         return (
-          <AssistantMessage
-            key={m.id}
-            text={text}
-            streaming={busy && m.id === last?.id}
-            stopped={meta.stopped === true}
-            isLast={m.id === lastAssistantId}
-            busy={busy}
-            feedback={meta.feedback === "up"}
-            onCopy={() => onCopy(text)}
-            onRegenerate={onRegenerate}
-            onFeedback={() => onFeedback(m.id)}
-          />
+          <div key={m.id} data-msg="">
+            <AssistantMessage
+              text={text}
+              streaming={busy && m.id === last?.id}
+              stopped={meta.stopped === true}
+              isLast={m.id === lastAssistantId}
+              busy={busy}
+              feedback={meta.feedback === "up"}
+              onCopy={() => onCopy(text)}
+              onRegenerate={onRegenerate}
+              onFeedback={() => onFeedback(m.id)}
+              onDeepen={onDeepen && text ? () => onDeepen(text) : undefined}
+            />
+          </div>
         )
       })}
       {pending ? (
@@ -71,6 +79,7 @@ export function MessageList({
           onCopy={() => {}}
           onRegenerate={() => {}}
           onFeedback={() => {}}
+          onDeepen={undefined}
         />
       ) : null}
       {error && !busy ? (

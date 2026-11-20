@@ -25,7 +25,9 @@ import { Switch } from "@/components/ui/switch"
 import { useSettings } from "@/hooks/useSettings"
 import { useStorageItem } from "@/hooks/useStorageItem"
 import { PROVIDER_IDS, PROVIDERS } from "@/lib/providers"
-import { apiKeysItem, type Settings } from "@/lib/storage"
+import type { ReasoningEffort } from "@/lib/reasoning"
+import { REASONING_EFFORT_LABELS, REASONING_EFFORTS, showsReasoningPicker } from "@/lib/reasoning"
+import { apiKeysItem, MAX_ROLE, type Settings } from "@/lib/storage"
 import { SUMMARY_STYLE_IDS, SUMMARY_STYLES } from "@/lib/summary/styles"
 import {
   ANSWER_LANGUAGES,
@@ -274,6 +276,38 @@ function SettingsBody({
                 onChange={setModel}
               />
             )
+          }
+        />
+        {showsReasoningPicker(provider) ? (
+          <SettingsRow
+            title="Reasoning effort"
+            note="Tự động không gửi tham số"
+            control={
+              <Picker<ReasoningEffort>
+                label="Reasoning effort"
+                value={settings.reasoningEffort}
+                options={REASONING_EFFORTS.map((id) => ({
+                  id,
+                  label: REASONING_EFFORT_LABELS[id],
+                }))}
+                onChange={(reasoningEffort) => set({ reasoningEffort })}
+              />
+            }
+          />
+        ) : null}
+        <SettingsRow
+          title="Vai trò của bạn"
+          note="Ví dụ để người thầy lấy. Để trống thì dùng ví dụ kỹ sư phần mềm nói chung."
+          stacked
+          control={
+            <input
+              aria-label="Vai trò của bạn"
+              value={settings.role}
+              placeholder="Ví dụ: AI architect"
+              maxLength={MAX_ROLE}
+              onChange={(event) => set({ role: event.target.value })}
+              className="h-[36px] w-full rounded-[8px] border bg-background px-[10px] text-[13px] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            />
           }
         />
       </SettingsSection>

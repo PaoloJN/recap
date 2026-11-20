@@ -19,7 +19,12 @@ export function NoKeyGate({
   verb,
   chatgpt = false,
 }: {
-  verb: "summarize videos" | "chat with videos" | "draw a diagram"
+  verb:
+    | "summarize videos"
+    | "chat with videos"
+    | "draw a diagram"
+    | "learn from this video"
+    | "quiz this video"
   chatgpt?: boolean
 }) {
   const { setView, selectTab } = usePanelNav()

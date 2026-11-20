@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest"
+import { buildAuthorViewPrompt, buildConceptsPrompt, buildQuizPrompt } from "@/lib/tutor/prompts"
 import type { VideoContext } from "@/lib/types"
 import { buildDiagramPrompt } from "./diagram"
 import { buildSummaryPrompt } from "./summary"
 import { buildChatSystemPrompt } from "./system"
 import {
+  DESCRIPTION_CHAR_BUDGET,
   formatTranscriptForPrompt,
+  NAME_CORRECTION_RULE,
   TRANSCRIPT_CHAR_BUDGET,
   TRUNCATION_MARKER,
   truncateTranscript,
+  videoMetadataBlock,
 } from "./transcript-text"
 
 function ctx(segments: VideoContext["transcript"]): VideoContext {
@@ -58,6 +62,47 @@ describe("truncateTranscript", () => {
     const r = truncateTranscript("y".repeat(200_000))
     expect(r.truncated).toBe(true)
     expect(r.text.length).toBeLessThanOrEqual(TRANSCRIPT_CHAR_BUDGET + TRUNCATION_MARKER.length + 1)
+  })
+})
+
+describe("name glossary", () => {
+  const described: VideoContext = {
+    ...small,
+    metadata: {
+      ...small.metadata,
+      title: "Grok Bot",
+      author: "xAI",
+      description: `Grok Bot walks through agents. ${"d".repeat(2_000)}`,
+    },
+  }
+  const tutor = { mode: "explain" as const, level: "engineer" as const }
+  const opts = { language: "Tiếng Việt" as const, customInstructions: "", tutor, role: "" }
+
+  it("trims the description and tells every prompt to correct auto-caption names", () => {
+    const block = videoMetadataBlock(described)
+    const description = block.split("Description: ")[1]?.split("\n")[0] ?? ""
+    expect(block).toContain("Reference glossary")
+    expect(block).toContain("Title: Grok Bot")
+    expect(block).toContain("Channel: xAI")
+    expect(description.startsWith("Grok Bot walks through agents.")).toBe(true)
+    expect(description.length).toBe(DESCRIPTION_CHAR_BUDGET)
+    expect(block).toContain(NAME_CORRECTION_RULE)
+    expect(videoMetadataBlock(small)).not.toContain("Description:")
+
+    const prompts = [
+      buildChatSystemPrompt(described, "Tiếng Việt"),
+      buildSummaryPrompt("detailed", described, opts).user,
+      buildDiagramPrompt(described, opts).user,
+      buildConceptsPrompt(described, opts).user,
+      buildQuizPrompt(described, opts).user,
+      buildAuthorViewPrompt(described, { customInstructions: "", role: "" }).user,
+    ]
+    for (const prompt of prompts) {
+      expect(prompt).toContain("Title: Grok Bot")
+      expect(prompt).toContain("Channel: xAI")
+      expect(prompt).toContain("Description: Grok Bot walks through agents.")
+      expect(prompt).toContain("direct quotes")
+    }
   })
 })
 

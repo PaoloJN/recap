@@ -143,6 +143,16 @@
     opacity: 1;
   }
 }
+[data-recap-focus="true"] .recap-reading,
+[data-recap-focus="true"] .recap-composer {
+  width: 100%;
+  max-width: 75ch;
+  margin-inline: auto;
+}
+[data-recap-focus="true"] .recap-composer textarea {
+  min-height: 72px;
+}
+
 @keyframes yt-blink {
   50% {
     opacity: 0;
