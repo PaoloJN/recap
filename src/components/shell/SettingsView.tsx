@@ -14,6 +14,7 @@ import { ShortcutsSection } from "@/components/settings/ShortcutsSection"
 import { SMALL_BUTTON } from "@/components/settings/styles"
 import { UsageSection } from "@/components/settings/UsageSection"
 import { useChatGptModels } from "@/components/settings/useChatGptModels"
+import { VideoTypeSection } from "@/components/settings/VideoTypeSection"
 import {
   Select,
   SelectContent,
@@ -360,6 +361,8 @@ function SettingsBody({
           }
         />
       </SettingsSection>
+
+      <VideoTypeSection />
 
       <SettingsSection label="Transcript">
         <SettingsRow

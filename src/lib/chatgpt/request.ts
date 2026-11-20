@@ -1,6 +1,7 @@
 import type { UIMessage } from "ai"
 import type { StreamRequest } from "@/lib/port-protocol"
 import { expandUserMessages } from "@/lib/prompts/chat-messages"
+import { buildClassifyPrompt } from "@/lib/prompts/classify"
 import { buildDiagramPrompt } from "@/lib/prompts/diagram"
 import { buildSummaryPrompt } from "@/lib/prompts/summary"
 import { buildChatSystemPrompt } from "@/lib/prompts/system"
@@ -90,6 +91,7 @@ function taskPrompt(req: StreamRequest): { system: string; user: string } {
     return buildSummaryPrompt(req.style, req.context, {
       language: req.language,
       customInstructions: req.customInstructions,
+      videoTypePrompt: req.videoTypePrompt,
     })
   }
   if (req.kind === "diagram") {
@@ -123,6 +125,7 @@ function taskPrompt(req: StreamRequest): { system: string; user: string } {
       answers: req.answers,
     })
   }
+  if (req.kind === "classify") return buildClassifyPrompt(req.context)
   if (req.kind === "author") {
     return buildAuthorViewPrompt(req.context, {
       customInstructions: req.customInstructions,

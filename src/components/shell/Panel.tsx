@@ -24,8 +24,10 @@ import { useStorageItem } from "@/hooks/useStorageItem"
 import { useTheme } from "@/hooks/useTheme"
 import { useUpdateNotice } from "@/hooks/useUpdateNotice"
 import { useVideo, type VideoState } from "@/hooks/useVideo"
+import { useVideoType } from "@/hooks/useVideoType"
 import { downloadText } from "@/lib/download"
 import { exportVideoMarkdown, slugify } from "@/lib/export"
+import { resolveVideoTypePrompt, type VideoType } from "@/lib/prompts/video-type"
 import { PROVIDERS } from "@/lib/providers"
 import type { Settings } from "@/lib/storage"
 import {
@@ -52,6 +54,7 @@ import { SubHeader } from "./SubHeader"
 import { TabRow } from "./TabRow"
 import { useToast } from "./ToastContext"
 import { UpdateBanner } from "./UpdateBanner"
+import { VideoTypeChip } from "./VideoTypeChip"
 
 type ReadyTranscript = Extract<TranscriptStatus, { state: "ready" }>
 
@@ -268,7 +271,28 @@ export function Panel() {
   const selection = useMemo<ModelSelection>(() => ({ provider, model }), [provider, model])
   const isChatGpt = provider === "chatgpt"
   const hasKey = isChatGpt ? chatGptSignedIn : Boolean(apiKeys?.[provider])
-  const summary = useSummary(video.context, selection, settings, open && hasKey)
+  const videoType = useVideoType({
+    siteId: video.siteId,
+    page: video.page,
+    context: video.context,
+    settings,
+    selection: hasKey ? selection : null,
+  })
+  const summary = useSummary(
+    video.context,
+    selection,
+    settings,
+    open && hasKey && videoType.ready,
+    videoType.prompt,
+  )
+  const pickVideoType = (type: VideoType) => {
+    videoType.setType(type)
+    if (!hasKey) return
+    summary.generate({
+      force: true,
+      typePrompt: resolveVideoTypePrompt(type, settings.videoTypePrompts),
+    })
+  }
   const dark = settings.theme === "youtube" ? youtubeTheme === "dark" : settings.theme === "dark"
   const diagram = useDiagram(video.context, hasKey ? selection : null, settings, dark)
 
@@ -455,6 +479,13 @@ export function Panel() {
               }
             />
           )}
+          {open && view === "main" && page ? (
+            <VideoTypeChip
+              type={videoType.type}
+              pending={videoType.pending}
+              onPick={pickVideoType}
+            />
+          ) : null}
           {page && page.metadata.durationSeconds > 0 && (view === "main" || !open) ? (
             <LiveChapterBar
               chapters={page.chapters}

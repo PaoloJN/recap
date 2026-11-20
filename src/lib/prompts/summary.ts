@@ -1,5 +1,6 @@
 import type { AnswerLanguage, SummaryStyle, VideoContext } from "@/lib/types"
 import { transcriptForPrompt, videoMetadataBlock } from "./transcript-text"
+import { videoTypeFocus } from "./video-type"
 
 const QUESTIONS = ["## Questions", "- Question?"]
 const SHAPES: Record<SummaryStyle, string[]> = {
@@ -47,13 +48,13 @@ const SECTIONS: Record<SummaryStyle, string[]> = {
 export function buildSummaryPrompt(
   style: SummaryStyle,
   ctx: VideoContext,
-  opts: { language: AnswerLanguage; customInstructions: string },
+  opts: { language: AnswerLanguage; customInstructions: string; videoTypePrompt?: string },
 ): { system: string; user: string } {
   const language =
     (opts.language ?? "match") === "match"
       ? `Write in the transcript's language (${ctx.language}).`
       : `Write in ${opts.language}.`
-  const system = [
+  const systemParts = [
     "You write summaries of YouTube videos from their transcript.",
     language,
     "Reply in Markdown using exactly this shape, with these literal headings:",
@@ -67,7 +68,10 @@ export function buildSummaryPrompt(
     "- Write each moment bullet as `- m:ss Text`: a plain m:ss timestamp (or h:mm:ss), then the text. No bold, no brackets, no links.",
     "- Use the timestamps from the transcript lines.",
     '- Do not add a preamble such as "Here is the summary" or any closing remark.',
-  ].join("\n")
+  ]
+  const focus = videoTypeFocus(opts.videoTypePrompt)
+  if (focus) systemParts.push("", focus)
+  const system = systemParts.join("\n")
   const custom = (opts.customInstructions ?? "").trim()
   const user = [
     videoMetadataBlock(ctx),

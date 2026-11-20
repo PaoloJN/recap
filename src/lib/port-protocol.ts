@@ -34,6 +34,11 @@ export type StreamRequest =
       kind: "summary"
       style: SummaryStyle
       customInstructions: string
+      /** Focus text for the detected video type. Empty means no type focus. */
+      videoTypePrompt?: string
+    })
+  | (StreamBase & {
+      kind: "classify"
     })
   | (StreamBase & {
       kind: "diagram"

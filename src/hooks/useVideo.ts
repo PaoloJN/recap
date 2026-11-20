@@ -7,6 +7,8 @@ import type { TranscriptStatus, VideoContext, WatchPageData } from "@/lib/types"
 
 export interface VideoState {
   videoId: string | null
+  /** Adapter id: `youtube`, `udemy`, `coursera`, `deeplearning`, or `generic`. */
+  siteId: string
   page: WatchPageData | null
   pageError: string | null
   transcript: TranscriptStatus
@@ -61,6 +63,7 @@ export function unavailableTranscript(
  */
 export function useVideo(loadTranscript: boolean): VideoState {
   const [videoId, setVideoId] = useState<string | null>(null)
+  const [siteId, setSiteId] = useState(() => getActiveSource().id)
   const [page, setPage] = useState<WatchPageData | null>(null)
   const [pageError, setPageError] = useState<string | null>(null)
   const [transcript, setTranscript] = useState<TranscriptStatus>({ state: "loading" })
@@ -76,6 +79,7 @@ export function useVideo(loadTranscript: boolean): VideoState {
   // biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey re-runs the fetch on demand
   useEffect(() => {
     const source = getActiveSource()
+    setSiteId(source.id)
     const request = ++pageRequestRef.current
     const isCurrent = () => request === pageRequestRef.current
     transcriptRequestRef.current++
@@ -183,5 +187,5 @@ export function useVideo(loadTranscript: boolean): VideoState {
     [page, transcript],
   )
 
-  return { videoId, page, pageError, transcript, context, reload }
+  return { videoId, siteId, page, pageError, transcript, context, reload }
 }
