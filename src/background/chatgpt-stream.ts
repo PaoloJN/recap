@@ -1,16 +1,11 @@
 import type { UIMessageChunk } from "ai"
 import { CHATGPT_RESPONSES_URL } from "@/lib/chatgpt/constants"
 import { friendlyChatGptError } from "@/lib/chatgpt/errors"
-import {
-  omitReasoning,
-  omitTools,
-  type ResponsesBody,
-  responsesBodyForRequest,
-} from "@/lib/chatgpt/request"
+import { omitReasoning, type ResponsesBody, responsesBodyForRequest } from "@/lib/chatgpt/request"
 import { readResponsesSse } from "@/lib/chatgpt/sse"
 import type { StreamPortMessage, StreamRequest } from "@/lib/port-protocol"
 import { isReasoningRejection, REASONING_NOTE } from "@/lib/reasoning"
-import { isWebToolRejection, WEB_NOTE } from "@/lib/tutor/web"
+import { isWebToolRejection, WEB_NOTE, withoutWeb } from "@/lib/tutor/web"
 import { authorizedFetch } from "./chatgpt-auth"
 
 function failureMessage(err: unknown): string {
@@ -55,10 +50,10 @@ async function postResponses(body: ResponsesBody, signal: AbortSignal): Promise<
 
 /** One retry drops a rejected `reasoning` or `web_search` field. The note is shown on the answer. */
 async function responsesWithFallback(
-  body: ResponsesBody,
+  req: StreamRequest,
   signal: AbortSignal,
 ): Promise<{ res: Response; note: string }> {
-  let next = body
+  let next = responsesBodyForRequest(req)
   let res = await postResponses(next, signal)
   if (res.ok) return { res, note: "" }
   const text = await res.text()
@@ -66,13 +61,14 @@ async function responsesWithFallback(
   const web = Boolean(next.tools) && isWebToolRejection(res.status, text)
   if (!reasoning && !web) throw new Error(friendlyChatGptError(undefined, res.status) || text)
   const notes: string[] = []
+  if (web) {
+    // Rebuilt, not just stripped: the chat instructions also change once web search is off.
+    next = responsesBodyForRequest(withoutWeb(req))
+    notes.push(WEB_NOTE)
+  }
   if (reasoning) {
     next = omitReasoning(next)
     notes.push(REASONING_NOTE)
-  }
-  if (web) {
-    next = omitTools(next)
-    notes.push(WEB_NOTE)
   }
   res = await postResponses(next, signal)
   if (!res.ok || !res.body) {
@@ -88,7 +84,7 @@ export async function runChatGptRequest(
 ): Promise<void> {
   const { post, signal } = deps
   try {
-    const { res, note } = await responsesWithFallback(responsesBodyForRequest(req), signal)
+    const { res, note } = await responsesWithFallback(req, signal)
     if (!res.body) throw new Error(friendlyChatGptError(undefined, res.status))
     let started = false
     const tokens = await readResponsesSse(res.body, (delta) => {

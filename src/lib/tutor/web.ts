@@ -1,3 +1,4 @@
+import type { StreamRequest } from "@/lib/port-protocol"
 import type { ProviderId } from "@/lib/types"
 
 /** Shown when web search was requested and the provider cannot do it. */
@@ -31,4 +32,9 @@ export function appendWebNote(text: string): string {
   if (text.includes(WEB_NOTE)) return text
   const body = text.trim()
   return body ? `${body}\n\n${WEB_NOTE}` : WEB_NOTE
+}
+
+/** The same request with its web search turned off. */
+export function withoutWeb(req: StreamRequest): StreamRequest {
+  return req.kind === "chat" || req.kind === "author" ? { ...req, web: false } : req
 }

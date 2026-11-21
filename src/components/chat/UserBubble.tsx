@@ -1,4 +1,4 @@
-import { Clock } from "@phosphor-icons/react"
+import { Clock, MagnifyingGlass } from "@phosphor-icons/react"
 import { formatMs } from "@/lib/timestamps"
 import type { ChatQuote } from "./ChatDraftContext"
 
@@ -7,9 +7,11 @@ export interface UserBubbleProps {
   /** Seconds into the video the question was asked at ("Current moment"). */
   at?: number
   quote?: ChatQuote
+  /** Sent as a web lookup. */
+  web?: boolean
 }
 
-export function UserBubble({ text, at, quote }: UserBubbleProps) {
+export function UserBubble({ text, at, quote, web }: UserBubbleProps) {
   return (
     <div className="flex flex-col items-end gap-[6px]">
       {quote ? (
@@ -20,10 +22,20 @@ export function UserBubble({ text, at, quote }: UserBubbleProps) {
           <span className="text-[12px] leading-[18px] text-muted-foreground">{quote.text}</span>
         </div>
       ) : null}
-      {at !== undefined ? (
-        <span className="flex items-center gap-[4px] font-mono text-[11px] text-subtle-foreground">
-          <Clock className="size-[12px]" aria-hidden />
-          <span>at {formatMs(at * 1000)}</span>
+      {at !== undefined || web ? (
+        <span className="flex items-center gap-[8px] font-mono text-[11px] text-subtle-foreground">
+          {web ? (
+            <span className="flex items-center gap-[4px] text-link" title="Đã tra thêm trên web">
+              <MagnifyingGlass className="size-[12px]" aria-hidden />
+              <span>web</span>
+            </span>
+          ) : null}
+          {at !== undefined ? (
+            <span className="flex items-center gap-[4px]">
+              <Clock className="size-[12px]" aria-hidden />
+              <span>at {formatMs(at * 1000)}</span>
+            </span>
+          ) : null}
         </span>
       ) : null}
       <div className="max-w-[85%] rounded-[12px_12px_4px_12px] bg-secondary px-[14px] py-[8px] text-body break-words whitespace-pre-wrap text-foreground">

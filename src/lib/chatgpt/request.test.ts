@@ -127,6 +127,24 @@ describe("responsesBodyForRequest", () => {
     expect(forbiddenFieldUsed(author)).toBeUndefined()
   })
 
+  it("switches the chat instructions to video-first web rules only when web is asked", () => {
+    const base = {
+      kind: "chat" as const,
+      context,
+      selection,
+      language: "Tiếng Việt" as const,
+      messages: [
+        { id: "u", role: "user" as const, parts: [{ type: "text" as const, text: "Why?" }] },
+      ],
+    }
+    const web = responsesBodyForRequest({ ...base, web: true })
+    expect(web.tools).toEqual([{ type: "web_search" }])
+    expect(web.instructions).toContain("Answer from the video first")
+    const plain = responsesBodyForRequest(base)
+    expect(plain.instructions).toContain("If the transcript does not contain the answer")
+    expect(plain.instructions).not.toContain("search the web")
+  })
+
   it("drops system chat messages", () => {
     const body = responsesBodyForRequest({
       kind: "chat",

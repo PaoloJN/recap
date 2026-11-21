@@ -66,11 +66,6 @@ export function omitReasoning(body: ResponsesBody): ResponsesBody {
   return rest
 }
 
-export function omitTools(body: ResponsesBody): ResponsesBody {
-  const { tools: _tools, ...rest } = body
-  return rest
-}
-
 export function chatTurns(messages: UIMessage[]): ResponsesTurn[] {
   const turns: ResponsesTurn[] = []
   for (const message of expandUserMessages(messages)) {
@@ -155,6 +150,7 @@ export function responsesBodyForRequest(req: StreamRequest): ResponsesBody {
           role: req.role,
           customInstructions: req.customInstructions,
         },
+        req.web === true,
       ),
       input: chatTurns(req.messages),
       tools,

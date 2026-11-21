@@ -44,6 +44,8 @@ export interface ChatMessageMetadata {
   feedback?: "up"
   /** Set on an assistant reply the user stopped mid-stream. */
   stopped?: boolean
+  /** Set on a user message sent as a web lookup. Older threads omit it. */
+  web?: boolean
 }
 
 export interface TranscriptSegment {

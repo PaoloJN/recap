@@ -36,6 +36,12 @@ describe("UserBubble", () => {
     expect(text).toContain("What does this mean?")
   })
 
+  it("marks a web lookup", () => {
+    act(() => root.render(<UserBubble text="Hi" web />))
+    expect(container.textContent).toBe("webHi")
+    expect(container.querySelector('[title="Đã tra thêm trên web"]')).not.toBeNull()
+  })
+
   it("renders only the bubble without a quote or stamp", () => {
     act(() => root.render(<UserBubble text="Hi" />))
     expect(container.textContent).toBe("Hi")

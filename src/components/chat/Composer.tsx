@@ -1,4 +1,4 @@
-import { Clock, PaperPlaneRight, Play, Stop, X } from "@phosphor-icons/react"
+import { Clock, MagnifyingGlass, PaperPlaneRight, Play, Stop, X } from "@phosphor-icons/react"
 import { type KeyboardEvent, type ReactNode, type RefObject, useLayoutEffect } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { usePlayer } from "@/hooks/usePlayer"
@@ -15,6 +15,11 @@ export interface ComposerProps {
   onClearQuote(): void
   attachTime: boolean
   onToggleAttach(): void
+  /** Research mode: every question is a web lookup until turned off. */
+  research: boolean
+  /** False when the current provider cannot search the web. */
+  researchSupported: boolean
+  onToggleResearch(): void
   busy: boolean
   onSend(): void
   onStop(): void
@@ -51,6 +56,9 @@ export function Composer({
   onClearQuote,
   attachTime,
   onToggleAttach,
+  research,
+  researchSupported,
+  onToggleResearch,
   busy,
   onSend,
   onStop,
@@ -148,6 +156,33 @@ export function Composer({
             </button>
           )}
           <div className="flex-1" />
+          <button
+            type="button"
+            aria-label="Tra thêm trên web"
+            aria-pressed={research}
+            title={
+              researchSupported
+                ? research
+                  ? "Đang tra thêm trên web — bấm để tắt"
+                  : "Tra thêm trên web"
+                : "Provider này không hỗ trợ tra web"
+            }
+            disabled={!researchSupported}
+            onClick={onToggleResearch}
+            className={cn(
+              ROUND,
+              "disabled:cursor-default disabled:opacity-50",
+              research
+                ? "cursor-pointer bg-link-soft text-link ring-1 ring-link"
+                : "cursor-pointer text-muted-foreground hover:bg-secondary hover:text-foreground",
+            )}
+          >
+            <MagnifyingGlass
+              weight={research ? "bold" : "regular"}
+              className="size-[16px]"
+              aria-hidden
+            />
+          </button>
           {busy ? (
             <button
               type="button"

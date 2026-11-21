@@ -46,7 +46,7 @@ export function MessageList({
         if (m.role === "user") {
           return (
             <div key={m.id} data-msg="">
-              <UserBubble text={text} at={meta.at} quote={meta.quote} />
+              <UserBubble text={text} at={meta.at} quote={meta.quote} web={meta.web === true} />
             </div>
           )
         }

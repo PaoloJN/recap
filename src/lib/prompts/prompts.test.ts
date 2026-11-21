@@ -227,6 +227,21 @@ describe("buildDiagramPrompt", () => {
   })
 })
 
+describe("buildChatSystemPrompt web", () => {
+  it("keeps answers to the transcript without web", () => {
+    const p = buildChatSystemPrompt(small, "match")
+    expect(p).toContain("If the transcript does not contain the answer")
+    expect(p).not.toContain("search the web")
+  })
+  it("answers from the video first and cites web sources with web", () => {
+    const p = buildChatSystemPrompt(small, "match", undefined, true)
+    expect(p).not.toContain("If the transcript does not contain the answer")
+    expect(p).toContain("Answer from the video first")
+    expect(p).toContain("Markdown link to the source")
+    expect(p).toContain("[0:05] world")
+  })
+})
+
 describe("buildChatSystemPrompt language", () => {
   it("keeps match as answer-in-user-language and pins a named language", () => {
     expect(buildChatSystemPrompt(small, "match")).toContain(

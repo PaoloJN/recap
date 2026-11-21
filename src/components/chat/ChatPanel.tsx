@@ -1,6 +1,6 @@
 import { useChat } from "@ai-sdk/react"
 import type { UIMessage } from "ai"
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { usePanelNav } from "@/components/shell/NavigationContext"
 import { useToast } from "@/components/shell/ToastContext"
 import { useSummaryContext } from "@/components/summary/SummaryContext"
@@ -15,6 +15,7 @@ import { PortChatTransport } from "@/lib/transport"
 import { tutorChoice } from "@/lib/tutor/choice"
 import { buildDeeperMessage, buildMomentMessage } from "@/lib/tutor/prompts"
 import type { TutorLevel, TutorMode } from "@/lib/tutor/types"
+import { webPlan } from "@/lib/tutor/web"
 import type { ChatMessageMetadata, ModelSelection, VideoContext } from "@/lib/types"
 import { getVideoElement } from "@/lib/youtube/player"
 import { type ChatQuote, useChatDraft } from "./ChatDraftContext"
@@ -113,6 +114,10 @@ function ChatView({
     () => ({ provider: settings.provider, model: settings.models[settings.provider] }),
     [settings.provider, settings.models],
   )
+  // Research mode lives only in this view: New chat or another video (a new key) turns it off.
+  const [research, setResearch] = useState(false)
+  const researchSupported = webPlan(selection.provider) !== "none"
+  const researchOn = research && researchSupported
   const choice = tutorChoice(videoType, settings.tutorByType)
   const saveChoice = (next: { mode: TutorMode; level: TutorLevel }) => {
     const key = videoType ?? "other"
@@ -145,10 +150,13 @@ function ChatView({
     reasoningEffort: settings.reasoningEffort,
   }
   const webRef = useRef(false)
+  const researchRef = useRef(researchOn)
+  researchRef.current = researchOn
   const transport = useMemo(
     () =>
       new PortChatTransport(() => {
-        const web = webRef.current
+        // Regenerate and Retry skip `send`, so Research mode is read here as well.
+        const web = webRef.current || researchRef.current
         webRef.current = false
         return {
           context: latest.current.context,
@@ -238,6 +246,10 @@ function ChatView({
       const metadata: ChatMessageMetadata = {}
       if (attachTime && seconds !== undefined) metadata.at = Math.floor(seconds)
       if (sendQuote) metadata.quote = sendQuote
+      // A deeper question also turns Research mode on, so follow-ups keep searching.
+      if (web && researchSupported) setResearch(true)
+      const lookup = researchOn || (web && researchSupported)
+      if (lookup) metadata.web = true
       pinnedRef.current = true
       webRef.current = web
       void sendMessage({ text, metadata })
@@ -245,7 +257,16 @@ function ChatView({
       setQuote(null)
       setAttachTime(false)
     },
-    [attachTime, draft, sendMessage, setDraft, setQuote, setAttachTime],
+    [
+      attachTime,
+      draft,
+      sendMessage,
+      setDraft,
+      setQuote,
+      setAttachTime,
+      researchOn,
+      researchSupported,
+    ],
   )
 
   const ask = useCallback((text: string) => send(text, quote), [send, quote])
@@ -351,6 +372,7 @@ function ChatView({
     setDraft("")
     setQuote(null)
     setAttachTime(false)
+    setResearch(false)
     clear()
       .catch((e: unknown) => console.error("Failed to clear chat", e))
       .finally(() => {
@@ -396,6 +418,9 @@ function ChatView({
         onClearQuote={() => setQuote(null)}
         attachTime={attachTime}
         onToggleAttach={() => setAttachTime(!attachTime)}
+        research={researchOn}
+        researchSupported={researchSupported}
+        onToggleResearch={() => setResearch(!researchOn)}
         busy={busy}
         onSend={() => ask(draft.trim())}
         onStop={() => void onStop()}

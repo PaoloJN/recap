@@ -29,7 +29,13 @@ import {
   buildGradePrompt,
   buildQuizPrompt,
 } from "../lib/tutor/prompts"
-import { isWebToolRejection, openRouterOnlineModel, WEB_NOTE, webPlan } from "../lib/tutor/web"
+import {
+  isWebToolRejection,
+  openRouterOnlineModel,
+  WEB_NOTE,
+  webPlan,
+  withoutWeb,
+} from "../lib/tutor/web"
 import { runChatGptRequest } from "./chatgpt-stream"
 
 const INVALID_KEY = "Invalid API key. Check it in Settings."
@@ -213,6 +219,7 @@ export async function runStreamRequest(
                 role: req.role,
                 customInstructions: req.customInstructions,
               },
+              req.web === true,
             ),
             messages: await convertToModelMessages(expandUserMessages(req.messages)),
             abortSignal: signal,
@@ -286,7 +293,9 @@ async function runSdkRequest(
   }
   let providerOptions = reasoningProviderOptions(provider, req.selection.model, req.reasoningEffort)
   const skippedWeb = wantWeb && plan === "none"
-  const first = await runStreamRequest(req, {
+  // WHY: without a web tool the prompt must not promise web sources, or the model invents links.
+  const firstReq = skippedWeb ? withoutWeb(req) : req
+  const first = await runStreamRequest(firstReq, {
     model: createModel({ ...req.selection, model: modelId }, key),
     tools,
     providerOptions,
@@ -305,11 +314,11 @@ async function runSdkRequest(
     notes.push(REASONING_NOTE)
     providerOptions = undefined
   }
-  let next = req
+  let next = firstReq
   if (first === "web-rejected" || first === "both") {
     tools = undefined
     modelId = req.selection.model
-    if (next.kind === "chat" || next.kind === "author") next = { ...next, web: false }
+    next = withoutWeb(next)
   }
   await runStreamRequest(next, {
     model: createModel({ ...req.selection, model: modelId }, key),
